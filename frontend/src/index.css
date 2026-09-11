@@ -1,0 +1,3227 @@
+/* ============================================================================
+   evaltrack theme
+   Light surfaces, rounded corners, gentle elevation, roomy padding, pill-shaped
+   badges, and smooth disclosure transitions. Presentation only: this file sets
+   the look and nothing else, apart from the score meter (see ScoreMeter.tsx).
+
+   Four color ROLES stay distinct and are never conflated:
+     • verdict:   pass (green) / fail (red)
+     • BASE side: blue (--accent)
+     • COMPARE:   violet (--compare)
+     • warning:   amber (--warn)
+   ========================================================================== */
+
+:root {
+  --bg: #f5f6fb;
+  --fg: #1f2435;
+  /* At 11-12px this has to clear 4.5:1 on every light surface it lands on.
+     Anything lighter drops below that floor: #6b7390 measures 4.34:1 on --bg.
+     Dark mode's --muted already clears it. */
+  --muted: #606882;
+  --line: #e6e8f2;
+  --line-strong: #d3d7e6;
+  --accent: #3f6fe4;
+  --pass: #128a4f;
+  --pass-bg: #e2f6ec;
+  --fail: #d23a55;
+  --fail-bg: #fde8ec;
+  --warn: #b8730a;
+  --warn-bg: #fcf1da;
+  --neutral-bg: #eceefa;
+  --sidebar-bg: #fbfbfe;
+  --card-bg: #ffffff;
+  --hover-bg: #eef1fb;
+  --accent-bg: #e4ecfe;
+  /* COMPARE side identity (BASE = accent/blue). Violet so it doesn't read as a
+     warning: amber is reserved for cautions like the dirty tag. */
+  --compare: #9244d8;
+  --compare-bg: #f1e6fc;
+  --changed-row-bg: #fdf4e3;
+  --overlay-bg: rgba(28, 32, 56, 0.32);
+  --shadow: rgba(40, 50, 90, 0.1);
+  /* Edge fade on a horizontally scrollable table. Heavier than --shadow,
+     because it has to read as a cue over the table's own content, not as
+     elevation. */
+  --scroll-fade: rgba(40, 50, 90, 0.24);
+
+  /* Soft-SaaS design tokens: generous radii, gentle layered elevation, and a
+     focus ring drawn from the accent. */
+  --radius-sm: 7px;
+  --radius: 11px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-1:
+    0 1px 2px rgba(40, 50, 90, 0.06), 0 1px 3px rgba(40, 50, 90, 0.05);
+  --shadow-2:
+    0 2px 6px rgba(40, 50, 90, 0.08), 0 4px 14px rgba(40, 50, 90, 0.06);
+  --shadow-3: 0 10px 30px rgba(28, 32, 56, 0.18);
+  --ring: 0 0 0 3px rgba(63, 111, 228, 0.28);
+
+  --code: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+[data-theme="dark"] {
+  --bg: #0e1320;
+  --fg: #e7ebf6;
+  --muted: #8b93ad;
+  --line: #262d42;
+  --line-strong: #39415c;
+  --accent: #6f9bf5;
+  --pass: #46c97e;
+  --pass-bg: #11301f;
+  --fail: #f87689;
+  --fail-bg: #3a1620;
+  --warn: #e0a13a;
+  --warn-bg: #382706;
+  --neutral-bg: #1a2031;
+  --sidebar-bg: #131929;
+  --card-bg: #171d2e;
+  --hover-bg: #1f263b;
+  --accent-bg: #14264a;
+  --compare: #c391ef;
+  --compare-bg: #2c1d47;
+  --changed-row-bg: #2c2208;
+  --overlay-bg: rgba(0, 0, 0, 0.55);
+  --shadow: rgba(0, 0, 0, 0.45);
+  --scroll-fade: rgba(0, 0, 0, 0.6);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45), 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 12px 36px rgba(0, 0, 0, 0.6);
+  --ring: 0 0 0 3px rgba(111, 155, 245, 0.35);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* A consistent, soft focus ring on keyboard navigation across all controls. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--radius-sm);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid var(--line);
+  padding: 20px 18px;
+  overflow-y: auto;
+  background: var(--sidebar-bg);
+}
+
+.main {
+  padding: 28px 36px;
+  overflow-x: auto;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--code);
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+
+/* The check-line mark, sized to the cap height of the wordmark beside it. */
+.brand-mark {
+  height: 20px;
+  width: auto;
+  flex: none;
+}
+
+/* Two-tone wordmark: muted "eval", accent "track" (mirrors assets/wordmark.svg,
+   but via theme tokens so it adapts to light/dark). */
+.brand-eval {
+  color: var(--muted);
+}
+.brand-track {
+  color: var(--accent);
+}
+
+.theme-toggle {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--fg);
+  box-shadow: var(--shadow-1);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--hover-bg);
+  box-shadow: var(--shadow-2);
+}
+
+.theme-toggle:active {
+  transform: translateY(1px);
+}
+
+.brand-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 18px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 18px 0 8px;
+}
+
+.repository-block {
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  padding: 8px 10px;
+  box-shadow: var(--shadow-1);
+}
+
+.repository-block + .repository-block {
+  margin-top: 12px;
+}
+
+.repository-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 2px 6px;
+}
+
+.repository-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.repository-name {
+  font-family: var(--code);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The repository URL sits on its own line under the role so it never squeezes
+ * the role label. It arrives shortened (see shortenUrl), and stays on one line:
+ * a long path must not push the run list down the page. */
+.repository-url {
+  display: block;
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Small inline spinner shown beside a repository's role while its data loads. */
+.spinner {
+  /* Explicit inline-block so width/height apply even outside a flex row
+     (e.g. a bare span in a table cell), not just as a flex item. */
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border: 2px solid var(--line);
+  border-top-color: var(--muted);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+  .table-frame::before,
+  .table-frame::after {
+    transition: none;
+  }
+}
+
+.repository-loading {
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--muted);
+  margin: 6px 2px 2px;
+}
+
+.run-list,
+.ref-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ref sections render every ref they have, so a repository with dozens of open
+   PRs would push the run list off the screen. Scroll inside the section. */
+.ref-section .ref-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.run-row,
+.ref-row {
+  display: block;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: transparent;
+  text-align: left;
+  color: var(--fg);
+  font-family: var(--code);
+  font-size: 12px;
+  margin-bottom: 3px;
+  transition:
+    background 0.13s ease,
+    border-color 0.13s ease,
+    box-shadow 0.13s ease;
+}
+
+.run-row:hover,
+.ref-row:hover {
+  background: var(--hover-bg);
+  cursor: pointer;
+}
+
+/* Run id on the left, outcome chip pushed to the right edge so the chips line
+   up into a scannable column down the sidebar. */
+.run-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.run-outcome {
+  font-size: 11px;
+  font-weight: 700;
+  flex: none;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+}
+
+.run-outcome.pass {
+  color: var(--pass);
+  background: var(--pass-bg);
+}
+
+.run-outcome.fail {
+  color: var(--fail);
+  background: var(--fail-bg);
+}
+
+.ref-row-name {
+  font-weight: 600;
+  font-family: var(--code);
+}
+
+/* A ref whose history cannot be read. The warn tone marks damage, not a
+   failure of the run it points at. */
+.ref-unreadable {
+  color: var(--warn);
+}
+
+/* A ref/run row plus its delete control. The button reveals on row hover/focus
+   so the default sidebar stays calm; only shown when the server allows writes. */
+.ref-row-wrap,
+.run-row-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.ref-row-wrap .ref-row,
+.run-row-wrap .run-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.ref-delete {
+  flex: 0 0 auto;
+  margin-bottom: 3px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease,
+    background 0.12s ease;
+}
+
+.ref-row-wrap:hover .ref-delete,
+.run-row-wrap:hover .ref-delete,
+.ref-delete:focus-visible {
+  opacity: 1;
+}
+
+.ref-delete:hover {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+/* Referenced run: shown disabled with a tooltip pointing at the ref. Not the
+   native `disabled` attribute, which suppresses the title tooltip in some
+   browsers. */
+.ref-delete.disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  opacity: 0.4;
+}
+
+.ref-row-wrap:hover .ref-delete.disabled,
+.run-row-wrap:hover .ref-delete.disabled {
+  opacity: 0.6;
+}
+
+.ref-delete.disabled:hover {
+  background: transparent;
+  color: var(--muted);
+}
+
+.ref-section {
+  margin: 8px 0;
+}
+
+.mainline-section .section-title {
+  color: var(--accent);
+}
+
+.reflog-block {
+  margin: 2px 0 4px 12px;
+}
+
+.reflog-summary {
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+}
+
+.reflog-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 4px 4px;
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+}
+
+.runs-section {
+  margin-top: 12px;
+}
+
+.clickable-title {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* "Load more" button shown at the bottom of paginated sidebar sections. */
+.load-more {
+  display: block;
+  width: 100%;
+  margin: 8px 0 2px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    color 0.13s ease;
+}
+
+.load-more:hover:not(:disabled) {
+  background: var(--neutral-bg);
+  color: var(--fg);
+}
+
+.load-more:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ref-row.selected-a {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-1);
+}
+
+.ref-row.selected-b {
+  background: var(--compare-bg);
+  border-color: var(--compare);
+  box-shadow: var(--shadow-1);
+}
+
+.run-row.selected-a {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-1);
+}
+
+.run-row.selected-b {
+  background: var(--compare-bg);
+  border-color: var(--compare);
+  box-shadow: var(--shadow-1);
+}
+
+.run-row .meta {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-style: italic;
+  padding: 24px;
+  text-align: center;
+}
+
+.empty-state p {
+  margin: 0 0 10px;
+}
+
+/* The gap between picking a run and its body arriving. A local run answers in a
+   frame or two, so the state is held invisible for a moment: switching runs
+   would otherwise flash a spinner in place of the run you just left. */
+.run-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  animation: appear 0.1s linear 0.25s forwards;
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Instructions inside a no-runs empty state. Left-aligned inside a centred
+   card, because a command you copy is hard to read when centred. */
+.empty-state-help {
+  display: inline-block;
+  max-width: 60ch;
+  margin-top: 6px;
+  padding: 16px 20px;
+  text-align: left;
+  font-style: normal;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+}
+
+.empty-state-help code {
+  font-family: var(--code);
+  font-size: 12px;
+}
+
+.empty-state-help pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  background: var(--neutral-bg);
+  border-radius: var(--radius-sm);
+  font-family: var(--code);
+  font-size: 12px;
+  color: var(--fg);
+}
+
+/* Dismissible banner for recoverable, action-scoped failures (one repo failing
+   to load, a fetch, a delete). Sits above the run view without replacing it. */
+.notice-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px;
+  padding: 10px 12px;
+  background: var(--fail-bg);
+  color: var(--fail);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.notice-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+.notice-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+.kbd {
+  font-family: var(--code);
+  background: var(--neutral-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+/* run detail */
+.run-header {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+/* Top-right action cluster on the detail page: "Compare to baseline" and
+   "Delete run". Flow-positioned and right-aligned so it never overlaps the
+   title regardless of how many actions are present. */
+.page-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/* Navigational action (Compare). Neutral by default, accent on hover, kept
+   visually distinct from the destructive Delete button beside it. */
+.page-action {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 5px 14px;
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition:
+    color 0.13s ease,
+    background 0.13s ease,
+    border-color 0.13s ease,
+    box-shadow 0.13s ease;
+}
+
+.page-action:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* "Delete run" action. Disabled (with a tooltip naming the referencing ref) when
+   the run is still referenced. */
+.page-delete {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 5px 14px;
+  background: var(--card-bg);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition:
+    color 0.13s ease,
+    background 0.13s ease,
+    border-color 0.13s ease,
+    box-shadow 0.13s ease;
+}
+
+.page-delete:hover {
+  background: var(--fail-bg);
+  border-color: var(--fail);
+  color: var(--fail);
+}
+
+.page-delete.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.page-delete.disabled:hover {
+  background: var(--card-bg);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/* Deletable ref chips in the run header's "pointed at by" line. */
+.ref-chips .ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+}
+
+.ref-chip-delete {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.ref-chip-delete:hover {
+  color: var(--fail);
+}
+
+.view-kicker {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.run-header h1 {
+  margin: 0;
+  font-size: 19px;
+  font-family: var(--code);
+  letter-spacing: -0.01em;
+}
+
+/* With no ref to name, the verdict becomes the title, so it is sized as the h1
+   it now is. */
+.run-headline {
+  margin: 0;
+  display: flex;
+}
+
+.run-headline .run-verdict {
+  font-size: 18px;
+  padding: 5px 16px;
+  letter-spacing: -0.01em;
+}
+
+/* Title + headline verdict pill on one row, with the verdict wrapping below on
+   narrow widths rather than crushing the title. The action cluster sits in normal
+   flow above, so no right gutter is needed. */
+.run-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin: 0 0 8px;
+}
+
+.run-verdict {
+  font-family: var(--code);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.run-verdict.pass {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.run-verdict.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+.run-verdict.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.run-verdict.muted {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.run-stats {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.run-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-meta code {
+  font-family: var(--code);
+}
+
+/* One click selects the whole ULID, which is how you paste it into a CLI
+   command. */
+.run-id-meta code {
+  user-select: all;
+}
+
+.labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.label {
+  background: var(--neutral-bg);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  font-family: var(--code);
+  font-size: 11px;
+}
+
+/* Case filters, between the run header and the modules they narrow. Sits above
+   everything it affects, so a hidden row always has its cause on screen. */
+.case-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.case-filter-name {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 5px 14px;
+  background: var(--card-bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  min-width: 22ch;
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color 0.13s ease,
+    box-shadow 0.13s ease;
+}
+
+.case-filter-name::placeholder {
+  color: var(--muted);
+}
+
+.case-filter-name:hover {
+  border-color: var(--line-strong);
+}
+
+/* The toggle reads as pressed, not as a verdict: accent, never the fail red,
+   which stays reserved for what the run actually did. */
+.filter-toggle {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 5px 14px;
+  background: var(--card-bg);
+  color: var(--muted);
+  font-size: 12px;
+  box-shadow: var(--shadow-1);
+  transition:
+    color 0.13s ease,
+    background 0.13s ease,
+    border-color 0.13s ease;
+}
+
+.filter-toggle:hover {
+  background: var(--hover-bg);
+  color: var(--fg);
+}
+
+.filter-toggle.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* How much of the run is on screen. The header verdict and the module badges
+   keep counting the whole run, so this line is what reconciles them. */
+.case-filter-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.module-block {
+  margin-bottom: 32px;
+}
+
+/* Laid out as flex so the status badge sits to the right. That drops the native
+ * ::marker, so .module-caret draws the caret instead, matching .report-header.
+ * The header reads as a soft, rounded, slightly elevated card. */
+.module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--code);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 0.13s ease,
+    box-shadow 0.13s ease;
+}
+
+.module-header:hover {
+  background: var(--hover-bg);
+  box-shadow: var(--shadow-2);
+}
+
+.module-block > .module-header {
+  list-style: none;
+}
+
+.module-header::-webkit-details-marker {
+  display: none;
+}
+
+/* The only cue that these cards open. Same glyph and rotation as the test rows
+   inside them. */
+.module-caret {
+  flex-shrink: 0;
+  margin-right: -6px;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.module-block[open] > .module-header .module-caret {
+  transform: rotate(90deg);
+}
+
+.module-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-status-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.module-status {
+  font-family: var(--code);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.module-status.pass {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.module-status.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+.module-status.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.module-status.muted {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Pill used in the sidebar / run header / diff picker to flag a run that was
+ * recorded with uncommitted changes in the working tree. */
+.dirty-tag {
+  display: inline-block;
+  font-family: var(--code);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--warn-bg);
+  color: var(--warn);
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  margin: 0 4px;
+  vertical-align: baseline;
+}
+
+/* PR reference. The number links to its host when a pr_url_template is set. The
+   title (when present) follows as adjacent text. */
+.pr-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.pr-link:hover {
+  text-decoration: underline;
+}
+.pr-title {
+  color: var(--muted);
+}
+
+.report-block {
+  margin-bottom: 24px;
+  margin-left: 8px;
+}
+
+/* Labeled test-level context under the test header: the test docstring. */
+.test-context {
+  margin: 0 0 10px 18px;
+}
+
+.test-context-row {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.test-context-label {
+  display: inline-block;
+  min-width: 11ch;
+  margin-right: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Inside the labeled context block the docstring inherits the block's indent,
+   and the label sits on its own line above the clamped text. */
+.test-context .test-docstring {
+  margin-left: 0;
+}
+
+/* The test function's docstring, shown as test-level context under the report
+   header: intent and setup assumptions that travel with the run. The text is
+   clamped to 2 lines; a "more/less" control appears only when the clamp is
+   actually hiding content (measured in JS), so a docstring that fits reads as
+   plain text with no misleading pressability. */
+.test-docstring {
+  margin: 0 0 10px 18px;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Collapsed to 2 lines, because eval docstrings can run long. The .expanded parent
+   lifts the clamp so the full text shows. */
+.test-docstring-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.test-docstring.expanded .test-docstring-text {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* "more/less" control, rendered only when the text is actually clamped.
+   Matches the app's caret language (▸ collapsed / ▾ expanded). */
+.test-docstring-cue {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-align: left;
+}
+
+.test-docstring-cue:hover {
+  color: var(--fg);
+}
+
+/* Metadata is secondary per-case context, so render it lighter and narrower than
+   the primary input/output cells so it doesn't compete for attention. */
+.case-table td.meta-cell .value-compact {
+  color: var(--muted);
+  font-size: 11px;
+  max-width: 16ch;
+}
+
+/* The report header IS the disclosure toggle for its case table: click it to
+   show/hide. A small caret rotates on open; no separate "show cases" row. */
+.report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: background 0.13s ease;
+}
+
+.report-header:hover {
+  background: var(--hover-bg);
+}
+
+/* A report-less test row isn't expandable: left-align its name/badge/note and
+   drop the clickable affordances. */
+.report-block.unevaluated .report-header {
+  cursor: default;
+  justify-content: flex-start;
+}
+.report-block.unevaluated .report-header:hover {
+  background: transparent;
+}
+
+.report-header::-webkit-details-marker {
+  display: none;
+}
+
+.report-caret {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+/* Occupies the caret's space (so a report-less row's name aligns) without showing. */
+.report-caret-placeholder {
+  visibility: hidden;
+}
+
+.report-block[open] > .report-header .report-caret {
+  transform: rotate(90deg);
+}
+
+.report-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-family: var(--code);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Test-level rollup badge alongside the report name. Three states: pass,
+ * fail, no-checks. The neutral "no checks" variant deliberately doesn't
+ * claim a verdict. Absence of evidence isn't evidence of pass. */
+.report-verdict {
+  font-family: var(--code);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.report-verdict.pass {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+.report-verdict.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+.report-verdict.no-checks {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  border: 1px dashed var(--line-strong);
+}
+
+/* Wide tables scroll inside their own container, so the run header and module
+   headers never leave the frame while hunting for the rightmost columns. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* Fade at whichever edge has content past it, so a clipped column reads as
+   "there is more". Toggled from a measured overflow (see TableScroll). */
+.table-frame {
+  position: relative;
+}
+
+.table-frame::before,
+.table-frame::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  opacity: 0;
+  border-radius: var(--radius);
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+
+.table-frame::before {
+  left: 0;
+  background: linear-gradient(to right, var(--scroll-fade), transparent);
+}
+
+.table-frame::after {
+  right: 0;
+  background: linear-gradient(to left, var(--scroll-fade), transparent);
+}
+
+.table-frame.fade-start::before,
+.table-frame.fade-end::after {
+  opacity: 1;
+}
+
+.case-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  table-layout: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  /* `clip`, not `hidden`. Both round the corners over the header row's own
+     background, but `hidden` makes the table a scroll container, which pins the
+     sticky Case column to the table instead of to .table-scroll. */
+  overflow: clip;
+  box-shadow: var(--shadow-1);
+}
+
+/* The Case column stays put while the rest scrolls, so a horizontally scrolled
+   row still says which case it belongs to. */
+.case-table th:first-child,
+.case-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.case-table thead th:first-child {
+  z-index: 3;
+  background: var(--sidebar-bg);
+}
+
+/* Opaque, so scrolled columns do not show through. `inherit` picks up the row's
+   own tint, which the diff view sets by severity. */
+.case-table tbody tr {
+  background: var(--card-bg);
+}
+
+.case-table tbody td:first-child {
+  background: inherit;
+}
+
+/* The whole row opens the case inspector, so the row reads as pressable. The
+   cells that answer their own click keep it (see isOwnControl). */
+.case-table tbody tr.case-row {
+  cursor: pointer;
+}
+
+.case-table tbody tr.case-row:hover {
+  background: var(--hover-bg);
+}
+
+/* A real button, so the case id is reachable by keyboard. It opens the same
+   inspector the row does. */
+.case-name {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--fg);
+  text-align: left;
+}
+
+.case-name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Seam shadow only when something is hidden to the left. */
+.table-frame.fade-start .case-table th:first-child,
+.table-frame.fade-start .case-table td:first-child {
+  box-shadow: 8px 0 10px -6px var(--scroll-fade);
+}
+
+/* Below this width the table cannot fit, so hide the columns that take the most
+   width and matter the least. Both stay in the drawer and in the JSON
+   download. */
+@media (max-width: 1200px) {
+  .case-table .meta-col {
+    display: none;
+  }
+}
+
+@media (max-width: 1000px) {
+  .case-table .latency-col {
+    display: none;
+  }
+}
+
+/* Small muted count anchored to the table, answering "how many cases are
+ * about to be shown" without overclaiming a pass/fail verdict (which lives
+ * up in the Test pill and Evaluator Checks block). */
+/* The table's corner radius clips the caption, so it needs horizontal padding,
+   otherwise the rounding eats the left edge of the first glyph. */
+.case-table-caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 8px 12px 6px;
+}
+
+/* A case's value cell: truncated preview that opens the drawer. */
+.cell-value {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 32ch;
+}
+
+.value-compact {
+  /* A <button>: strip the native chrome so it still reads as an inline value. */
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  font-family: var(--code);
+  font-size: 12px;
+  display: inline-block;
+  /* A flex item (parent .cell-value is inline-flex) defaults to min-width:auto,
+     which with nowrap forces the full string width and overrides max-width. The
+     box never shrinks, so the ellipsis lands on top of the last glyph. min-width:0
+     lets it shrink so text-overflow resolves cleanly after the text. */
+  min-width: 0;
+  max-width: 28ch;
+  white-space: nowrap;
+  overflow: hidden;
+  /* The value is truncated in JS with a trailing … that fits this width, so the
+     ellipsis is always placed correctly after the text. CSS only clips as a
+     safety net: we avoid text-overflow:ellipsis because with fractional
+     monospace (ch) widths Chromium paints its ellipsis on top of the last
+     glyph on some strings (the bug this replaces). */
+  text-overflow: clip;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
+}
+
+.value-compact:hover {
+  background: var(--neutral-bg);
+}
+
+/* The output cell of an attempt that errored. It carries the exception line,
+   not a value, so it reads in the warn tone rather than as ordinary output. */
+.case-error {
+  color: var(--warn);
+}
+
+.diff-pill {
+  font-family: var(--code);
+  font-size: 11px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-weight: 600;
+  transition: filter 0.12s ease;
+}
+
+.diff-pill:hover {
+  filter: brightness(0.95);
+}
+
+/* Evaluator list: assertions/scores stacked vertically inside a table cell. */
+.evaluator-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 18ch;
+  max-width: 42ch;
+}
+
+.evaluator-list.compact {
+  font-family: var(--code);
+  font-size: 12px;
+}
+
+.evaluator-row {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.evaluator-row .pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--code);
+}
+
+.evaluator-row .pill.neutral {
+  background: var(--neutral-bg);
+  color: var(--fg);
+}
+
+.evaluator-row .pill-sym {
+  font-weight: 700;
+}
+
+.evaluator-row .pill-val {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* A verbose judge writes paragraphs, and an unclamped reason pushes the row past
+   200px. The row is a button, so the full reason is one click away in the
+   drawer. */
+.evaluator-reason {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.evaluator-row:hover .evaluator-reason {
+  color: var(--fg);
+}
+
+/* ---- Score meter (presentational) ------------------------------------------
+   A numeric score rendered as a rounded progress meter instead of bare text.
+   The fill is colored by verdict (pass/fail) or neutral when the score has no
+   bar; a small tick marks the `score_bar` when one exists. The exact
+   numeric value and the "≥ bar" annotation stay visible as text. The meter is
+   an addition, not a hover-only affordance. Scores are assumed to live on a
+   0..1 scale (clamped); out-of-range values rescale to their own max. */
+.score-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-family: var(--code);
+  font-size: 11px;
+}
+
+.score-meter-num {
+  font-weight: 700;
+  min-width: 3.2ch;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.score-meter-track {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+  height: 8px;
+  background: var(--neutral-bg);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.score-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--muted);
+  transition: width 0.25s ease;
+}
+
+.score-meter-pass .score-meter-fill {
+  background: var(--pass);
+}
+.score-meter-fail .score-meter-fill {
+  background: var(--fail);
+}
+/* No bar → no verdict → neutral grey. Deliberately NOT --accent (that's
+   the BASE side identity), so the meter never conflates with a compare side. */
+.score-meter-neutral .score-meter-fill {
+  background: var(--muted);
+}
+
+/* The bar marker. Sits above the fill, full track height, so the eye can
+   read "did the fill clear the tick?" at a glance. overflow:hidden on the track
+   keeps it inside the rounded ends. */
+.score-meter-tick {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--fg);
+  opacity: 0.55;
+}
+
+.score-meter-thresh {
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.score-meter-pass .score-meter-thresh {
+  color: var(--pass);
+}
+.score-meter-fail .score-meter-thresh {
+  color: var(--fail);
+}
+
+/* ---- flakiness: per-case attempts chip + report gate chips ---------------- */
+
+/* Shown in a case's Status cell when it ran more than once (repeat or reruns).
+   Reads "passes/attempts"; tone is the flakiness signal (amber = mixed), not the
+   final verdict. A quiet stat, not interactive: selection is the strip beside it. */
+.flaky-chip {
+  margin-left: 6px;
+  font-family: var(--code);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+/* All attempts passed. Calm: it ran N times but never wobbled. */
+.flaky-chip.consistent {
+  background: var(--neutral-bg);
+  color: var(--muted);
+}
+/* Mixed pass/fail across attempts: the genuinely flaky case. */
+.flaky-chip.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+/* No attempt passed. */
+.flaky-chip.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+.flaky-recovered {
+  opacity: 0.85;
+}
+
+/* Inline attempt selector in the row. The tick strip (few attempts) shows the
+   pass/fail pattern and picks which attempt the row's cells reflect. */
+.attempt-ticks {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.attempt-tick-sm {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  font-family: var(--code);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.attempt-tick-sm.pass {
+  color: var(--pass);
+}
+.attempt-tick-sm.fail {
+  color: var(--fail);
+}
+/* An errored attempt reached no verdict, so it is neither tone. */
+.attempt-tick-sm.errored {
+  color: var(--warn);
+}
+.attempt-tick-sm:hover {
+  border-color: var(--line-strong);
+}
+.attempt-tick-sm.active {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+/* The dropdown variant, used when there are too many attempts for a strip. */
+.attempt-select {
+  margin-left: 6px;
+  font-family: var(--code);
+  font-size: 11px;
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+/* Gate/config chips on the report header (K-of-N, reliability target, version). */
+.gate-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.gate-chip {
+  font-family: var(--code);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-bg);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.gate-chip.xfail-chip {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* ---- cross-run reliability cell (run view) ------------------------------- */
+
+/* The Reliability column cell: pooled pass-rate chip + sparkline. */
+.reliability-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* Dimmed when the shown attempt errored: it is not one of the pooled samples.
+   Dimmed per child, not on the cell, so an open popover can hold full contrast:
+   an opacity on the cell would take its panel down with it. */
+.reliability-cell.errored > * {
+  opacity: 0.5;
+}
+
+.reliability-cell.errored > details[open] {
+  opacity: 1;
+}
+
+.reliability-chip {
+  font-family: var(--code);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-bg);
+  color: var(--fg);
+  /* The rate and its target are one figure ("80% / 95%"). Wrapping splits it
+     across two lines inside the pill in the narrower columns. */
+  white-space: nowrap;
+}
+/* Below the configured reliability_target: the one state worth flagging. */
+.reliability-chip.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+/* No reliability_target on the eval: pooled history with nothing to meet, so
+   the chip reads as information rather than as a passing grade. */
+.reliability-chip.neutral {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Lighter than the measured rate beside it, but 0.6 puts it under 4.5:1 on the
+   chip. Opacity rather than a colour, so it tracks whichever tone the chip is. */
+.reliability-target {
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+/* Sample-size info: click-to-open pool counts (runs / attempts), the
+   discoverable, touch-friendly alternative to the chip's hover title. */
+/* The explanation opens as a popover anchored to the ⓘ, so expanding it never
+   reflows the row or squeezes the text into the cell's width. */
+.reliability-info {
+  position: relative;
+}
+.reliability-info > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  list-style: none;
+  user-select: none;
+}
+.reliability-info > summary::-webkit-details-marker {
+  display: none;
+}
+.reliability-info .info-icon {
+  font-weight: 700;
+}
+/* `fixed` so the table's scroll container and rounded-corner clipping can't cut
+   the box off. The component sets its top and left when it opens. With no
+   offsets, a fixed box takes its position from the document origin, one scroll
+   offset away. */
+.reliability-info > p {
+  position: fixed;
+  z-index: 30;
+  width: 42ch;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: normal;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2, var(--shadow-1));
+}
+
+/* One fact per line, so the note is scanned rather than read. The hanging
+   indent keeps a wrapped line under its own fact instead of under the label. */
+.reliability-info .note-line {
+  display: block;
+  padding-left: 9px;
+  text-indent: -9px;
+}
+
+.reliability-info .note-line + .note-line {
+  margin-top: 5px;
+}
+
+.reliability-info .note-line strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* Breaker: the sparkline always sits on its own line under the chip/ⓘ, so the
+   cell lays out identically regardless of how wide the strip is (no reflow jump
+   between rows). `:empty` collapses the row when there's no sparkline to draw. */
+.reliability-spark-row {
+  flex-basis: 100%;
+}
+.reliability-spark-row:empty {
+  display: none;
+}
+
+/* Per-run pass-rate sparkline. Bars share the flakiness green/amber/red scale.
+   Width is bounded by an inline max-width (SPARK_MAX_W); a wider strip scales via
+   the SVG viewBox rather than widening the column. */
+.reliability-spark {
+  display: block;
+  vertical-align: middle;
+}
+/* Older runs are hidden past the left edge (newest is on the right). Fade that
+   edge so the strip shows that history continues beyond it rather than a hard
+   cut. */
+.reliability-spark.truncated {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 34px);
+  mask-image: linear-gradient(to right, transparent 0, #000 34px);
+}
+.reliability-spark .spark-bar.consistent {
+  fill: var(--pass);
+}
+.reliability-spark .spark-bar.warn {
+  fill: var(--warn);
+}
+.reliability-spark .spark-bar.fail {
+  fill: var(--fail);
+}
+/* The run being viewed, after a wider gap at the right end. Outlined rather
+   than solid, because it is not part of the pooled history that the rate
+   measures. It is drawn so a run that diverges from its own history is visible
+   next to the number. */
+.reliability-spark .spark-bar.overlay {
+  fill-opacity: 0.22;
+  stroke-width: 1;
+}
+.reliability-spark .spark-bar.overlay.consistent {
+  stroke: var(--pass);
+}
+.reliability-spark .spark-bar.overlay.fail {
+  stroke: var(--fail);
+}
+
+/* The "eval changed" / "new" reliability states: a compact click-to-expand note
+   in the cell (the clickable alternative to a hover tooltip). */
+.reliability-note {
+  font-size: 11px;
+}
+.reliability-note > summary {
+  cursor: pointer;
+  color: var(--warn);
+  font-family: var(--code);
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+  white-space: nowrap;
+}
+.reliability-note > summary::-webkit-details-marker {
+  display: none;
+}
+.reliability-note > summary:hover {
+  text-decoration: underline;
+}
+.reliability-note .info-icon {
+  font-weight: 700;
+}
+.reliability-note p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 38ch;
+  white-space: normal;
+}
+
+/* ---- score trend (case drawer, per score) --------------------------------
+
+   One panel per case and score, under the score it plots. The series is drawn
+   in the accent hue only: pass green and fail red are verdict colors, and a
+   score is a measurement, not a verdict. The score bar is the one dashed line
+   on the page, because it is a threshold and nothing else here is.
+   ------------------------------------------------------------------------- */
+
+/* The "trend" link in a Scores cell. Quiet: it advertises the panel in the
+   drawer, and the score itself is what the cell is for. */
+.trend-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 2px 0 0 2px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--code);
+  font-size: 10px;
+  cursor: pointer;
+}
+.trend-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.trend-link-glyph {
+  width: 13px;
+  height: 8px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Shown in place of a panel when the mainline has not carried the score twice
+   yet. */
+.trend-empty {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.trend-bar-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--code);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.trend-bar-swatch {
+  width: 18px;
+  height: 2px;
+  overflow: visible;
+}
+
+/* What the left and the right edge of the plot stand for. */
+.trend-range {
+  margin-left: auto;
+  font-family: var(--code);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  padding-left: 8px;
+}
+
+.trend-panel {
+  margin: 0;
+  padding: 9px 12px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  min-width: 0;
+}
+
+.trend-panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.trend-panel-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Signed, never colored: a score has no direction that is good on its own, and
+   green/red belong to verdicts. */
+.trend-delta {
+  font-family: var(--code);
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A gutter for the two range labels, then the plot. Both stretch to one row
+   height, so a label placed by percentage lands on the edge it names. */
+.trend-plot {
+  display: grid;
+  grid-template-columns: 4ch 1fr;
+  gap: 4px;
+}
+
+.trend-axis {
+  position: relative;
+}
+.trend-axis span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  font-family: var(--code);
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+/* Older promoted runs fall off the left edge (newest is on the right). Fade that
+   edge so the line shows that history continues beyond it rather than a start. */
+.trend-chart.truncated {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30px);
+  mask-image: linear-gradient(to right, transparent 0, #000 30px);
+}
+
+.trend-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* The run being viewed is not promoted, so its segment is drawn broken. */
+.trend-line.overlay {
+  stroke-dasharray: 3 2.5;
+  opacity: 0.75;
+}
+
+/* The spread of a run that scored the case more than once. */
+.trend-spread {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.3;
+}
+
+/* Dashed on purpose: it is the one threshold on the page, and nothing else
+   here is dashed. */
+.trend-bar-rule {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
+}
+
+.trend-dot {
+  fill: var(--accent);
+  /* A ring in the surface color, so a dot stays legible where it sits on the
+     line or against the bar rule. */
+  stroke: var(--card-bg);
+  stroke-width: 1.4;
+}
+.trend-dot.overlay {
+  fill: var(--card-bg);
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+.trend-dot.active {
+  stroke-width: 1.6;
+}
+
+/* The point the reader is on: a full-height rule plus the enlarged dot, which
+   is the focus indicator as well (a box-shadow ring does not render on an SVG
+   element, so the shared one cannot be used here). */
+.trend-cursor {
+  stroke: var(--accent);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+
+.trend-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.trend-hit:focus,
+.trend-hit:focus-visible {
+  outline: none;
+}
+.trend-hit:focus-visible {
+  fill: var(--accent);
+  fill-opacity: 0.1;
+}
+
+.trend-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 0;
+  min-height: 16px;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.trend-readout.pinned .trend-run {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.trend-run {
+  font-family: var(--code);
+  flex-shrink: 0;
+}
+
+.trend-commit {
+  font-family: var(--code);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- per-attempt drawer pane --------------------------------------------- */
+
+.attempts-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Why an errored attempt has no output or verdict. Warn-toned, not fail-toned,
+   because an error is not a failed assertion. */
+.attempt-error {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+}
+
+.attempt-error-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--warn);
+}
+
+.attempt-error-message {
+  font-family: var(--code);
+  font-size: 12px;
+  color: var(--fg);
+  word-break: break-word;
+}
+
+/* One row per thing that raised. Flex-basis 100% so each starts on its own
+   line inside the baseline-aligned .attempt-error row. */
+.attempt-error-list {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attempt-error-source {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 6px;
+}
+
+.attempts-rollup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.attempts-rollup-count {
+  color: var(--muted);
+}
+.attempts-rollup-count strong {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Jump to first failing" affordance in the rollup. */
+.attempt-jump {
+  font-family: var(--code);
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+.attempt-jump:hover {
+  color: var(--fail);
+  border-color: var(--fail);
+}
+
+/* Tick strip: one button per attempt, showing the whole pass/fail pattern and
+   selecting which one to view below. Wraps and scrolls so it scales to many
+   attempts. */
+.attempt-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 132px;
+  overflow-y: auto;
+}
+
+.attempt-tick {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 34px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  font-family: var(--code);
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.attempt-tick:hover {
+  border-color: var(--line-strong);
+}
+.attempt-tick.active {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.attempt-tick-idx {
+  font-size: 10px;
+  color: var(--muted);
+}
+.attempt-tick-mark {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+.attempt-tick.pass .attempt-tick-mark {
+  color: var(--pass);
+}
+.attempt-tick.fail .attempt-tick-mark {
+  color: var(--fail);
+}
+.attempt-tick.errored .attempt-tick-mark {
+  color: var(--warn);
+}
+
+.attempt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attempt-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* ---- one case, all of it (the case inspector) ---------------------------- */
+
+.case-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.case-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 22px;
+  scroll-margin-top: 2px;
+}
+
+/* The heading pins to the top of the drawer body while its own section
+   scrolls, so a case with a long output still says which part is on screen.
+   Opaque, because the content passes behind it. */
+.case-section-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 10px 0 7px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line-strong);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+}
+
+.case-evaluators {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* One score or assertion. `scroll-margin-top` clears the pinned heading, so a
+   click on a pill in the table lands on a card that is not half covered. */
+.case-evaluator {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  scroll-margin-top: 46px;
+}
+
+/* Tighter than a card on its own: the name above it already carries the
+   verdict, so the parts need less air to stay apart. */
+.case-evaluator .outcome-card {
+  gap: 10px;
+}
+
+.case-evaluator-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Diff: per-case latency delta (neutral). */
+.latency-diff {
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.latency-diff.changed {
+  color: var(--fg);
+  font-weight: 600;
+}
+.latency-delta {
+  color: var(--warn);
+}
+.latency-cell {
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* A side (BASE/COMPARE) of the attempt comparison, a labelled attempt selector.
+   The label carries the side's identity colour. */
+.subrun-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subrun-side-label {
+  font-family: var(--code);
+  font-size: 11px;
+  font-weight: 700;
+}
+.subrun-side-label.base {
+  color: var(--accent);
+}
+.subrun-side-label.compare {
+  color: var(--compare);
+}
+
+/* Marks which evaluator line changed within a diff row. No colour fill, because the
+   row's severity tint already supplies the colour, and a yellow chip inside a
+   red/green row clashes. Bold (plus the ✓ → ✗ arrow) is enough to pick it out
+   from unchanged siblings on any row background. */
+.evaluator-changed {
+  font-weight: 700;
+}
+
+/* Diff-view evaluator lines render as full-width buttons so the click
+ * affordance is obvious. Looks identical to the static <li> form when
+ * not hovered. */
+.evaluator-line-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+  display: block;
+}
+
+.evaluator-line-btn:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--muted);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* Confirm dialog for a destructive action. Sits above the drawer, because it
+   can be raised from a run the drawer opened over. */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 60;
+  backdrop-filter: blur(2px);
+}
+
+.confirm {
+  width: min(460px, 100%);
+  padding: 20px 22px 18px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
+}
+
+.confirm-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.confirm-line {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* The keyboard answer to the dialog is a button press, so the ring has to show.
+   Without this the buttons' own box-shadow takes the ring's place. */
+.confirm-actions button:focus-visible {
+  box-shadow: var(--ring);
+}
+
+/* Drawer (side panel overlay) */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 50;
+  backdrop-filter: blur(2px);
+}
+
+.drawer {
+  background: var(--bg);
+  width: min(720px, 70vw);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-3);
+  border-left: 1px solid var(--line);
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-title {
+  font-family: var(--code);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.drawer-close {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.drawer-close:hover {
+  color: var(--fg);
+  background: var(--hover-bg);
+}
+
+.drawer-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.tab:hover {
+  background: var(--hover-bg);
+  color: var(--fg);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 20px;
+}
+
+/* Text diff inside the drawer */
+.text-diff-legend {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11px;
+}
+
+.legend-pill {
+  font-family: var(--code);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+/* In a base→compare diff, "removed" is the BASE side and "added" is the COMPARE
+   side, so colour them with the BASE/COMPARE palette (blue/violet), not red/green.
+   Red/green is reserved for pass/fail so a diff line can't be mistaken for a
+   verdict. The − / + glyphs still convey removed/added. */
+.legend-pill.removed {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.legend-pill.added {
+  background: var(--compare-bg);
+  color: var(--compare);
+}
+
+.text-diff-body {
+  font-family: var(--code);
+  font-size: 12px;
+  background: var(--neutral-bg);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Why the two sides are stacked instead of diffed. */
+.text-diff-note {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.text-diff-body + .text-diff-legend {
+  margin-top: 12px;
+}
+
+.diff-line {
+  display: block;
+}
+
+.diff-line-row {
+  display: block;
+  white-space: pre-wrap;
+}
+
+.diff-line.added {
+  background: var(--compare-bg);
+}
+
+.diff-line.removed {
+  background: var(--accent-bg);
+}
+
+.diff-line.context {
+  color: var(--muted);
+}
+
+.case-table th,
+.case-table td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 12px;
+  vertical-align: top;
+}
+
+.case-table tr:last-child td {
+  border-bottom: none;
+}
+
+.case-table th {
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--sidebar-bg);
+}
+
+.pill {
+  display: inline-block;
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pill.pass {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.pill.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+.pill.missing {
+  background: var(--neutral-bg);
+  color: var(--muted);
+}
+
+/* Red like a fail. */
+.pill.errored {
+  background: var(--fail-bg);
+  color: var(--fail);
+  margin-left: 4px;
+}
+
+/* A case that did not pass while its test still passed. The failure was
+   recorded, not enforced. Amber: noteworthy, not a build break. */
+.pill.not-enforced {
+  background: var(--warn-bg);
+  color: var(--warn);
+  margin-left: 4px;
+}
+
+/* Click-to-expand "why did failing cases not fail the test?" note. Native
+   <details> so it's discoverable and works on touch, rather than relying on a
+   hover tooltip. */
+.info-note {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.info-note > summary {
+  cursor: pointer;
+  color: var(--warn);
+  list-style: none;
+  user-select: none;
+}
+.info-note > summary::-webkit-details-marker {
+  display: none;
+}
+.info-note > summary:hover {
+  text-decoration: underline;
+}
+.info-note .info-icon {
+  font-weight: 700;
+}
+.info-note p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 70ch;
+}
+
+.pill.changed {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* diff */
+/* Diff overview rollup: a single dense row replacing the old card grid. Only
+   non-zero figures render; the number carries the tone, the label stays quiet. */
+.diff-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  margin: 16px 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.diff-stat {
+  white-space: nowrap;
+}
+
+.diff-stat-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--fg);
+  margin-right: 1px;
+}
+
+.diff-stat.bad .diff-stat-num {
+  color: var(--fail);
+}
+.diff-stat.good .diff-stat-num {
+  color: var(--pass);
+}
+.diff-stat.warn .diff-stat-num {
+  color: var(--warn);
+}
+.diff-stat.muted .diff-stat-num {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Clickable ⓘ explaining the counts. Collapsed it sits inline at the end of
+   the row; opened, it spans the full width so the note drops onto its own line
+   below the stats rather than squeezing in at the right. */
+.diff-stats-info > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  user-select: none;
+}
+.diff-stats-info > summary::-webkit-details-marker {
+  display: none;
+}
+.diff-stats-info > summary:hover,
+.diff-stats-info[open] > summary {
+  color: var(--accent);
+}
+.diff-stats-info .info-icon {
+  font-weight: 700;
+  font-size: 12px;
+}
+.diff-stats-info[open] {
+  flex: 1 0 100%;
+}
+.diff-stats-info p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 70ch;
+  white-space: normal;
+}
+
+.diff-arrow {
+  font-family: var(--code);
+  color: var(--muted);
+  margin: 0 4px;
+}
+
+/* Diff rows tiered by severity: a verdict regression should read very
+   differently from a benign output drift where the case still passes. */
+.row-regressed {
+  background: var(--fail-bg);
+}
+.row-recovered {
+  background: var(--pass-bg);
+}
+.row-onlyside {
+  background: var(--warn-bg);
+}
+/* Output/input/score changed but the verdict held: informational, subtle. */
+.row-drifted {
+  background: var(--changed-row-bg);
+}
+
+.view-title {
+  margin-bottom: 12px;
+}
+
+.view-title h1 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.run-pickers {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-1);
+}
+
+.run-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.run-picker .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.picker-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.picker-primary {
+  font-family: var(--code);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.picker-role {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  background: var(--neutral-bg);
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+}
+
+.picker-role.role-base {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.picker-role.role-compare {
+  color: var(--compare);
+  background: var(--compare-bg);
+}
+
+.picker-id {
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--neutral-bg);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  display: block;
+  word-break: break-all;
+  align-self: flex-start;
+}
+
+.run-picker code {
+  font-family: var(--code);
+}
+
+.run-id-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+  margin: -4px 0 8px;
+}
+
+.run-id-subtitle code {
+  font-family: var(--code);
+  background: var(--neutral-bg);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.run-picker .hint code {
+  background: var(--neutral-bg);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.swap-btn {
+  border: 1px solid var(--line-strong);
+  background: var(--card-bg);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  box-shadow: var(--shadow-1);
+  transition:
+    background 0.13s ease,
+    box-shadow 0.13s ease,
+    transform 0.1s ease;
+}
+
+.swap-btn:hover {
+  background: var(--neutral-bg);
+  box-shadow: var(--shadow-2);
+}
+
+.swap-btn:active {
+  transform: translateY(1px);
+}
+
+details summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ---- JSON view / diff (shared rendering core) -------------------------------
+   Syntax colours are drawn only from existing CSS vars so both themes work, and
+   deliberately avoid --pass/--fail (green/red), which mean "verdict" and must
+   never leak into a structured JSON view or a JSON diff. */
+.json-view {
+  font-family: var(--code);
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-word;
+  position: relative;
+}
+
+/* Sits over the top-right of the value, out of the tree's reading path. */
+.json-view-actions {
+  float: right;
+  margin-left: 8px;
+}
+
+.copy-button {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+.copy-button:hover {
+  color: var(--fg);
+  border-color: var(--muted);
+}
+
+.json-key {
+  color: var(--accent);
+}
+
+.json-colon {
+  color: var(--muted);
+}
+
+.json-string {
+  color: var(--fg);
+  white-space: pre-wrap;
+}
+
+.json-number {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.json-boolean {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.json-null {
+  color: var(--muted);
+}
+
+.json-collapsed {
+  color: var(--muted);
+}
+
+/* A recorded binary payload: the run holds a hash+size fingerprint, not the
+   content. A quiet chip, since it is metadata about a value, not the value. */
+.json-binary {
+  display: inline-block;
+  font-family: var(--code);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-bg);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Braces shown when a node is expanded, so it reads as ordinary JSON. The
+   opening brace sits inline after the key/caret; the closing brace is its own
+   line, aligned under the key. */
+.json-bracket {
+  color: var(--muted);
+}
+
+.json-bracket-close {
+  display: block;
+}
+
+/* Nested objects/arrays indent under their parent via a faint guide rail. */
+.json-children {
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+
+.json-row {
+  padding: 1px 0;
+}
+
+/* Collapse/expand control: a flat inline button so it sits in the JSON flow. */
+.json-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--muted);
+  display: inline;
+}
+
+.json-toggle:hover {
+  color: var(--fg);
+}
+
+.json-caret {
+  display: inline-block;
+  width: 1.1em;
+  text-align: center;
+}
+
+/* ---- JSON diff -------------------------------------------------------------
+   Per-row classification with no green/red: changed rows get neutral emphasis
+   (a small marker + normal-weight key), unchanged rows are dimmed. The two
+   sides of a scalar change carry the BASE/COMPARE palette (blue/violet). */
+.json-diff .diff-row {
+  display: block;
+}
+
+.diff-marker {
+  display: inline-block;
+  width: 1.1em;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.diff-marker-blank {
+  font-weight: 400;
+}
+
+.json-diff .diff-unchanged {
+  color: var(--muted);
+}
+
+/* Keys stay neutral in the diff so blue/violet read strictly as BASE/COMPARE
+   values. A blue key next to a blue BASE value made the actual change hard to
+   spot. */
+.json-diff .json-key {
+  color: var(--fg);
+}
+
+.json-diff .diff-unchanged .json-key {
+  color: var(--muted);
+}
+
+.json-diff .diff-changed > .json-key {
+  font-weight: 700;
+}
+
+/* BASE/COMPARE tinted scalar sides, matching the run-picker palette. */
+.json-side-base {
+  color: var(--accent);
+}
+
+.json-side-compare {
+  color: var(--compare);
+}
+
+.json-scalar-change .json-string,
+.json-scalar-change .json-number,
+.json-scalar-change .json-boolean,
+.json-scalar-change .json-null {
+  color: inherit;
+}
+
+/* A long/multiline string field diffs inline as a TextDiff. Inset it slightly
+   so it reads as belonging to its key rather than a new top-level block. */
+.json-leaf-textdiff {
+  margin: 4px 0 4px 0;
+}
+
+.json-diff-pane .text-diff-legend {
+  margin-bottom: 12px;
+}
+
+/* ---- Evaluator outcome card ------------------------------------------------- */
+.outcome-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.outcome-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.outcome-value-label,
+.outcome-section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* The verdict ✓/✗ is the one place green/red belongs in this card, since it's a
+   pass/fail signal, not JSON. */
+.outcome-verdict {
+  font-family: var(--code);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+}
+
+.outcome-verdict.pass {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.outcome-verdict.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+.outcome-score {
+  font-family: var(--code);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.outcome-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.outcome-reason {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.outcome-source {
+  font-family: var(--code);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.outcome-source-args {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
