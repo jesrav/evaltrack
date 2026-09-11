@@ -1,0 +1,103 @@
+name: Build distribution
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifact:
+        description: Upload dist/* as a workflow artifact
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - name: Verify a build without the frontend fails
+        run: |
+          if uv build 2> build-error.log; then
+            echo "uv build succeeded without a built frontend; the guard hook is broken"
+            exit 1
+          fi
+          grep -q "frontend" build-error.log
+          rm -rf dist build-error.log
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # Build the frontend before uv build so the wheel includes
+      # evaltrack/ui/static.
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: uv build
+      # CI's other tests use an editable install, so nothing exercises the built
+      # wheel itself. Install it with no extras and verify the plugin and CLI
+      # still load. This catches a packaging mistake before it reaches a user.
+      - name: Smoke-test the built wheel
+        run: |
+          uv venv /tmp/wheel-smoke
+          uv pip install --python /tmp/wheel-smoke "$(echo dist/*.whl)" pytest
+          # Run from an empty directory so the repo's own tests/conftest.py
+          # (which imports the azure extra) is not collected. This tests the
+          # bare wheel, not this checkout.
+          mkdir -p /tmp/wheel-smoke-run && cd /tmp/wheel-smoke-run
+          # The plugin loads (its options appear) without the [ui]/[azure] extras.
+          /tmp/wheel-smoke/bin/pytest --help | grep -q -- --evaltrack-repository
+          # The console script runs.
+          /tmp/wheel-smoke/bin/evaltrack --help > /dev/null
+          /tmp/wheel-smoke/bin/evaltrack --version | grep -q evaltrack
+      - name: Smoke-test the extras and the dashboard
+        run: |
+          uv venv /tmp/extras-smoke
+          # An eval runner is the user's dependency, not evaltrack's, so the one
+          # this smoke test evaluates with is installed here by name.
+          uv pip install --python /tmp/extras-smoke "$(echo dist/*.whl)[ui,azure]" pytest pydantic-evals
+          mkdir -p /tmp/extras-smoke-run && cd /tmp/extras-smoke-run
+          cat > test_smoke_eval.py <<'PY'
+          import evaltrack
+          import pytest
+          from pydantic_evals import Case, Dataset
+          from pydantic_evals.evaluators import Evaluator, EvaluatorContext
+
+          class Echoes(Evaluator[str, str]):
+              def evaluate(self, ctx: EvaluatorContext[str, str]) -> bool:
+                  return ctx.output == ctx.expected_output
+
+          @pytest.mark.evaltrack
+          def test_smoke() -> None:
+              dataset = Dataset(
+                  name="smoke",
+                  cases=[Case(name="a", inputs="x", expected_output="x")],
+                  evaluators=[Echoes()],
+              )
+              evaltrack.run(lambda: dataset.evaluate_sync(lambda s: s))
+          PY
+          /tmp/extras-smoke/bin/pytest -m evaltrack -q
+          test -d .evaltrack/runs
+          /tmp/extras-smoke/bin/evaltrack ui --port 8765 &
+          # The wait loop stays quiet. The check below reports the failure.
+          for _ in $(seq 30); do
+            curl -fsS http://127.0.0.1:8765/api/repositories >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8765/api/repositories > /dev/null
+          # The bundled frontend must be reachable when served, not only present
+          # in the archive. Follow the asset that the served index.html references.
+          asset=$(curl -fsS http://127.0.0.1:8765/ | grep -o '/assets/[^"]*\.js' | head -1)
+          test -n "$asset"
+          curl -fsS "http://127.0.0.1:8765$asset" > /dev/null
+          kill %1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: inputs.upload-artifact
+        with:
+          name: dist
+          path: dist/*

@@ -1,0 +1,53 @@
+name: Canary
+
+# An early-warning run against the latest released eval runners, ignoring the
+# lockfile pins. The runner extras declare floors and no ceiling, and each
+# translator leans on report shape and naming conventions its runner documents
+# without freezing, so an upstream release that moves one surfaces here as a
+# maintainer alert, not a user bug report. Scheduled runs only happen on the
+# default branch.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  latest-runner:
+    runs-on: ubuntu-latest
+    strategy:
+      # One runner breaking must not cancel the other's result.
+      fail-fast: false
+      matrix:
+        include:
+          # pydantic-evals moves with the rest of the pydantic family, so the
+          # whole family is upgraded together.
+          - runner: pydantic-evals
+            upgrade: >-
+              --upgrade-package pydantic-evals
+              --upgrade-package pydantic-ai-slim
+              --upgrade-package pydantic-graph
+              --upgrade-package pydantic
+            match: pydantic
+          - runner: deepeval
+            upgrade: --upgrade-package deepeval
+            match: deepeval
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+
+      # Re-resolve just the runner to the newest release the pyproject
+      # constraints allow. Everything else stays on the lockfile.
+      - name: Upgrade ${{ matrix.runner }} to latest
+        run: uv lock ${{ matrix.upgrade }}
+
+      - run: uv sync --all-groups --extra ui --extra azure --extra deepeval
+
+      - name: Show resolved versions
+        run: uv pip list | grep -i ${{ matrix.match }}
+
+      - run: uv run --extra ui --extra azure --extra deepeval pytest tests -m "not integration"

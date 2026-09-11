@@ -1,0 +1,14 @@
+# Actions only. Lockfile and npm updates are done by hand while developing,
+# and CVE coverage comes from Dependabot security updates, which are a
+# repository setting rather than this file. Pinned action SHAs are the one
+# thing no development command surfaces as out of date.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"

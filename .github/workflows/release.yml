@@ -1,0 +1,62 @@
+name: Release
+
+# Build the distribution and publish it to PyPI when a GitHub release is
+# published. A manual run builds only, to check a release before tagging it.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The build takes its version from pyproject.toml, not from the tag. A
+  # release with no version bump would publish the previous version again,
+  # which PyPI refuses, or worse, a wrong one it accepts. So nothing builds
+  # until the tag and the declared version agree.
+  check-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify the tag matches the declared version
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tag="${TAG#v}"
+          version=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          if [ "$tag" != "$version" ]; then
+            echo "release tag '$tag' does not match [project].version '$version'." \
+                 "Bump pyproject.toml to match." >&2
+            exit 1
+          fi
+          echo "tag and declared version agree: $version"
+
+  # Upload dist/* so the release keeps the exact built artifact, and so the
+  # publish job below uploads the same files that were smoke-tested.
+  build:
+    needs: check-tag
+    uses: ./.github/workflows/build-dist.yml
+    with:
+      upload-artifact: true
+
+  # Trusted Publishing: PyPI accepts this job's OIDC token because a publisher
+  # on the project names this repository, this workflow file and the `pypi`
+  # environment. No API token is stored anywhere. The environment carries a
+  # required reviewer, so a publish waits for a click.
+  publish:
+    if: github.event_name == 'release'
+    needs: [build, check-tag]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/evaltrack/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      # --locked fails the job on pyproject/uv.lock drift instead of a silent
+      # re-resolve.
+      - run: uv sync --locked --all-groups --extra ui --extra azure
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+      # no-commit-to-branch stops local commits to main. That has no meaning in
+      # CI, so this job skips it.
+      - run: uv run pre-commit run --all-files
+        env:
+          SKIP: no-commit-to-branch
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One OS failing must not cancel the other legs: the point of the matrix
+      # is to see every platform's result in one run.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        # macOS covers the supported Python edges only.
+        include:
+          - os: macos-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.14"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --locked --all-groups --extra ui --extra azure
+      - run: uv run --extra ui --extra azure pytest tests -m "not integration"
+      # pytest-asyncio arrives with deepeval, so the run above already covers
+      # this file. It runs again on its own so the check survives deepeval
+      # dropping the dependency. The loop scope is set because pytest-asyncio
+      # warns at startup without it, and `filterwarnings = error` makes that
+      # warning an error.
+      - name: The marker gates under pytest-asyncio
+        run: uv run --with pytest-asyncio --extra ui --extra azure pytest tests/plugin/test_async_plugins.py -o asyncio_default_fixture_loop_scope=function
+      # Every example runs offline: the agent ones script their model, so none
+      # needs a key. This is the command that examples/README.md gives.
+      - name: Examples
+        run: uv run --with pytest-asyncio pytest examples/
+
+  # Install the *lowest* versions of all direct dependencies so the declared
+  # floors (for example python-ulid>=3.1.0) are exercised. The regular test job
+  # only sees the latest locked versions. The [ui]/[azure] extras are named
+  # rather than taken with --all-extras: the eval runner extras would add
+  # nothing here, since the dev group installs those runners for the suite at
+  # the same floors.
+  test-lowest-bounds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.11"
+      - run: uv sync --all-groups --extra ui --extra azure --resolution lowest-direct
+      # --no-sync keeps the lowest-direct environment. A plain `uv run` re-syncs
+      # to the regular (highest) resolution first.
+      - run: uv run --no-sync pytest tests -m "not integration"
+
+  # The integration-marked tests run against live Azure storage. They need
+  # repository secrets:
+  #   AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_CLIENT_SECRET
+  #     service principal with "Storage Blob Data Contributor" on the
+  #     evaltracktesting account (DefaultAzureCredential reads these three).
+  # Each test isolates its blobs under a per-test prefix and deletes them on
+  # teardown, so concurrent CI runs do not collide.
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+    # Fork PRs do not get the secrets, so this job skips rather than fail on
+    # empty credentials. Dependabot PRs are withheld the secrets too, even
+    # though they run from a branch in this repository, so they skip as well.
+    if: >-
+      (github.event_name == 'push'
+        || github.event.pull_request.head.repo.full_name == github.repository)
+      && github.actor != 'dependabot[bot]'
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --all-groups --extra ui --extra azure
+      - run: uv run --extra ui --extra azure pytest tests -m integration
+
+  # Build the wheel on every PR so packaging regressions surface immediately
+  # instead of at release time.
+  build:
+    uses: ./.github/workflows/build-dist.yml
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test

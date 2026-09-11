@@ -1,0 +1,194 @@
+[project]
+name = "evaltrack"
+version = "0.1.0"
+description = "Pytest plugin to record, gate and track LLM eval runs from pydantic-evals, DeepEval or a runner you write a translator for"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Jes Ravnbøl", email = "mail@jesravnbol.dk" }]
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = [
+    # The lowest version the dev group resolves to, so the floor the suite runs
+    # against.
+    "pydantic>=2.13",
+    # ErrorDetails and PydanticCustomError live here, and pydantic does not
+    # re-export them. pydantic pins one exact version, so no bound is needed.
+    "pydantic-core",
+    # The plugin uses pytest.TerminalReporter, first exported in pytest 8.4.
+    "pytest>=8.4.0",
+    "python-ulid>=3.1.0",
+]
+keywords = [
+    "pytest",
+    "evals",
+    "llm",
+    "pydantic-evals",
+    "deepeval",
+    "evaluation",
+    "flaky",
+    "ci",
+]
+
+[project.urls]
+Homepage = "https://github.com/jesrav/evaltrack"
+Repository = "https://github.com/jesrav/evaltrack"
+Documentation = "https://github.com/jesrav/evaltrack/tree/main/docs"
+Issues = "https://github.com/jesrav/evaltrack/issues"
+Changelog = "https://github.com/jesrav/evaltrack/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+# One per eval runner with a translator. Floors only, since an upper bound
+# blocks a user the day their runner ships a new minor.
+pydantic-evals = ["pydantic-evals>=2"]
+# A floor rather than a feature: DeepEval reshaped `evaluate()`'s settings
+# into config objects during 4.x, and 4.2 is where the suite pins its
+# knowledge of that shape.
+deepeval = ["deepeval>=4.2"]
+azure = [
+    "azure-storage-blob>=12.19.0",
+    "azure-identity>=1.12.0",
+    # Imported directly, not only through azure-storage-blob, so declared
+    # rather than left to arrive transitively.
+    "azure-core>=1.28.0",
+]
+ui = [
+    # fastapi caps starlette, so this floor is what admits the starlette floor
+    # below: 0.115.2 pins starlette <0.41.
+    "fastapi>=0.115.8",
+    "uvicorn>=0.30.0",
+    # Imported directly, so declared rather than left to arrive via fastapi.
+    # 0.45.1 is the floor because TestClient leaked an anyio memory object
+    # stream until then, and its finalizer trips `filterwarnings = error`.
+    "starlette>=0.45.1",
+]
+
+[project.scripts]
+evaltrack = "evaltrack.cli:main"
+
+[project.entry-points.pytest11]
+evaltrack = "evaltrack.pytest_plugin"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+# The dashboard's built frontend (evaltrack/ui/static) is a gitignored build
+# artifact, so hatchling drops it by default. Force it into *both* the sdist and
+# the wheel. CI builds the frontend before `uv build`.
+[tool.hatch.build]
+artifacts = ["evaltrack/ui/static/**/*"]
+
+# hatch_build.py fails wheel/sdist builds when the frontend is missing, so a
+# from-source build can't silently ship without the dashboard.
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+# Development tooling, images and local caches stay out of the published sdist.
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".github",
+    ".pre-commit-config.yaml",
+    "CLAUDE.md",
+    "justfile",
+    "uv.lock",
+    "docs/images",
+    "examples/images",
+    # Ignored by frontend/.gitignore, which hatchling does not read.
+    "frontend/tsconfig.tsbuildinfo",
+    # Anchored, since evaltrack/ui/static/assets is the shipped dashboard bundle.
+    "/assets",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["evaltrack"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27.0",
+    "basedpyright>=1.29.0",
+    # Used only by examples/. The [openai] extra powers the real-LLM examples.
+    "pydantic-ai-slim[openai]>=1.0.0",
+    # The suite runs the pydantic-evals translator against a real report.
+    "pydantic-evals>=2",
+    # The suite runs the DeepEval translator against a real, offline eval.
+    "deepeval>=4.2",
+    "pre-commit",
+    # Only for testing that eval tests are refused under pytest-xdist.
+    "pytest-xdist>=3.8.0",
+    # Only for testing how a whole-test rerun plugin is met.
+    "pytest-rerunfailures>=14.0",
+    # So basedpyright can resolve hatch_build.py's imports.
+    "hatchling>=1.27",
+]
+
+[tool.ruff.lint]
+# pyupgrade's target comes from requires-python, so no target-version key.
+# PLR0917 caps positional parameters at two, so a third and later must be
+# keyword-only: (a, b, *, c).
+preview = true
+explicit-preview-rules = true
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "PLR0917"]
+
+[tool.ruff.lint.pylint]
+max-positional-args = 2
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR0917"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+[tool.pyright]
+include = ["evaltrack", "tests"]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    # anyio 4.15 deprecated the `anyio.abc.BlockingPortal` name that starlette
+    # still uses. The warning comes at import time, so `error` stops every test
+    # that builds a TestClient. No starlette floor helps yet. When starlette
+    # moves to `anyio.from_thread`, this line can go.
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+    # deepeval 4.2.2 calls asyncio.iscoroutinefunction, which Python 3.14
+    # deprecated. It runs while a BaseMetric subclass is being created, so
+    # under `error` the DeepEval tests fail at collection rather than in a
+    # test. evaltrack never calls it, so this can only hide deepeval's. Drop
+    # the line when deepeval moves to inspect.iscoroutinefunction.
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+    # Python 3.14 also warns, when it compiles deepeval, about a `return` inside
+    # a `finally`. Same owner, same exit.
+    "ignore:'return' in a 'finally' block:SyntaxWarning",
+    # A safety net, not the fix. With pytest-xdist installed,
+    # pytest-rerunfailures opens one socket per session and never closes it. If
+    # Python collects one during a later test, that test fails.
+    # The test helpers keep the two plugins apart, but that can stop working
+    # without any sign. evaltrack closes every socket it opens, so this hides
+    # no failure of its own.
+    "ignore:.*socket\\.socket.*:pytest.PytestUnraisableExceptionWarning",
+]
+xfail_strict = true
+markers = [
+    "integration: needs live Azure storage; excluded from `just test`, run with `just integration_test`",
+]

@@ -1,0 +1,34 @@
+
+*.env
+.env.*
+.venv
+logs/
+*.log
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+.DS_Store
+.vscode/
+.idea/
+.envrc
+.claude/
+
+# ignore build stuff
+dist/
+*.egg-info/
+
+
+# evaltrack local runs
+.evaltrack/
+
+# DeepEval writes its last run here, beside whatever evaltrack recorded
+.deepeval/
+
+# frontend prototype: source is checked in, build output and deps are not.
+# No trailing slash: a `node_modules` symlink into a sandbox checkout is not a
+# directory, so `node_modules/` does not match it and it lands in a commit.
+node_modules
+evaltrack/ui/static/
