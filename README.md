@@ -210,6 +210,8 @@ keep stable: the names `import evaltrack` exports, `evaltrack.translators.regist
 the `[tool.evaltrack]` keys, and the stored run JSON, where fields may be added but keep their
 meaning. `raw_results` is the exception, since the runner decides its shape.
 
+Planned additions are in a rough [roadmap].
+
 [pydantic-evals]: https://ai.pydantic.dev/evals/
 [DeepEval]: https://deepeval.com/
 [Eval runners]: https://github.com/jesrav/evaltrack/blob/main/docs/eval-runners.md
@@ -234,3 +236,4 @@ meaning. `raw_results` is the exception, since the runner decides its shape.
 [security policy]: https://github.com/jesrav/evaltrack/blob/main/SECURITY.md
 [dashboard trust model]:
   https://github.com/jesrav/evaltrack/blob/main/SECURITY.md#dashboard-trust-model
+[roadmap]: https://github.com/jesrav/evaltrack/blob/main/ROADMAP.md
