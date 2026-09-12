@@ -94,6 +94,7 @@ jobs:
   # teardown, so concurrent CI runs do not collide.
   integration-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: test
     # Fork PRs do not get the secrets, so this job skips rather than fail on
     # empty credentials. Dependabot PRs are withheld the secrets too, even
