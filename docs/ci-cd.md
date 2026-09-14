@@ -35,9 +35,11 @@ flowchart TB
 
 ## Prerequisites
 
-You need a shared `azure://` remote and credentials for it:
+You need a shared remote and credentials for it. The examples use `azure://`, and an `s3://` remote
+works the same way with the AWS credentials in place of the Azure ones:
 
-- For the URL shape and how evaltrack authenticates, see [Repositories › Azure Blob Storage].
+- For the URL shape and how evaltrack authenticates, see [Repositories › Azure Blob Storage] or
+  [Repositories › Amazon S3].
 - Point `[tool.evaltrack].remote` at the remote, so `evaltrack ui` mounts it next to your local
   runs:
 
@@ -73,7 +75,8 @@ evaltrack push --run-file run.json \
 
 That is the whole integration. What the job around it has to get right:
 
-- **Install `evaltrack[azure]`** alongside your project's own dependencies, or the push fails.
+- **Install `evaltrack[azure]`**, or `evaltrack[s3]`, alongside your project's own dependencies, or
+  the push fails.
 - **Name the remote once.** Set `EVALTRACK_REMOTE` for the job and neither command needs to name a
   repository (see [Configuration › Precedence rules](./configuration.md#precedence-rules)).
 - **Push even when an eval failed.** The run is written when the pytest session finishes, whatever
@@ -143,5 +146,6 @@ biases the [tracked pass-rate][cross-run reliability] upward.
 [`baseline`]: ./repositories.md#baseline-and-mainline
 [adapting the flow]: #adapting-the-flow-to-your-delivery-process
 [repositories › azure blob storage]: ./repositories.md#azure-blob-storage
+[repositories › amazon s3]: ./repositories.md#amazon-s3
 [pytest-xdist]: https://github.com/pytest-dev/pytest-xdist
 [cross-run reliability]: ./flakiness.md#cross-run-reliability

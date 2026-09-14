@@ -24,6 +24,10 @@ __all__ = [
     "promote",
 ]
 
+# All backend URL schemes for the messages that list them.
+_KNOWN_SCHEMES = ("azure", "s3")
+_KNOWN_SCHEMES_TEXT = "known schemes: " + ", ".join(_KNOWN_SCHEMES)
+
 
 def open_repository(location: str) -> RunRepository:
     """Open a `RunRepository` for `location`, a directory path, or a URL with a
@@ -43,14 +47,14 @@ def open_repository(location: str) -> RunRepository:
             scheme_prefix, colon, _ = location.partition(":")
             raise ValueError(
                 f"repository URL {scheme_prefix + colon!r} is missing '://' "
-                "(known schemes: azure). A directory path must have no ':' in "
+                f"({_KNOWN_SCHEMES_TEXT}). A directory path must have no ':' in "
                 "its first segment."
             )
         import evaltrack.repositories.file as file_repository
 
         return file_repository.open_from_path(location)
     scheme = location.split("://", 1)[0]
-    # Each scheme's module is imported on use, because the azure one needs an
+    # Each scheme's module is imported on use, because every remote needs an
     # optional extra.
     match scheme:
         case "azure":
@@ -62,7 +66,15 @@ def open_repository(location: str) -> RunRepository:
                     f"({exc})"
                 ) from exc
             return azure_repository.open_from_url(location)
+        case "s3":
+            try:
+                import evaltrack.repositories.s3 as s3_repository
+            except ImportError as exc:
+                raise ImportError(
+                    f"the 's3' repository requires the `evaltrack[s3]` extra ({exc})"
+                ) from exc
+            return s3_repository.open_from_url(location)
         case _:
             raise ValueError(
-                f"unknown repository scheme: {scheme!r} (known schemes: azure)"
+                f"unknown repository scheme: {scheme!r} ({_KNOWN_SCHEMES_TEXT})"
             )

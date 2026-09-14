@@ -5,13 +5,7 @@ the client."""
 from collections.abc import Mapping
 
 import pytest
-
-# Every name below comes from the optional `[ui]` extra. Without it this
-# module skips instead of failing collection, so the rest of the suite
-# still runs.
-pytest.importorskip("fastapi", reason="needs the [ui] extra")
-
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.repositories import RunRepository

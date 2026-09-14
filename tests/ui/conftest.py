@@ -1,18 +1,12 @@
-"""Fixtures and setup helpers shared by the dashboard tests.
-
-Nothing here imports fastapi at module scope. It comes from the optional `[ui]`
-extra, and a conftest that raised the `importorskip` skip would abort the run
-instead of skipping this package, so each test module carries the guard and the
-helpers import what they need when they are called.
-"""
-
-from __future__ import annotations
+"""Fixtures and setup helpers shared by the dashboard tests."""
 
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.eval_round import EvalRound
@@ -21,13 +15,10 @@ from evaltrack.core.run_context import RunContext
 from evaltrack.core.run_record import MarkerSettings, RunRecord, TestOutcome
 from evaltrack.core.score_bars import apply_score_bars
 from evaltrack.repositories import RunRepository
+from evaltrack.ui import MountedRepository, create_app
 
 from ..factories import make_round
 from ..fakes import MemoryStore
-
-if TYPE_CHECKING:
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
 
 
 def make_recorded_run(
@@ -79,8 +70,6 @@ def make_client(app: FastAPI, *, raise_server_exceptions: bool = True) -> TestCl
     `raise_server_exceptions=False` lets a test read the 500 response instead
     of the exception behind it.
     """
-    from fastapi.testclient import TestClient
-
     return TestClient(
         app,
         base_url="http://127.0.0.1",
@@ -92,8 +81,6 @@ def make_repo_app(
     repo: RunRepository, *, pr_url_template: PrUrlTemplate | None = None
 ) -> FastAPI:
     """A single-mount app over `repo`, mounted as slug `main`."""
-    from evaltrack.ui import MountedRepository, create_app
-
     return create_app(
         {"main": MountedRepository(url="/x", repository=repo, role="local")},
         pr_url_template=pr_url_template,

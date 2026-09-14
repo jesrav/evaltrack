@@ -5,6 +5,12 @@ it was used the wrong way and reaches the caller unchanged."""
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 
+# Fixed here so an SDK default cannot change them and every remote behaves the
+# same. `READ_TIMEOUT` is how long to wait for the next bytes, not for the whole
+# download, so a large object on a slow connection still completes.
+CONNECTION_TIMEOUT = 20
+READ_TIMEOUT = 120
+
 
 class ObjectNotFoundError(Exception):
     """Raised by `ObjectStore.read` and `delete` when the path does not exist.

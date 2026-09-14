@@ -4,7 +4,7 @@ This is directional and priorities and scope will change.
 
 ## More storage remotes
 
-- S3 and Google Cloud Storage, alongside the existing Azure Blob remote.
+- Google Cloud Storage, alongside the existing Azure Blob and S3 remotes.
 
 ## Sharing results
 

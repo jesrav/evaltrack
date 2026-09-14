@@ -45,9 +45,9 @@ jobs:
       - name: Upgrade ${{ matrix.runner }} to latest
         run: uv lock ${{ matrix.upgrade }}
 
-      - run: uv sync --all-groups --extra ui --extra azure --extra deepeval
+      - run: uv sync --all-groups --extra deepeval
 
       - name: Show resolved versions
         run: uv pip list | grep -i ${{ matrix.match }}
 
-      - run: uv run --extra ui --extra azure --extra deepeval pytest tests -m "not integration"
+      - run: uv run --extra deepeval pytest tests -m "not integration"

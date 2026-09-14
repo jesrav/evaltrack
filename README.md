@@ -26,10 +26,10 @@ suite and CI pipeline that you already have, with the eval runner you already us
   rerun only the evals that fail (not the whole CI pipeline) and track each case's pass-rate over
   time. See [Flakiness & reliability].
 
-evaltrack records every run in a repository you own (local files, or Azure Blob as the supported
-remote), with a dashboard you run locally to inspect runs and compare them across PRs and releases.
-Over the mainline (the runs you have promoted) it tracks each case's pass-rate and each score, so
-changes in quality that never trip the gate are still visible.
+evaltrack records every run in a repository you own (local files, or Azure Blob Storage or Amazon S3
+as the remote), with a dashboard you run locally to inspect runs and compare them across PRs and
+releases. Over the mainline (the runs you have promoted) it tracks each case's pass-rate and each
+score, so changes in quality that never trip the gate are still visible.
 
 ![Animated demo: a failing eval run in the dashboard, with per-case verdicts, scores against their bars, reliability history, and a comparison against the baseline][dashboard-demo]
 
@@ -169,8 +169,8 @@ history over the mainline.
 ### 5. Track a shared remote (optional)
 
 Declare your repositories in `pyproject.toml`. `local` is where the plugin saves runs. `remote` is a
-shared repository that your CI writes to (right now only Azure Blob Storage is supported). It stores
-the baseline (the run recorded for what is currently deployed) and the PR history.
+shared repository that your CI writes to (Azure Blob Storage or Amazon S3). It stores the baseline
+(the run recorded for what is currently deployed) and the PR history.
 
 ```toml
 [tool.evaltrack]

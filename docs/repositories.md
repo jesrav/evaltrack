@@ -71,6 +71,7 @@ A repository is named by a directory path, or by a URL whose scheme picks the ba
 | --------------------------- | ------------------------------------ |
 | `./.evaltrack`              | Local directory (default)            |
 | `azure://account/container` | Azure Blob Storage (`[azure]` extra) |
+| `s3://bucket`               | Amazon S3 (`[s3]` extra)             |
 
 How a relative path resolves is in
 [Configuration › Repository names](./configuration.md#repository-names).
@@ -105,6 +106,32 @@ secret to manage:
 
 Both need the Storage Blob Data Contributor role on the account.
 
+## Amazon S3
+
+> Requires the `[s3]` extra: `uv add "evaltrack[s3]"`.
+
+A shared remote is an S3 bucket, addressed as `s3://<bucket>[/<prefix>]`. The optional prefix keeps
+projects apart inside one bucket, for example `s3://myevals/project-a`. The region is not part of
+the URL. It comes from your AWS configuration. If that region is wrong, S3 redirects the request
+once.
+
+Only Amazon S3 is supported.
+
+### Authentication
+
+evaltrack authenticates with boto3's default credential chain, so there is no evaltrack-specific
+secret to manage:
+
+- **Developers** use the profile they already use for AWS. With IAM Identity Center that is
+  `aws sso login`, and with an access key it is `aws configure`. If the profile is not the default
+  one, set `AWS_PROFILE`. The dashboard runs as you, so it uses the same profile.
+- **CI** on GitHub Actions can use `aws-actions/configure-aws-credentials` with an OpenID Connect
+  role, which stores no secret. Any CI can instead set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+  and, for temporary credentials, `AWS_SESSION_TOKEN`.
+
+Both need `s3:ListBucket` on the bucket and `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on
+its objects.
+
 ## Cleaning up runs
 
 A shared remote repository grows with every PR run, and merged or abandoned PRs leave behind
@@ -137,6 +164,7 @@ The dashboard shows the ref as `unreadable history`.
 
 To repair it, write the readable lines back without the torn one, each ending in a newline. On
 Azure, write them in one append to a new append blob, since a block blob refuses every later append.
+On S3 a plain upload of the repaired file is enough.
 
 ## Reading runs from Python
 

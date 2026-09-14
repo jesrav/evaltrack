@@ -2,18 +2,18 @@ set dotenv-load:= true
 
 # Install dependencies and pre-commit hooks
 install_dev:
-    uv sync --all-groups --extra ui --extra azure
+    uv sync --all-groups
     uv run pre-commit install
 
 # Lint code with pre-commit
 lint:
     uv run pre-commit run --all-files
 
-# Run tests (skips the live-Azure integration tests, so no network or credentials needed).
+# Run tests (skips the live cloud integration tests, so no network or credentials needed).
 # No positional target. pyproject's `testpaths` collects tests/ by default, and
 # `just test tests/test_foo.py` narrows to that file instead of appending to the whole suite.
 test ARGS="":
-    uv run --extra ui --extra azure pytest -m "not integration" {{ARGS}}
+    uv run pytest -m "not integration" {{ARGS}}
 
 # Run the examples. They are async tests, so an async plugin comes along just for
 # this command instead of being a project dependency. Narrow to one file with
@@ -24,11 +24,11 @@ examples ARGS="examples/":
 # Run the one test that needs pytest-asyncio on its own, with the loop scope the
 # plugin wants. `just test` covers it too, since deepeval brings pytest-asyncio in.
 asyncio_test:
-    uv run --with pytest-asyncio --extra ui --extra azure pytest tests/plugin/test_async_plugins.py -o asyncio_default_fixture_loop_scope=function
+    uv run --with pytest-asyncio pytest tests/plugin/test_async_plugins.py -o asyncio_default_fixture_loop_scope=function
 
-# Run the live-Azure integration tests (needs `az login`; see CONTRIBUTING.md)
+# Run the live cloud integration tests. They need `az login` and an AWS profile, see CONTRIBUTING.md.
 integration_test ARGS="":
-    uv run --extra ui --extra azure pytest -m integration {{ARGS}}
+    uv run pytest -m integration {{ARGS}}
 
 # Frontend dashboard (TS/React/Vite). See /frontend
 frontend_install:

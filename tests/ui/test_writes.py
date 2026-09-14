@@ -1,14 +1,7 @@
 """The dashboard's two DELETE routes: what they cascade, what they refuse, and
 the cross-origin guard that gates both."""
 
-import pytest
-
-# Every name below comes from the optional `[ui]` extra. Without it this
-# module skips instead of failing collection, so the rest of the suite
-# still runs.
-pytest.importorskip("fastapi", reason="needs the [ui] extra")
-
-from evaltrack.repositories import RunRepository  # noqa: E402
+from evaltrack.repositories import RunRepository
 
 from ..factories import make_round
 from ..fakes import MemoryStore

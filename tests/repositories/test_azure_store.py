@@ -11,13 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-
-# Every name below comes from the optional `[azure]` extra. Without it this
-# module skips instead of failing collection, so the rest of the suite still
-# runs.
-pytest.importorskip("azure.core", reason="needs the [azure] extra")
-
-from azure.core import MatchConditions  # noqa: E402
+from azure.core import MatchConditions
 from azure.core.exceptions import (
     AzureError,
     ClientAuthenticationError,
@@ -33,7 +27,7 @@ from evaltrack.repositories import azure as azure_module
 from evaltrack.repositories.azure import AzureBlobStore, parse_azure_url
 from evaltrack.repositories.store import ObjectNotFoundError
 
-from ..conftest import AZURE_TEST_ACCOUNT, AZURE_TEST_CONTAINER
+from .conftest import AZURE_TEST_ACCOUNT, AZURE_TEST_CONTAINER
 
 # --- azure:// URL parsing ---
 

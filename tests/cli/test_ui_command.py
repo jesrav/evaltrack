@@ -5,15 +5,11 @@ import sys
 from pathlib import Path
 
 import pytest
+import uvicorn
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-# Every name below comes from the optional `[ui]` extra. Without it this
-# module skips instead of failing collection, so the rest of the suite
-# still runs.
-pytest.importorskip("fastapi", reason="needs the [ui] extra")
-
-
-from fastapi import FastAPI  # noqa: E402
-
+import evaltrack.ui.app as ui_app
 from evaltrack.cli import main
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
@@ -26,8 +22,6 @@ from .helpers import configure_local, configure_repositories, run_cli
 def _set_up_stub_server(monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace uvicorn with a client that starts the app and stops, so
     `evaltrack ui` returns without serving or blocking."""
-    import uvicorn
-    from fastapi.testclient import TestClient
 
     def _run(app: FastAPI, **kwargs: object) -> None:
         with TestClient(app):
@@ -40,8 +34,6 @@ def _capture_mounts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, MountedRepository]:
     """Wrap `create_app` to record the repositories `evaltrack ui` mounts."""
-    import evaltrack.ui.app as ui_app
-
     captured: dict[str, MountedRepository] = {}
     real_create_app = ui_app.create_app
 
@@ -60,8 +52,6 @@ def _capture_mounts(
 def _capture_app(monkeypatch: pytest.MonkeyPatch) -> list[FastAPI]:
     """Wrap `create_app` to record the app `evaltrack ui` builds, so a test can
     send it requests."""
-    import evaltrack.ui.app as ui_app
-
     built: list[FastAPI] = []
     real_create_app = ui_app.create_app
 
@@ -97,8 +87,6 @@ def test_ui_binds_loopback_only(
 ) -> None:
     """The dashboard is unauthenticated, so the bind host is not configurable
     and always stays on loopback."""
-    import uvicorn
-
     configure_repositories(tmp_path)
     monkeypatch.chdir(tmp_path)
     _set_up_stub_server(monkeypatch)
@@ -212,8 +200,6 @@ def test_ui_reports_an_unusable_remote_per_request(
     """A remote nothing can be read from, here a path naming a regular file, is
     mounted like any other. Its own requests answer 502 with the reason, which
     the dashboard shows, while the local mount keeps serving."""
-    from fastapi.testclient import TestClient
-
     blocker = tmp_path / "blocker"
     blocker.write_bytes(b"a file where a directory is needed")
     monkeypatch.delenv("EVALTRACK_REMOTE", raising=False)

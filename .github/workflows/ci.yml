@@ -22,7 +22,7 @@ jobs:
           python-version: "3.12"
       # --locked fails the job on pyproject/uv.lock drift instead of a silent
       # re-resolve.
-      - run: uv sync --locked --all-groups --extra ui --extra azure
+      - run: uv sync --locked --all-groups
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pre-commit
@@ -53,15 +53,15 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --locked --all-groups --extra ui --extra azure
-      - run: uv run --extra ui --extra azure pytest tests -m "not integration"
+      - run: uv sync --locked --all-groups
+      - run: uv run pytest tests -m "not integration"
       # pytest-asyncio arrives with deepeval, so the run above already covers
       # this file. It runs again on its own so the check survives deepeval
       # dropping the dependency. The loop scope is set because pytest-asyncio
       # warns at startup without it, and `filterwarnings = error` makes that
       # warning an error.
       - name: The marker gates under pytest-asyncio
-        run: uv run --with pytest-asyncio --extra ui --extra azure pytest tests/plugin/test_async_plugins.py -o asyncio_default_fixture_loop_scope=function
+        run: uv run --with pytest-asyncio pytest tests/plugin/test_async_plugins.py -o asyncio_default_fixture_loop_scope=function
       # Every example runs offline: the agent ones script their model, so none
       # needs a key. This is the command that examples/README.md gives.
       - name: Examples
@@ -69,10 +69,7 @@ jobs:
 
   # Install the *lowest* versions of all direct dependencies so the declared
   # floors (for example python-ulid>=3.1.0) are exercised. The regular test job
-  # only sees the latest locked versions. The [ui]/[azure] extras are named
-  # rather than taken with --all-extras: the eval runner extras would add
-  # nothing here, since the dev group installs those runners for the suite at
-  # the same floors.
+  # only sees the latest locked versions.
   test-lowest-bounds:
     runs-on: ubuntu-latest
     steps:
@@ -80,22 +77,30 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.11"
-      - run: uv sync --all-groups --extra ui --extra azure --resolution lowest-direct
+      - run: uv sync --all-groups --resolution lowest-direct
       # --no-sync keeps the lowest-direct environment. A plain `uv run` re-syncs
       # to the regular (highest) resolution first.
       - run: uv run --no-sync pytest tests -m "not integration"
 
-  # The integration-marked tests run against live Azure storage. They need
-  # repository secrets:
+  # The integration-marked tests run against live Azure and S3 storage. They
+  # need repository secrets:
   #   AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_CLIENT_SECRET
   #     service principal with "Storage Blob Data Contributor" on the
   #     evaltracktesting account (DefaultAzureCredential reads these three).
-  # Each test isolates its blobs under a per-test prefix and deletes them on
+  #   AWS_ROLE_TO_ASSUME
+  #     an IAM role in the AWS test account that trusts the GitHub OIDC token
+  #     of this repository. It can read, write, delete and list in the
+  #     evaltrack-integration-tests bucket. The step below exchanges the
+  #     token for short-lived keys, so no AWS secret is stored.
+  # Each test isolates its objects under a per-test prefix and deletes them on
   # teardown, so concurrent CI runs do not collide.
   integration-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test
+    permissions:
+      contents: read
+      id-token: write
     # Fork PRs do not get the secrets, so this job skips rather than fail on
     # empty credentials. Dependabot PRs are withheld the secrets too, even
     # though they run from a branch in this repository, so they skip as well.
@@ -112,8 +117,12 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
-      - run: uv sync --locked --all-groups --extra ui --extra azure
-      - run: uv run --extra ui --extra azure pytest tests -m integration
+      - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: eu-north-1
+      - run: uv sync --locked --all-groups
+      - run: uv run pytest tests -m integration
 
   # Build the wheel on every PR so packaging regressions surface immediately
   # instead of at release time.

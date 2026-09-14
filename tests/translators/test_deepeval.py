@@ -15,13 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-# Every name below comes from the optional `[deepeval]` extra. Without it this
-# module skips instead of failing collection, so the rest of the suite still
-# runs.
-pytest.importorskip("deepeval", reason="needs the [deepeval] extra")
-
-from deepeval.dataset import EvaluationDataset, Golden  # noqa: E402
+from deepeval.dataset import EvaluationDataset, Golden
 from deepeval.evaluate import evaluate
 from deepeval.evaluate.configs import (
     AsyncConfig,

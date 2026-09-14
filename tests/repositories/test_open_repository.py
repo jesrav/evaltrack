@@ -1,7 +1,7 @@
 """How `open_repository` decides between a directory path and a URL.
 
-The backends themselves are covered in `test_file_store.py` and
-`test_azure_store.py`.
+The backends themselves are covered in `test_file_store.py`,
+`test_azure_store.py` and `test_s3_store.py`.
 """
 
 import pytest
@@ -39,14 +39,22 @@ def test_a_path_still_opens(location: str) -> None:
 def test_an_azure_url_reaches_the_azure_backend() -> None:
     """A well-formed URL opens, and one only the azure backend can judge is
     refused by it. The path branch would take both and write to a directory."""
-    pytest.importorskip("azure.storage.blob", reason="needs the [azure] extra")
-
     open_repository("azure://account/container")
 
     with pytest.raises(ValueError, match="missing the container"):
         open_repository("azure://account")
 
 
+def test_an_s3_url_reaches_the_s3_backend() -> None:
+    open_repository("s3://bucket/evals")
+
+    with pytest.raises(ValueError, match="invalid bucket name"):
+        open_repository("s3://Bucket/evals")
+
+
 def test_an_unknown_scheme_names_the_known_ones() -> None:
-    with pytest.raises(ValueError, match="unknown repository scheme: 's3'"):
-        open_repository("s3://bucket/evals")
+    with pytest.raises(
+        ValueError,
+        match="unknown repository scheme: 'ftp' \\(known schemes: azure, s3\\)",
+    ):
+        open_repository("ftp://host/evals")
