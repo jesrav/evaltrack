@@ -16,27 +16,18 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-
-# Every name below comes from the optional `[s3]` extra. Without it this module
-# skips instead of failing collection, so the rest of the suite still runs.
-pytest.importorskip("boto3", reason="needs the [s3] extra")
-
-from botocore.exceptions import (  # noqa: E402
+from botocore.exceptions import (
     BotoCoreError,
     ClientError,
     EndpointConnectionError,
     NoCredentialsError,
 )
 
-from evaltrack.core.errors import RepositoryUnavailableError  # noqa: E402
-from evaltrack.repositories.s3 import (  # noqa: E402
-    S3Client,
-    S3ObjectStore,
-    parse_s3_url,
-)
-from evaltrack.repositories.store import ObjectNotFoundError  # noqa: E402
+from evaltrack.core.errors import RepositoryUnavailableError
+from evaltrack.repositories.s3 import S3Client, S3ObjectStore, parse_s3_url
+from evaltrack.repositories.store import ObjectNotFoundError
 
-from .conftest import S3_TEST_BUCKET  # noqa: E402
+from .conftest import S3_TEST_BUCKET
 
 # --- s3:// URL parsing ---
 
