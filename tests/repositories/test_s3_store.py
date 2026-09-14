@@ -36,7 +36,7 @@ from evaltrack.repositories.s3 import (  # noqa: E402
 )
 from evaltrack.repositories.store import ObjectNotFoundError  # noqa: E402
 
-from ..conftest import S3_TEST_BUCKET  # noqa: E402
+from .conftest import S3_TEST_BUCKET  # noqa: E402
 
 # --- s3:// URL parsing ---
 

@@ -38,7 +38,7 @@ The integration tests need credentials for the maintainer's Azure and AWS test a
 contributors cannot run them locally. That is fine. A PR from a fork is not given the secrets
 either, so that job skips there rather than failing on empty credentials, and the run against live
 storage happens after merge. If your change touches the Azure or S3 backend, say so in the PR and I
-will run them. The azure and s3 fixtures in `tests/conftest.py` have the details.
+will run them. The azure and s3 fixtures in `tests/repositories/conftest.py` have the details.
 
 Locally, the Azure tests use `az login`. The S3 tests use the AWS profile that `AWS_PROFILE` names.
 Run `AWS_PROFILE=<profile> just integration_test`, or put `AWS_PROFILE=<profile>` in a `.env` file.

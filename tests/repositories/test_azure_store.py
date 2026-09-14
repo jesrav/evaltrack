@@ -33,7 +33,7 @@ from evaltrack.repositories import azure as azure_module
 from evaltrack.repositories.azure import AzureBlobStore, parse_azure_url
 from evaltrack.repositories.store import ObjectNotFoundError
 
-from ..conftest import AZURE_TEST_ACCOUNT, AZURE_TEST_CONTAINER
+from .conftest import AZURE_TEST_ACCOUNT, AZURE_TEST_CONTAINER
 
 # --- azure:// URL parsing ---
 
