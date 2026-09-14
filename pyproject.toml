@@ -122,6 +122,9 @@ packages = ["evaltrack"]
 
 [dependency-groups]
 dev = [
+    # The project's own extras, so one `uv sync` installs every backend and
+    # the dashboard, and no tool has to name them.
+    "evaltrack[ui,azure,s3]",
     "httpx>=0.27.0",
     "basedpyright>=1.29.0",
     # Used only by examples/. The [openai] extra powers the real-LLM examples.

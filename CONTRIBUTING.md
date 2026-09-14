@@ -10,7 +10,7 @@ not pass on Windows. Under WSL2 you are on Linux, so that works.
 Install [uv](https://docs.astral.sh/uv/) and [just](https://github.com/casey/just). Then run:
 
 ```bash
-just install_dev   # uv sync --all-groups --extra ui --extra azure + install pre-commit hooks
+just install_dev   # uv sync --all-groups + install pre-commit hooks
 ```
 
 For the dashboard frontend (TypeScript/React):

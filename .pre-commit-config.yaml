@@ -55,7 +55,6 @@ repos:
     hooks:
       - id: basedpyright
         name: basedpyright
-        # The [ui]/[azure] imports have to resolve for the type check.
-        entry: uv run --extra ui --extra azure basedpyright
+        entry: uv run basedpyright
         language: system
         types: [python]
