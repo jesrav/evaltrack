@@ -85,17 +85,25 @@ jobs:
       # to the regular (highest) resolution first.
       - run: uv run --no-sync pytest tests -m "not integration"
 
-  # The integration-marked tests run against live Azure storage. They need
-  # repository secrets:
+  # The integration-marked tests run against live Azure and S3 storage. They
+  # need repository secrets:
   #   AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_CLIENT_SECRET
   #     service principal with "Storage Blob Data Contributor" on the
   #     evaltracktesting account (DefaultAzureCredential reads these three).
-  # Each test isolates its blobs under a per-test prefix and deletes them on
+  #   AWS_ROLE_TO_ASSUME
+  #     an IAM role in the AWS test account that trusts the GitHub OIDC token
+  #     of this repository. It can read, write, delete and list in the
+  #     evaltrack-integration-tests bucket. The step below exchanges the
+  #     token for short-lived keys, so no AWS secret is stored.
+  # Each test isolates its objects under a per-test prefix and deletes them on
   # teardown, so concurrent CI runs do not collide.
   integration-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test
+    permissions:
+      contents: read
+      id-token: write
     # Fork PRs do not get the secrets, so this job skips rather than fail on
     # empty credentials. Dependabot PRs are withheld the secrets too, even
     # though they run from a branch in this repository, so they skip as well.
@@ -112,6 +120,10 @@ jobs:
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
+      - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: eu-north-1
       - run: uv sync --locked --all-groups --extra ui --extra azure
       - run: uv run --extra ui --extra azure pytest tests -m integration
 

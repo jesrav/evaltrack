@@ -1,16 +1,16 @@
 """Shared fixtures. Report builders live in `factories.py`, fakes in `fakes.py`.
 
-The azure SDK is imported inside the fixtures that need it, never at module
+The cloud SDKs are imported inside the fixtures that need them, never at module
 scope. This file is the suite's root conftest, so a module-scope import would
-make the whole suite uncollectable without the optional `[azure]` extra, and
-`just test` would be the only way to run any test at all.
+make the whole suite uncollectable without the optional `[azure]` or `[s3]`
+extra, and `just test` would be the only way to run any test at all.
 """
 
 from __future__ import annotations
 
 import os
 from collections.abc import Callable, Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import pytest
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from azure.storage.blob import ContainerClient
 
     from evaltrack.repositories.azure import AzureBlobStore
+    from evaltrack.repositories.s3 import S3Client, S3ObjectStore
 
 # Dedicated account and container for live testing. Per-test prefixes keep
 # concurrent runs apart. A test that uses these fixtures must carry the
@@ -63,6 +64,45 @@ def azure_store_factory(
     from evaltrack.repositories.azure import AzureBlobStore
 
     return lambda: AzureBlobStore(azure_container, prefix=azure_prefix)
+
+
+# Dedicated bucket for live testing, in the AWS test account of the maintainer.
+# The region is named so a CI job needs no AWS_REGION. Per-test prefixes keep
+# concurrent runs apart. A lifecycle rule on the bucket deletes what an aborted
+# run leaves behind after one day.
+S3_TEST_BUCKET = "evaltrack-integration-tests"
+S3_TEST_REGION = "eu-north-1"
+
+
+@pytest.fixture(scope="session")
+def s3_client() -> S3Client:
+    """Session-scoped so the whole run looks up credentials once."""
+    import boto3
+
+    return cast("S3Client", boto3.Session().client("s3", region_name=S3_TEST_REGION))
+
+
+@pytest.fixture
+def s3_prefix(s3_client: S3Client) -> Iterator[str]:
+    """Unique per-test key prefix inside the shared bucket, deleted on teardown."""
+    prefix = f"itest-{uuid4().hex}"
+    yield prefix
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=S3_TEST_BUCKET, Prefix=prefix + "/"):
+        for entry in page.get("Contents", []):
+            s3_client.delete_object(Bucket=S3_TEST_BUCKET, Key=entry["Key"])
+
+
+@pytest.fixture
+def s3_store_factory(
+    s3_client: S3Client, s3_prefix: str
+) -> Callable[[], S3ObjectStore]:
+    """StoreFactory for the contract suite's `s3` parametrization. Injects the
+    shared client. For the `from_url` construction path, see
+    `repositories/test_s3_store.py`."""
+    from evaltrack.repositories.s3 import S3ObjectStore
+
+    return lambda: S3ObjectStore(s3_client, S3_TEST_BUCKET, prefix=s3_prefix)
 
 
 @pytest.fixture(autouse=True)

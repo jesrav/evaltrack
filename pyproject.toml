@@ -76,6 +76,9 @@ ui = [
     # stream until then, and its finalizer trips `filterwarnings = error`.
     "starlette>=0.45.1",
 ]
+# The first release whose S3 model carries `IfMatch` on PutObject, which
+# `append` needs for its conditional write.
+s3 = ["boto3>=1.35.60"]
 
 [project.scripts]
 evaltrack = "evaltrack.cli:main"
@@ -190,5 +193,5 @@ filterwarnings = [
 ]
 xfail_strict = true
 markers = [
-    "integration: needs live Azure storage; excluded from `just test`, run with `just integration_test`",
+    "integration: needs live cloud storage (Azure, S3). Excluded from `just test`, run with `just integration_test`",
 ]

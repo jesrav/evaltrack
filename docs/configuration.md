@@ -74,8 +74,10 @@ Missing parent directories are fine. They are created when the run is written.
 | `EVALTRACK_LABEL_<KEY>` | run context            | arbitrary label, lowercased key (for example `EVALTRACK_LABEL_BUILD_ID=42`)                                       |
 
 The Azure backend also reads the standard `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and
-`AZURE_CLIENT_SECRET` variables via `DefaultAzureCredential`. See
-[Repositories › Authentication](./repositories.md#authentication).
+`AZURE_CLIENT_SECRET` variables via `DefaultAzureCredential`, and the S3 backend reads the standard
+`AWS_*` variables and profiles via boto3. See
+[Repositories › Authentication](./repositories.md#authentication) and
+[Repositories › Amazon S3](./repositories.md#amazon-s3).
 
 ## Precedence rules
 
@@ -97,8 +99,8 @@ The local repository, plus the remote when one is configured, resolved exactly a
 
 ## Repository names
 
-A repository is named by a directory path, or by an `azure://account/container[/prefix]` URL
-([Backends](./repositories.md#backends)).
+A repository is named by a directory path, or by a URL such as `azure://account/container[/prefix]`
+or `s3://bucket[/prefix]` ([Backends](./repositories.md#backends)).
 
 Where a relative path resolves from depends on where you wrote it:
 

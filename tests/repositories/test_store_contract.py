@@ -91,6 +91,8 @@ def test_concurrent_appends_to_a_fresh_key_lose_no_entry(
     window exactly.
     """
     store = store_factory()
+    # A backend that appends by conditional write can lose once per other
+    # writer, so its retry budget must be at least `writers`.
     writers, rounds = 8, 4
     for r in range(rounds):
         key = f"log-{r}.jsonl"

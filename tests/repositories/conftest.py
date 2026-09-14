@@ -1,12 +1,14 @@
 """Backend parametrization for the repository tests.
 
-The whole suite runs through these fixtures, so every backend (file and live
-Azure) holds the same behavior. The `azure` parametrization runs
-against real Azure storage and carries the `integration` marker, so
-`just test` skips it.
+The whole suite runs through these fixtures, so every backend (file, live
+Azure and live S3) holds the same behavior. The cloud parametrizations run
+against real storage and carry the `integration` marker, so `just test` skips
+them.
 
-There is no fake of the Azure SDK, on purpose. A hand-written stand-in for it
-once passed an append-race guarantee that the real backend did not provide.
+There is no fake of a cloud SDK here, on purpose. A hand-written stand-in for
+Azure once passed an append-race guarantee that the real backend did not
+provide. The S3 append is only correct if the service enforces its
+preconditions, and only the service can show that.
 """
 
 from pathlib import Path
@@ -20,11 +22,17 @@ from evaltrack.repositories.store import ObjectStore
 from .helpers import RepositoryFactory, StoreFactory
 
 
-@pytest.fixture(params=["file", pytest.param("azure", marks=pytest.mark.integration)])
+@pytest.fixture(
+    params=[
+        "file",
+        pytest.param("azure", marks=pytest.mark.integration),
+        pytest.param("s3", marks=pytest.mark.integration),
+    ]
+)
 def store_factory(request: pytest.FixtureRequest, tmp_path: Path) -> StoreFactory:
-    if request.param == "azure":
+    if request.param != "file":
         # Lazy lookup, so a non-integration run never touches credentials.
-        return request.getfixturevalue("azure_store_factory")
+        return request.getfixturevalue(f"{request.param}_store_factory")
 
     def make_store() -> ObjectStore:
         return FileStore(tmp_path / "store")
