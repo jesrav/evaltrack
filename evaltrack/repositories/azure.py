@@ -20,12 +20,12 @@ from azure.storage.blob import BlobServiceClient, ContainerClient
 
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.repositories.repository import RunRepository
-from evaltrack.repositories.store import ObjectNotFoundError, ObjectStore
-
-# Pinned so an SDK default change cannot move them. `read_timeout` bounds the
-# gap between two chunks, so a large streaming blob never trips it.
-_CONNECTION_TIMEOUT = 20
-_READ_TIMEOUT = 120
+from evaltrack.repositories.store import (
+    CONNECTION_TIMEOUT,
+    READ_TIMEOUT,
+    ObjectNotFoundError,
+    ObjectStore,
+)
 
 
 @contextmanager
@@ -53,8 +53,8 @@ class AzureBlobStore(ObjectStore):
             service = BlobServiceClient(
                 account_url=f"https://{account}.blob.core.windows.net",
                 credential=DefaultAzureCredential(),
-                connection_timeout=_CONNECTION_TIMEOUT,
-                read_timeout=_READ_TIMEOUT,
+                connection_timeout=CONNECTION_TIMEOUT,
+                read_timeout=READ_TIMEOUT,
             )
             container = service.get_container_client(container_name)
         return cls(container, prefix)
