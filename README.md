@@ -74,6 +74,9 @@ flowchart LR
 uv add "evaltrack[ui,pydantic-evals]" "pydantic-ai-slim[openai]"
 ```
 
+The `ui` extra is the dashboard, `pydantic-evals` is the runner this example uses, and pydantic-ai
+is the agent framework. evaltrack does not require them but the quickstart uses them.
+
 Add `@pytest.mark.evaltrack` to a test and hand the eval to `evaltrack.run()`:
 
 ```python
