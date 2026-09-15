@@ -1,6 +1,6 @@
 [project]
 name = "evaltrack"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pytest plugin to record, gate and track LLM eval runs from pydantic-evals, DeepEval or a runner you write a translator for"
 readme = "README.md"
 license = "MIT"
