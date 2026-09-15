@@ -1,4 +1,5 @@
-"""Refuse to build a distribution without the built dashboard frontend.
+"""Refuse to build a distribution without the built frontend: the dashboard and
+the report page.
 
 evaltrack/ui/static is a gitignored build artifact. Without this hook, a build
 from a fresh clone (`uv build`, or `pip install git+...`) produces a wheel or an
@@ -20,11 +21,19 @@ class RequireFrontendHook(BuildHookInterface[Any]):
         # built frontend on purpose.
         if version == "editable":
             return
-        index = Path(self.root) / "evaltrack" / "ui" / "static" / "index.html"
-        if not index.is_file():
+        # One build writes both, so a missing one means the frontend was built
+        # before the other existed, or not at all.
+        static = Path(self.root) / "evaltrack" / "ui" / "static"
+        missing = [
+            name
+            for name in ("index.html", "report.html")
+            if not (static / name).is_file()
+        ]
+        if missing:
             raise RuntimeError(
-                "evaltrack/ui/static/index.html is missing: the dashboard frontend "
-                "has not been built, so the resulting distribution would ship "
-                "without the UI. Build it first with `just frontend_build` "
-                "(or `cd frontend && npm install && npm run build`), then rebuild."
+                f"evaltrack/ui/static/{' and '.join(missing)} missing: the "
+                "frontend has not been built, so the resulting distribution "
+                "would ship without the dashboard or the report page. Build it "
+                "first with `just frontend_build` (or `cd frontend && npm "
+                "install && npm run build`), then rebuild."
             )

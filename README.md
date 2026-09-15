@@ -159,7 +159,8 @@ evaltrack ui
 
 This serves the dashboard at `http://127.0.0.1:8765` and prints the link. Browse scores and
 pass-rates per case, and diff any two runs. Open a case to see each score against its bar and its
-history over the mainline.
+history over the mainline. `evaltrack report` writes the same view of one run as a single HTML file
+that opens anywhere, for a CI artifact or a release note ([CLI › report]).
 
 <!-- prettier-ignore -->
 > [!NOTE]
@@ -220,6 +221,7 @@ Planned additions are in a rough [roadmap].
 [start here]: https://ai.pydantic.dev/evals/
 [online evals]: https://pydantic.dev/docs/ai/evals/online-evaluation/
 [logfire]: https://pydantic.dev/docs/logfire/get-started/
+[cli › report]: https://github.com/jesrav/evaltrack/blob/main/docs/cli.md#evaltrack-report
 [dashboard-demo]:
   https://raw.githubusercontent.com/jesrav/evaltrack/main/docs/images/dashboard-demo.gif
 [the evaltrack marker]: https://github.com/jesrav/evaltrack/blob/main/docs/marker.md

@@ -1,0 +1,307 @@
+"""`evaltrack report`, which writes a run as a single HTML file."""
+
+import json
+import re
+from pathlib import Path
+
+import pytest
+
+import evaltrack.ui.report as report_module
+from evaltrack.cli import main
+from evaltrack.repositories import open_repository
+
+from .helpers import configure_repositories, run_cli, seed_run, seed_run_in_repo
+
+# A stand-in for the built page: the element the CLI fills, and nothing that
+# needs a browser. The renderer's own tests cover what the build must carry.
+TEMPLATE = (
+    "<!doctype html><title>evaltrack report</title>"
+    '<script type="application/json" id="evaltrack-data"></script>'
+)
+
+
+@pytest.fixture(autouse=True)
+def template(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the command at a temp template, so these tests run whether or not
+    this checkout has a frontend build."""
+    path = tmp_path / "template" / "report.html"
+    path.parent.mkdir()
+    path.write_text(TEMPLATE, encoding="utf-8")
+    monkeypatch.setattr(report_module, "TEMPLATE_PATH", path)
+    return path
+
+
+def embedded_json(html: str) -> dict[str, object]:
+    match = re.search(
+        r'<script type="application/json" id="evaltrack-data">(.*?)</script>',
+        html,
+        flags=re.DOTALL,
+    )
+    assert match is not None, "the page carries the data element"
+    return json.loads(match.group(1))
+
+
+def test_report_writes_one_file_holding_the_run(tmp_path: Path) -> None:
+    url = str(tmp_path / "repo")
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "out" / "run.html"
+    output.parent.mkdir()
+
+    result = run_cli(
+        ["report", "--run-id", run_id, "--repository", url, "--output", str(output)]
+    )
+
+    assert result.code == 0
+    assert [p.name for p in output.parent.iterdir()] == ["run.html"], (
+        "the report is one file with no assets beside it"
+    )
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    run = data["run"]
+    assert isinstance(run, dict)
+    assert run["id"] == run_id
+    assert data["against"] is None
+    assert run_id in result.out and str(output) in result.out
+
+
+def test_report_defaults_to_a_file_in_the_working_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url = str(tmp_path / "repo")
+    run_id = seed_run_in_repo(url)
+    monkeypatch.chdir(tmp_path)
+
+    result = run_cli(["report", "--run-id", run_id, "--repository", url])
+
+    assert result.code == 0
+    assert (tmp_path / "evaltrack-report.html").is_file()
+
+
+def test_report_to_stdout_prints_only_the_page(tmp_path: Path) -> None:
+    url = str(tmp_path / "repo")
+    run_id = seed_run_in_repo(url)
+
+    result = run_cli(
+        ["report", "--run-id", run_id, "--repository", url, "--output", "-"]
+    )
+
+    assert result.code == 0
+    assert result.out.startswith("<!doctype html>")
+    assert result.out.rstrip().endswith("</script>"), "nothing follows the page"
+    assert embedded_json(result.out)["run"] is not None
+
+
+def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
+    url = str(tmp_path / "repo")
+    older = seed_run_in_repo(url)
+    newer = seed_run_in_repo(url)
+    repo = open_repository(url)
+    repo.move_ref("pr/12", older, pr=12)
+    repo.move_ref("pr/12", newer, pr=12)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        ["report", "--ref", "pr/12", "--repository", url, "--output", str(output)]
+    )
+
+    assert result.code == 0
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    run = data["run"]
+    assert isinstance(run, dict)
+    assert run["id"] == newer
+    assert data["via"] == "pr/12"
+
+
+def test_report_against_a_ref_embeds_both_runs(tmp_path: Path) -> None:
+    """`--against baseline` is the CI case: the PR's run with the mainline run
+    beside it, so the page opens on the comparison."""
+    url = str(tmp_path / "repo")
+    baseline = seed_run_in_repo(url)
+    pr_run = seed_run_in_repo(url)
+    repo = open_repository(url)
+    repo.move_ref("baseline", baseline)
+    repo.move_ref("pr/3", pr_run, pr=3)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--ref",
+            "pr/3",
+            "--against",
+            "baseline",
+            "--repository",
+            url,
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 0
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    run, against = data["run"], data["against"]
+    assert isinstance(run, dict) and isinstance(against, dict)
+    assert (run["id"], against["id"]) == (pr_run, baseline)
+    assert (data["via"], data["against_via"]) == ("pr/3", "baseline")
+    assert baseline in result.out and pr_run in result.out
+
+
+def test_report_against_a_run_id_names_no_ref(tmp_path: Path) -> None:
+    url = str(tmp_path / "repo")
+    base = seed_run_in_repo(url)
+    subject = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--run-id",
+            subject,
+            "--against",
+            base,
+            "--repository",
+            url,
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 0
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    against = data["against"]
+    assert isinstance(against, dict)
+    assert against["id"] == base
+    assert data["against_via"] is None
+
+
+def test_report_missing_run_exits_1_and_writes_nothing(tmp_path: Path) -> None:
+    """A run the repository does not hold is the one outcome that exits 1,
+    as it is for `export`, so a script can tell it from a crash."""
+    url = str(tmp_path / "repo")
+    seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--run-id",
+            "01J9Z3QW2KJ5H8VN4TQY7B6MDC",
+            "--repository",
+            url,
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 1, "a run the repository does not hold exits 1"
+    assert "not found" in result.err and url in result.err
+    assert not output.exists()
+    assert "Traceback" not in result.err, "a missing run is an outcome, not a crash"
+
+
+def test_report_missing_ref_exits_1(tmp_path: Path) -> None:
+    url = str(tmp_path / "repo")
+    seed_run_in_repo(url)
+
+    result = run_cli(["report", "--ref", "pr/404", "--repository", url])
+
+    assert result.code == 1, "a ref the repository does not hold exits 1"
+    assert "pr/404" in result.err and "not found" in result.err
+
+
+def test_report_missing_comparison_reports_the_run_alone_with_a_warning(
+    tmp_path: Path,
+) -> None:
+    """The first PR of a project has no baseline to compare against yet. The
+    CI step still gets its report, of the run alone, and stderr says why."""
+    url = str(tmp_path / "repo")
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--run-id",
+            run_id,
+            "--against",
+            "baseline",
+            "--repository",
+            url,
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 0, "a comparison target the repository lacks is not a failure"
+    assert "warning" in result.err and "baseline" in result.err
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    assert data["against"] is None
+    assert "against" not in result.out, "the summary line claims no comparison"
+
+
+def test_report_against_the_run_itself_reports_it_alone(tmp_path: Path) -> None:
+    """A run promoted to baseline compared against baseline would diff itself,
+    which the dashboard does not offer either."""
+    url = str(tmp_path / "repo")
+    run_id = seed_run_in_repo(url)
+    open_repository(url).move_ref("baseline", run_id)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--run-id",
+            run_id,
+            "--against",
+            "baseline",
+            "--repository",
+            url,
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 0
+    assert "itself" in result.err
+    assert embedded_json(output.read_text(encoding="utf-8"))["against"] is None
+
+
+def test_report_defaults_to_the_configured_remote(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The documented use is a CI job, which names the remote once in the
+    environment, so the command defaults there like `push` and `promote`."""
+    repos = configure_repositories(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    run_id = seed_run(repos.remote)
+    output = tmp_path / "report.html"
+
+    result = run_cli(["report", "--run-id", run_id, "--output", str(output)])
+
+    assert result.code == 0
+    assert repos.remote in result.err, "the resolved repository is announced"
+    assert output.is_file()
+
+
+def test_report_without_a_built_template_says_what_to_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An editable install has no built frontend until `just frontend_build`
+    has run. The failure has to name that, not a missing file."""
+    monkeypatch.setattr(report_module, "TEMPLATE_PATH", tmp_path / "missing.html")
+    url = str(tmp_path / "repo")
+    run_id = seed_run_in_repo(url)
+
+    result = run_cli(["report", "--run-id", run_id, "--repository", url])
+
+    assert result.code == 2, "an unbuilt template is something to fix"
+    assert "frontend_build" in result.err
+    assert "Traceback" not in result.err
+
+
+def test_report_needs_exactly_one_way_of_naming_the_run(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as excinfo:
+        main(["report", "--repository", "x"])
+    assert excinfo.value.code == 2, "naming no run is a usage error"
+    assert "--run-id" in capsys.readouterr().err

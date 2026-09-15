@@ -83,6 +83,11 @@ jobs:
           PY
           /tmp/extras-smoke/bin/pytest -m evaltrack -q
           test -d .evaltrack/runs
+          # The report template ships in the wheel and the page it writes
+          # carries the run. Only the local repository holds one here.
+          run_id=$(/tmp/extras-smoke/bin/evaltrack runs --local | head -1 | cut -d' ' -f1)
+          /tmp/extras-smoke/bin/evaltrack report --run-id "$run_id" --local --output smoke-report.html
+          grep -q 'id="evaltrack-data">{' smoke-report.html
           /tmp/extras-smoke/bin/evaltrack ui --port 8765 &
           # The wait loop stays quiet. The check below reports the failure.
           for _ in $(seq 30); do

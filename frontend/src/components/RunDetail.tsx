@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 
-import { api } from "../api";
 import { formatAttemptCounts } from "../attemptCounts";
 import { summariseErrors } from "../attemptErrors";
 import type { CaseFilter } from "../caseFilter";
@@ -48,6 +47,18 @@ import type {
   RecordedTest,
 } from "../types";
 
+/** What the page can do to the run in the repository behind it: download it
+ *  in full, and delete it or a ref that reaches it. A page with no repository
+ *  behind it, the static report, has none, and the header shows none. */
+export interface RunActions {
+  /** The repository the run is addressed in, passed back to the deletes. */
+  slug: string;
+  /** The full run as a file, the eval runner's own result objects included. */
+  downloadHref: string;
+  onDeleteRun: (slug: string, runId: string) => void;
+  onDeleteRef: (slug: string, refName: string) => void;
+}
+
 interface Props {
   run: RunRecord;
   /** Ref the user clicked to reach this run (undefined if they clicked the
@@ -56,8 +67,10 @@ interface Props {
   /** All refs in the same repository that currently point at this run. Rendered
    *  as chips. A ref whose tip records a PR shows its number and title too. */
   refs: Ref[];
-  /** Repository slug, needed to address delete actions. */
-  slug: string;
+  actions?: RunActions;
+  /** True on a page with no sidebar to pick another run from, the static
+   *  report, which then gives no hint about one. */
+  standalone?: boolean;
   /** Cross-run reliability and score history for this run's repository,
    *  fetched separately and lazily. `loading` shows a spinner in the
    *  Reliability column. `error` (or absent) degrades to no column and no
@@ -68,12 +81,10 @@ interface Props {
   mainline?: MainlineEntry | null;
   /** Project `{pr}` URL template. When set, the mainline PR number is a link. */
   prUrlTemplate: string | null;
-  /** Whether a "Compare to mainline" action is available for this run (a
-   *  baseline ref exists and this run isn't itself the baseline). */
-  canCompareToBaseline: boolean;
-  onCompareToBaseline: () => void;
-  onDeleteRun: (slug: string, runId: string) => void;
-  onDeleteRef: (slug: string, refName: string) => void;
+  /** Opens the comparison against the mainline. Absent when there is nothing
+   *  to compare to (no baseline ref, or this run is the baseline), or the page
+   *  cannot navigate, and the action is then not offered. */
+  onCompareToBaseline?: () => void;
   onOpenDrawer: (content: DrawerContent) => void;
   /** Selected attempt index per case, keyed by case title. Unset means the
    *  deciding attempt. Drives which attempt the row and its field panes show. */
@@ -85,14 +96,12 @@ export function RunDetail({
   run,
   via,
   refs,
-  slug,
+  actions,
+  standalone,
   history,
   mainline,
   prUrlTemplate,
-  canCompareToBaseline,
   onCompareToBaseline,
-  onDeleteRun,
-  onDeleteRef,
   onOpenDrawer,
   attemptSel,
   onSelectAttempt,
@@ -111,13 +120,11 @@ export function RunDetail({
         run={run}
         via={via}
         refs={refs}
-        slug={slug}
+        actions={actions}
+        standalone={standalone}
         mainline={mainline}
         prUrlTemplate={prUrlTemplate}
-        canCompareToBaseline={canCompareToBaseline}
         onCompareToBaseline={onCompareToBaseline}
-        onDeleteRun={onDeleteRun}
-        onDeleteRef={onDeleteRef}
       />
       {counts.total > 0 && (
         <CaseFilters
@@ -868,24 +875,20 @@ function RunHeader({
   run,
   via,
   refs,
-  slug,
+  actions,
+  standalone,
   mainline,
   prUrlTemplate,
-  canCompareToBaseline,
   onCompareToBaseline,
-  onDeleteRun,
-  onDeleteRef,
 }: {
   run: RunRecord;
   via?: string;
   refs: Ref[];
-  slug: string;
+  actions?: RunActions;
+  standalone?: boolean;
   mainline?: MainlineEntry | null;
   prUrlTemplate: string | null;
-  canCompareToBaseline: boolean;
-  onCompareToBaseline: () => void;
-  onDeleteRun: (slug: string, runId: string) => void;
-  onDeleteRef: (slug: string, refName: string) => void;
+  onCompareToBaseline?: () => void;
 }) {
   const branch = run.labels.branch;
   const otherLabels = Object.entries(run.labels).filter(
@@ -903,46 +906,51 @@ function RunHeader({
   const referenced = refs.length > 0;
   return (
     <header className="run-header">
-      <div className="page-actions">
-        <a
-          className="page-action"
-          href={api.runDownloadUrl(slug, run.id)}
-          download={`${run.id}.json`}
-          title="Download this run as JSON (includes the eval runner's own result objects)"
-        >
-          ↓ Download
-        </a>
-        {canCompareToBaseline && (
-          <button
-            type="button"
-            className="page-action"
-            title="Compare this run against the current mainline (the baseline ref)"
-            onClick={onCompareToBaseline}
-          >
-            ⇄ Compare to mainline
-          </button>
-        )}
-        {referenced ? (
-          <button
-            type="button"
-            className="page-delete disabled"
-            aria-disabled="true"
-            title={`Referenced by ${refs.map((r) => r.name).join(", ")}. Delete the ref instead.`}
-            onClick={(e) => e.preventDefault()}
-          >
-            Delete run
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="page-delete"
-            title="Delete this run"
-            onClick={() => onDeleteRun(slug, run.id)}
-          >
-            Delete run
-          </button>
-        )}
-      </div>
+      {(actions || onCompareToBaseline) && (
+        <div className="page-actions">
+          {actions && (
+            <a
+              className="page-action"
+              href={actions.downloadHref}
+              download={`${run.id}.json`}
+              title="Download this run as JSON (includes the eval runner's own result objects)"
+            >
+              ↓ Download
+            </a>
+          )}
+          {onCompareToBaseline && (
+            <button
+              type="button"
+              className="page-action"
+              title="Compare this run against the current mainline (the baseline ref)"
+              onClick={onCompareToBaseline}
+            >
+              ⇄ Compare to mainline
+            </button>
+          )}
+          {actions && referenced && (
+            <button
+              type="button"
+              className="page-delete disabled"
+              aria-disabled="true"
+              title={`Referenced by ${refs.map((r) => r.name).join(", ")}. Delete the ref instead.`}
+              onClick={(e) => e.preventDefault()}
+            >
+              Delete run
+            </button>
+          )}
+          {actions && !referenced && (
+            <button
+              type="button"
+              className="page-delete"
+              title="Delete this run"
+              onClick={() => actions.onDeleteRun(actions.slug, run.id)}
+            >
+              Delete run
+            </button>
+          )}
+        </div>
+      )}
       <p className="view-kicker">Eval run</p>
       <div className="run-title-row">
         {title !== null ? (
@@ -973,13 +981,13 @@ function RunHeader({
                   />
                 </>
               )}
-              {r.name !== "baseline" && (
+              {actions && r.name !== "baseline" && (
                 <button
                   type="button"
                   className="ref-chip-delete"
                   title={`Delete ref ${r.name} and the runs only it reaches`}
                   aria-label={`Delete ref ${r.name}`}
-                  onClick={() => onDeleteRef(slug, r.name)}
+                  onClick={() => actions.onDeleteRef(actions.slug, r.name)}
                 >
                   ✕
                 </button>
@@ -1049,10 +1057,12 @@ function RunHeader({
           </span>
         )}
       </div>
-      <p className="hint">
-        <span className="kbd">⌘/Ctrl</span>+click another run or ref in the
-        sidebar to compare this run against it.
-      </p>
+      {!standalone && (
+        <p className="hint">
+          <span className="kbd">⌘/Ctrl</span>+click another run or ref in the
+          sidebar to compare this run against it.
+        </p>
+      )}
     </header>
   );
 }

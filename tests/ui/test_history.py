@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from evaltrack.core.run_record import RUN_SCHEMA_VERSION, RunRecord
 from evaltrack.repositories import RunRepository, promote
-from evaltrack.ui import MountedRepository, create_app
+from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_repeat_round, make_round
 from ..fakes import MemoryStore

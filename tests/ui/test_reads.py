@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from evaltrack.core.run_record import RUN_SCHEMA_VERSION
 from evaltrack.repositories import RunRepository
-from evaltrack.ui import MountedRepository, create_app
+from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_crash_round, make_round
 from ..fakes import MemoryStore

@@ -51,8 +51,43 @@ the eval runner's own result objects back into that runner's tooling when the ru
 available in Python — see [Reading runs from Python].
 
 **Exit codes:** `0` when the run was exported. `1` when the named repository does not hold the run,
-and the error names that repository. `2` when no repository is named. No other command exits
+and the error names that repository. `2` when no repository is named. Only `report` shares
 [`1`](#exit-codes), so a script can act on the missing run alone.
+
+## evaltrack report
+
+Writes a recorded run as one HTML file that shows it the way the dashboard does, with the run
+embedded in the page. It opens from disk, with no server and no network, so it can be attached to a
+CI job or a release. Name the run with `--run-id`, or with `--ref` to take the run a ref points at.
+
+```bash
+evaltrack report --ref pr/482 --against baseline --output evaltrack-report.html
+```
+
+`--against` embeds a second run and opens the page on the changes from that run to the reported one,
+the way **Compare to mainline** does in the dashboard. A value that is a run id names a run,
+anything else a ref. Without it the page shows the one run, with the reliability history the
+repository's [`baseline`] gives it. When the repository does not hold the `--against` target, or it
+is the reported run itself, the page shows the one run too, and a warning on stderr says why. A
+project's first pull request has no `baseline` yet, and its job still gets a report. The reader can
+inspect cases and attempts in the page but not delete, download or navigate, since nothing behind
+the page can answer.
+
+The eval runner's own result objects are not in the page. `export` has them. The page holds every
+input and output the run recorded, so share it as you would the run.
+
+`--output` defaults to `evaltrack-report.html` in the working directory, and `-` writes the page to
+stdout. Like `push` and `promote`, the command reads the configured remote unless a repository flag
+names another. Its place is the CI job, where the remote is already named and holds the PR refs and
+the `baseline` the report compares against, so the job need not name it again. `runs`, `refs` and
+`export` are for looking into a repository by hand, and there the flag says which one you are
+looking at.
+
+PR numbers in the page are plain text. The page does not apply `pr_url_template`.
+
+**Exit codes:** `0` when the report was written. `1` when the named repository does not hold the run
+or the ref, and the error names that repository. Nothing is written then. `2` when no repository is
+named, or the page template is missing because the frontend was not built.
 
 ## evaltrack ui
 
@@ -76,8 +111,9 @@ carries an **Exit codes** note.
 | `2`  | You or the environment has something to fix, and the message says what |
 | `70` | A bug in evaltrack, printed with its traceback                         |
 
-Only [`export`](#evaltrack-export) exits `1` today, for a run the repository does not hold. Please
-[report a `70`](https://github.com/jesrav/evaltrack/issues) with the traceback.
+Only [`export`](#evaltrack-export) and [`report`](#evaltrack-report) exit `1` today, for a run or
+ref the repository does not hold. Please [report a `70`](https://github.com/jesrav/evaltrack/issues)
+with the traceback.
 
 ---
 

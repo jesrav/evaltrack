@@ -1,7 +1,6 @@
-"""Dashboard UI over one or more mounted repositories. Internal. These names can
-change without notice."""
+"""Dashboard UI over one or more mounted repositories, and the single-file
+report. Internal. These names can change without notice.
 
-from evaltrack.ui.app import create_app
-from evaltrack.ui.models import MountedRepository
-
-__all__ = ["MountedRepository", "create_app"]
+The app is in `evaltrack.ui.app`, imported on use because it needs the `[ui]`
+extra. The report does not.
+"""

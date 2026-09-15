@@ -7,7 +7,6 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from evaltrack.core.errors import RunReferencedError
-from evaltrack.core.refs import BASELINE_REF, ReflogEntry
 from evaltrack.core.run_record import (
     RunRecord,
     dump_run_json,
@@ -18,6 +17,7 @@ from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unre
 from evaltrack.ui.models import MainlineEntry
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.security import reject_cross_origin_write
+from evaltrack.ui.views import find_mainline_entry
 
 
 def _load_run_or_404(repo: RunRepository, run_id: str) -> RunRecord:
@@ -69,18 +69,7 @@ def build_runs_router(
         ensure_run_id(run_id)
         if mainline is None:
             return None
-        match: ReflogEntry | None = None
-        for entry in mainline.get_reflog(BASELINE_REF):  # oldest-first
-            if entry.run_id == run_id:
-                match = entry
-        if match is None:
-            return None
-        return MainlineEntry(
-            commit=match.commit,
-            pr=match.pr,
-            title=match.title,
-            moved_at=match.moved_at,
-        )
+        return find_mainline_entry(mainline, run_id)
 
     @router.get("/{run_id}/download")
     def download_run(slug: str, run_id: str) -> Response:  # pyright: ignore[reportUnusedFunction]

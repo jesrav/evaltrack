@@ -15,7 +15,7 @@ from evaltrack.core.run_context import RunContext
 from evaltrack.core.run_record import MarkerSettings, RunRecord, TestOutcome
 from evaltrack.core.score_bars import apply_score_bars
 from evaltrack.repositories import RunRepository
-from evaltrack.ui import MountedRepository, create_app
+from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_round
 from ..fakes import MemoryStore

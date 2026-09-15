@@ -2,10 +2,11 @@
 
 from dataclasses import dataclass
 
-from pydantic import AwareDatetime, BaseModel
+from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 from evaltrack.config import PrUrlTemplate, RepositoryRole
 from evaltrack.core.refs import Ref, ReflogEntry
+from evaltrack.core.run_record import RunRecord
 from evaltrack.history.reliability import CaseReliability
 from evaltrack.history.score_history import ScoreHistory
 from evaltrack.repositories import RunRepository, RunSummary
@@ -75,3 +76,27 @@ class RunHistory(BaseModel):
 
     reliability: dict[str, dict[str, CaseReliability]] = {}
     score_history: dict[str, list[ScoreHistory]] = {}
+
+
+class ReportData(BaseModel):
+    """What the single-file report embeds: the same shapes the API serves, so
+    the page reads them as the dashboard does.
+
+    `via` and `against_via` name the ref each run was reached by, when it was
+    one. `history` and `mainline` are measured over the run's own repository,
+    which is the report's mainline. `history` is empty for a comparison, which
+    does not render it.
+    """
+
+    # The top-level serializer decides how a non-finite score is written, and
+    # the API writes it as a string.
+    model_config = ConfigDict(ser_json_inf_nan="strings")
+
+    run: RunRecord
+    via: str | None = None
+    against: RunRecord | None = None
+    against_via: str | None = None
+    history: RunHistory = RunHistory()
+    mainline: MainlineEntry | None = None
+    generated_at: AwareDatetime
+    generated_by: str

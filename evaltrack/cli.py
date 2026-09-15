@@ -30,19 +30,27 @@ from evaltrack.core.errors import (
     RepositoryUnavailableError,
 )
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
-from evaltrack.core.run_record import dump_run_json, parse_run_json
+from evaltrack.core.run_record import (
+    RunRecord,
+    dump_run_json,
+    ensure_run_id,
+    parse_run_json,
+)
 from evaltrack.repositories import (
     RunRepository,
     RunSummary,
     open_repository,
     promote,
 )
+from evaltrack.ui.report import collect_report_data, render_report
 
 # The dashboard is unauthenticated, so it binds loopback only.
 _UI_HOST = "127.0.0.1"
 
 # sysexits.h EX_SOFTWARE, clear of the command exit codes.
 _EXIT_INTERNAL_ERROR = 70
+
+DEFAULT_REPORT_PATH = "evaltrack-report.html"
 
 _ISSUES_URL = "https://github.com/jesrav/evaltrack/issues"
 
@@ -256,6 +264,50 @@ def _build_parser() -> argparse.ArgumentParser:
         export, required=True, url_help="Repository path or URL the run lives in."
     )
 
+    report = sub.add_parser(
+        "report",
+        help="Write a single-file HTML report of a recorded run.",
+        allow_abbrev=False,
+        description=(
+            "Write one HTML file that shows a recorded run the way the "
+            "dashboard does, with the run embedded, so it opens anywhere "
+            "with no server and no network. With --against it shows the "
+            "changes from that run to the reported one instead."
+        ),
+    )
+    report.set_defaults(func=_cmd_report)
+    subject = report.add_mutually_exclusive_group(required=True)
+    subject.add_argument(
+        "--run-id",
+        dest="run_id",
+        help="The run id (ULID) to report.",
+    )
+    subject.add_argument(
+        "--ref",
+        default=None,
+        help="Report the run this ref points at, for example pr/123 or baseline.",
+    )
+    report.add_argument(
+        "--against",
+        default=None,
+        metavar="RUN_ID_OR_REF",
+        help="Embed this run too and render a comparison from it to the "
+        "reported run. A run id names a run, anything else a ref, so "
+        "`--against baseline` compares against the mainline. When the "
+        "repository does not hold it, the report shows the run alone and "
+        "a warning says so.",
+    )
+    _add_repository_flags(
+        report,
+        required=False,
+        url_help="Repository path or URL. Defaults to the configured remote.",
+    )
+    report.add_argument(
+        "--output",
+        default=DEFAULT_REPORT_PATH,
+        help=f"The file to write, or - for stdout (default {DEFAULT_REPORT_PATH}).",
+    )
+
     ui = sub.add_parser(
         "ui",
         help="Serve the dashboard over the configured repositories.",
@@ -463,6 +515,106 @@ def _cmd_export(args: argparse.Namespace) -> int:
         print(f"export: run {args.run_id!r} not found in {target.url}", file=sys.stderr)
         return 1
     print(dump_run_json(run).decode())
+    return 0
+
+
+@dataclass(frozen=True)
+class _NamedRun:
+    """A loaded run and the ref it was named by, when it was named by one."""
+
+    run: RunRecord
+    via: str | None
+
+
+class _RunNotFound(Exception):
+    """The repository does not hold the run a name picks. The message says
+    which name, and where it was looked for."""
+
+
+def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> _NamedRun:
+    """The run `name` picks: the tip of that ref, or the run with that id.
+
+    Raises:
+        _RunNotFound: when the repository does not hold it.
+    """
+    via: str | None = None
+    run_id = name
+    if as_ref:
+        tip = target.repository.get_ref(name)
+        if tip is None:
+            raise _RunNotFound(f"ref {name!r} not found in {target.url}")
+        via, run_id = name, tip.run_id
+    run = target.repository.load_run(run_id)
+    if run is None:
+        held_by = f" (the tip of ref {name!r})" if as_ref else ""
+        raise _RunNotFound(f"run {run_id!r} not found in {target.url}{held_by}")
+    return _NamedRun(run, via)
+
+
+def _names_a_run_id(value: str) -> bool:
+    try:
+        ensure_run_id(value)
+    except InvalidIdentifierError:
+        return False
+    return True
+
+
+def _load_comparison(
+    target: _OpenedRepository, subject: _NamedRun, *, against: str
+) -> _NamedRun | None:
+    """The run to compare `subject` against, or None, with a warning printed,
+    when there is no comparison to make. A project's first pull request has no
+    `baseline` yet, and a report of the run alone beats none in its artifacts."""
+    # A canonical run id can only be a run id. A ref cannot tell the two
+    # apart, so a ref named like one is unreachable here.
+    try:
+        loaded = _load_named_run(target, against, as_ref=not _names_a_run_id(against))
+    except _RunNotFound as exc:
+        print(
+            f"warning: {exc}, so the report shows run {subject.run.id} alone",
+            file=sys.stderr,
+        )
+        return None
+    if loaded.run.id == subject.run.id:
+        print(
+            f"warning: {against!r} is run {subject.run.id} itself, so the report "
+            "shows it alone rather than against itself",
+            file=sys.stderr,
+        )
+        return None
+    return loaded
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    target = _open_resolved_repository(args)
+    try:
+        if args.run_id is not None:
+            subject = _load_named_run(target, args.run_id, as_ref=False)
+        else:
+            subject = _load_named_run(target, args.ref, as_ref=True)
+    except _RunNotFound as exc:
+        # Like a missing export, a defined outcome, so exit 1.
+        print(f"report: {exc}", file=sys.stderr)
+        return 1
+    against: _NamedRun | None = None
+    if args.against is not None:
+        against = _load_comparison(target, subject, against=args.against)
+    data = collect_report_data(
+        target.repository,
+        subject.run,
+        via=subject.via,
+        against=against.run if against else None,
+        against_via=against.via if against else None,
+    )
+    html = render_report(data)
+    if args.output == "-":
+        sys.stdout.write(html)
+        return 0
+    Path(args.output).write_text(html, encoding="utf-8")
+    what = f"run {subject.run.id}"
+    if against is not None:
+        what += f" against {against.run.id}"
+    print(f"wrote report of {what} to {args.output}")
     return 0
 
 

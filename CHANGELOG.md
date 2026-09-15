@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 [keep a changelog]: https://keepachangelog.com/en/1.1.0/
 [semantic versioning]: https://semver.org/spec/v2.0.0.html
 
+## [Unreleased]
+
+### Added
+
+- `evaltrack report`, which writes a recorded run, or a run against the baseline, as one HTML file
+  with the run embedded. It shows the run as the dashboard does and opens anywhere with no server
+  and no network, for CI artifacts and release notes. PR numbers in the page are plain text for now,
+  since the page does not apply `pr_url_template`. See [CLI › report](docs/cli.md#evaltrack-report).
+
 ## [0.2.0] - 2026-09-15
 
 ### Added
@@ -20,5 +29,6 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 The first public release. evaltrack is a pytest plugin that records, gates and tracks LLM evals. See
 the [README](README.md) to get started.
 
+[unreleased]: https://github.com/jesrav/evaltrack/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/jesrav/evaltrack/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jesrav/evaltrack/releases/tag/v0.1.0

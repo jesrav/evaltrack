@@ -1016,14 +1016,18 @@ export function App() {
             run={runA}
             via={selA.via}
             refs={refsForA}
-            slug={selA.repository}
+            actions={{
+              slug: selA.repository,
+              downloadHref: api.runDownloadUrl(selA.repository, runA.id),
+              onDeleteRun: handleDeleteRun,
+              onDeleteRef: handleDeleteRef,
+            }}
             history={extrasA?.history}
             mainline={extrasA?.mainline}
             prUrlTemplate={prUrlTemplate}
-            canCompareToBaseline={baselineForCompare !== null}
-            onCompareToBaseline={compareToBaseline}
-            onDeleteRun={handleDeleteRun}
-            onDeleteRef={handleDeleteRef}
+            onCompareToBaseline={
+              baselineForCompare !== null ? compareToBaseline : undefined
+            }
             onOpenDrawer={setDrawer}
             attemptSel={attemptSel}
             onSelectAttempt={selectAttempt}
