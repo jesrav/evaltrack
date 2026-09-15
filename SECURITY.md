@@ -9,7 +9,7 @@ Report vulnerabilities privately, not as a public issue:
 
 I will acknowledge within a few days and keep you informed about a fix.
 
-evaltrack is pre-1.0. Security fixes go to the latest `0.1.x` release.
+evaltrack is pre-1.0. Security fixes go to the latest 0.x minor.
 
 ## What a run holds
 
