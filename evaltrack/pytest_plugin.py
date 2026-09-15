@@ -72,8 +72,9 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store",
         default=None,
         dest="evaltrack_repository",
-        help="Repository to save the run into (e.g. ./.evaltrack, "
-        "azure://account/container).",
+        help="Where to save the run: a directory or a URL, e.g. ./.evaltrack, "
+        "azure://account/container[/prefix] or s3://bucket[/prefix]. Overrides "
+        "$EVALTRACK_LOCAL and [tool.evaltrack].local.",
     )
 
     group.addoption(
