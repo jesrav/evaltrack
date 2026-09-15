@@ -1,38 +1,10 @@
-"""Example 8: recording a DeepEval eval.
+"""Example 7: recording a DeepEval eval.
 
-Examples 1 to 6 use pydantic-evals. This one uses [DeepEval], the other runner
-evaltrack ships a translator for. Nothing about the marker changes. Hand
-`evaltrack.run()` the eval and it translates, records and gates.
+The same marker with a different runner. The judge is scripted, so this runs
+offline. Pass `model="gpt-4o-mini"` to `GEval` instead for a real one.
 
-DeepEval's `evaluate()` measures without failing anything, which is the shape
-evaltrack is built for. The runner scores and evaltrack decides. (DeepEval also
-has `assert_test()`, which fails a test itself. evaltrack replaces that gate
-rather than adding to it, so do not use both.)
-
-What it shows:
-
-* A `GEval` judge whose `threshold` becomes the case's **bar**. The metric set
-  it, so the case gates on it with nothing declared on the marker.
-* A metric that sets no `threshold`, which is a **score** and decides nothing
-  until `score_bars` gives it a bar. Mind the key. DeepEval reports a `GEval`
-  under `"<name> [GEval]"`, and a bar has to name the result as recorded.
-* **Naming every case.** Under pytest, DeepEval names any `LLMTestCase` you
-  left unnamed after the running test, so a whole dataset arrives under one
-  name. evaltrack refuses that rather than merging the cases, because the name
-  keys the case's pass-rate history.
-* A **sync** test. `evaluate()` is not a coroutine, so it needs no async
-  plugin.
-
-The judge is scripted, so this runs offline and deterministically. Pass
-`model="gpt-4o-mini"` to `GEval` instead and the eval is unchanged.
-
-    uv run pytest examples/test_08_deepeval.py
-    uv run evaltrack ui          # then open the recorded run
-
-`evaluate()` writes its last run to `./.deepeval`, so add that to your
-`.gitignore`.
-
-[DeepEval]: https://deepeval.com/
+    uv run pytest examples/test_07_deepeval.py
+    uv run evaltrack ui
 """
 
 from typing import Any
@@ -46,11 +18,7 @@ from deepeval.test_case import LLMTestCase, SingleTurnParams
 
 import evaltrack
 
-# --- the system under test ------------------------------------------------
-#
-# A scripted assistant stands in for the agent you are evaluating, so the
-# example needs no API key and answers the same way every run.
-
+# A scripted assistant stands in for the agent under evaluation.
 REPLIES = {
     "How do I restore a deleted photo?": (
         "Open Settings > Backups. Deleted photos are restorable for 30 days."
@@ -62,15 +30,10 @@ REPLIES = {
 }
 
 
-# --- the judge ------------------------------------------------------------
-
-
 class ScriptedJudge(DeepEvalBaseLLM):
-    """Replaces the model `GEval` calls, so the example needs no API key.
-
-    DeepEval asks a judge for a filled-in pydantic model rather than for text,
-    so answering means building whichever schema the metric passed in.
-    """
+    """Stands in for the model `GEval` calls. DeepEval asks a judge for a filled-in
+    pydantic model rather than for text, so answering means building whichever
+    schema the metric passed in."""
 
     def __init__(self, scores: dict[str, int]) -> None:
         self.scores = scores
@@ -94,12 +57,10 @@ class ScriptedJudge(DeepEvalBaseLLM):
 
 
 class Brevity(BaseMetric):
-    """A score, not a verdict: how far under 40 words the reply came in.
+    """How far under 40 words the reply came in."""
 
-    `threshold=None` is DeepEval's way of saying it gates nothing. The marker's
-    `score_bars` below is what turns it into a gate.
-    """
-
+    # A metric with no threshold gates nothing in DeepEval. The marker's
+    # `score_bars` is what gives this score a bar.
     threshold = None
 
     def measure(self, test_case: LLMTestCase, *args: Any, **kwargs: Any) -> float:
@@ -121,8 +82,8 @@ class Brevity(BaseMetric):
 
 
 def helpfulness(judge: ScriptedJudge) -> GEval:
-    """An LLM-as-judge metric. Its threshold is the bar the case must clear, and
-    DeepEval decides pass or fail against it."""
+    """An LLM judge. Its threshold is the case's bar, so it gates with nothing
+    declared on the marker."""
     return GEval(
         name="Helpfulness",
         criteria="Does the reply tell the user what to do next?",
@@ -132,13 +93,11 @@ def helpfulness(judge: ScriptedJudge) -> GEval:
     )
 
 
-# --- the eval -------------------------------------------------------------
-
-
 def support_cases() -> list[LLMTestCase]:
+    # Every case is named. Under pytest, DeepEval names an unnamed case after
+    # the running test. evaltrack refuses a dataset that arrives under one
+    # name, because the name keys the case's pass-rate history.
     return [
-        # Name every case. The name keys the case across runs, and its
-        # pass-rate history is kept under that name.
         LLMTestCase(
             name="restore-backup",
             input="How do I restore a deleted photo?",
@@ -154,18 +113,15 @@ def support_cases() -> list[LLMTestCase]:
 
 @pytest.mark.evaltrack(score_bars={"Brevity": 0.3}, eval_version="support-v1")
 def test_support_replies() -> None:
-    """Replies point at the right place, and stay short.
-
-    Both metrics are recorded. `Helpfulness [GEval]` gates on its own
-    threshold, and `Brevity` gates only because `score_bars` gave it a bar.
-    """
+    """Replies point at the right place, and stay short."""
+    # DeepEval reports a GEval as "<name> [GEval]", so a bar for it would have to
+    # use that key. Brevity is recorded under its own name.
     judge = ScriptedJudge({q: 9 for q in REPLIES})
     evaltrack.run(
         lambda: evaluate(
             test_cases=support_cases(),
             metrics=[helpfulness(judge), Brevity()],
-            # DeepEval prints a results table and a Confident AI advert on
-            # every call. A test has the recorded run for that.
+            # Silences DeepEval's results table and advert on every call.
             display_config=DisplayConfig(
                 show_indicator=False, print_results=False, inspect_after_run=False
             ),

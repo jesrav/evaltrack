@@ -1,14 +1,7 @@
-"""Example 1: the evaltrack mechanics, with no setup.
+"""Example 1: the parts of an eval, on a plain function.
 
-The task here is a plain function. That is deliberately not a realistic eval.
-You unit-test a deterministic function, you do not write an eval for it. It is
-here so you can see the moving parts with no API key and nothing to configure:
-a task, some `Case`s, an `Evaluator`, and the marker's gate and recording. Real
-evals target non-deterministic output from an LLM or an agent (example 4). The
-mechanics are the same.
-
-Run it. No API key needed. `--with` installs the async plugin for this one
-command.
+A deterministic function needs no eval. It is here so that you can see the
+parts with nothing to configure. A real eval targets an LLM or an agent.
 
     uv run --with pytest-asyncio pytest examples/test_01_function.py
     uv run evaltrack ui          # then open the recorded run
@@ -19,8 +12,6 @@ from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
 
 import evaltrack
-
-# --- the system under test: a plain, deterministic function ----------------
 
 LIMIT = 30
 
@@ -37,18 +28,14 @@ async def truncate_task(text: str) -> str:
     return truncate(text)
 
 
-# --- a custom, deterministic evaluator -------------------------------------
-
-
 class FitsLimit(Evaluator[str, str, object]):
-    """Assertion: the output is no longer than `LIMIT`.
+    """The output is no longer than `LIMIT`.
 
-    A bool `value` lands this result in the case's `assertions`. The `reason`
-    carries the measured length, so the dashboard explains a failure to a reader
-    who does not know the rule. Override `get_default_evaluation_name` to give
-    the result an explicit name. Without it, the name is the class name.
+    A bool value makes this an assertion. The reason carries the measured
+    length, so the dashboard can explain a failure.
     """
 
+    # Without this, the result is named after the class.
     def get_default_evaluation_name(self) -> str:
         return "fits_limit"
 
@@ -60,9 +47,8 @@ class FitsLimit(Evaluator[str, str, object]):
         )
 
 
-# A bare marker is the strict gate: every case must pass every assertion. The
-# marker also records the run (to ./.evaltrack by default) and raises if the task
-# or an evaluator throws.
+# A bare marker is the strict gate. Every case must pass every assertion. The
+# marker also records the run, to ./.evaltrack by default.
 @pytest.mark.evaltrack
 @pytest.mark.asyncio
 async def test_truncate() -> None:
@@ -79,5 +65,5 @@ async def test_truncate() -> None:
         ],
         evaluators=[FitsLimit()],
     )
-    # The marker runs the gate after evaluate(), so no manual assert is needed.
+    # The marker runs the gate after evaluate(), so the test needs no assert.
     await evaltrack.run_async(dataset.evaluate, truncate_task)
