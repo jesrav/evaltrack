@@ -880,7 +880,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://github.com/jesrav/evaltrack/blob/main/CONTRIBUTING.md" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1066,17 +1066,20 @@ stopping as soon as every case has passed. A round is one pass over the whole ev
 gives every case it runs one more attempt. A case that has already passed is settled. A later round
 cannot un-pass it.</p>
 <p>A rerun here is another round of the eval inside the same test, not pytest running the test again.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run the eval up to two extra times while a case is failing. The test passes if all cases pass.</span>
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">evaltrack</span><span class="p">(</span><span class="n">flake_reruns</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">evaltrack</span><span class="p">(</span><span class="n">flake_reruns</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># (1)!</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_addition</span><span class="p">(</span><span class="n">my_agent_task</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="s2">"addition"</span><span class="p">,</span>
-        <span class="c1"># Name every case. A rerun is matched to the attempt it retries by case id.</span>
-        <span class="n">cases</span><span class="o">=</span><span class="p">[</span><span class="n">Case</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"3+5"</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="s2">"What is 3 + 5?"</span><span class="p">)],</span>
+        <span class="n">cases</span><span class="o">=</span><span class="p">[</span><span class="n">Case</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"3+5"</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="s2">"What is 3 + 5?"</span><span class="p">)],</span>  <span class="c1"># (2)!</span>
         <span class="n">evaluators</span><span class="o">=</span><span class="p">[</span><span class="n">Contains</span><span class="p">(</span><span class="s2">"8"</span><span class="p">)],</span>
     <span class="p">)</span>
     <span class="k">await</span> <span class="n">evaltrack</span><span class="o">.</span><span class="n">run_async</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">evaluate</span><span class="p">,</span> <span class="n">my_agent_task</span><span class="p">)</span>
 </code></pre></div>
+<ol>
+<li>Run the eval up to two extra times while a case is failing. The test passes if all cases pass.</li>
+<li>Name every case. A rerun is matched to the attempt it retries by case id.</li>
+</ol>
+<p>What a rerun does and does not cover:</p>
 <ul>
 <li><strong>Only a <em>verdict</em> failure gets a rerun.</strong> An exception (a bug in your code or eval, or an
   unstable service such as an LLM API) errors the test immediately. Flake reruns absorb the

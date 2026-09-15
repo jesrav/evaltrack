@@ -869,7 +869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://github.com/jesrav/evaltrack/blob/main/CONTRIBUTING.md" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1012,14 +1012,14 @@
 you already use.</p>
 <p>A <strong>translator</strong> turns a runner's results into evaltrack's own model, and everything downstream of
 the eval reads that model. Translators for pydantic-evals and DeepEval ship with evaltrack. To
-connect another runner, write a small <a href=".././translators/">translator</a>.</p>
+connect another runner that fits <a href=".././eval-shape/">the shape of an eval</a>, write a small
+<a href=".././translators/">translator</a>.</p>
 <p>The only thing that differs is how you hand evaltrack the eval. pydantic-evals' <code>evaluate</code> is a
 coroutine, so use <code>run_async</code>. DeepEval's is not, so use <code>run</code>. After that, the gate, the recorded
 run, the history and the dashboard work the same for both.</p>
 <h2 id="installing-a-runner">Installing a runner<a class="headerlink" href="#installing-a-runner" title="Permanent link">&para;</a></h2>
-<p>Install the runner you already write your evals in, and evaltrack reads what it produces. evaltrack
-depends on no runner and imports one only when that runner's results show up.</p>
-<p>An extra exists for each shipped translator, so the install is one line instead of two:</p>
+<p>evaltrack depends on no runner, so install the one you write your evals in. An extra exists for each
+shipped translator, so that is one line:</p>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">"evaltrack[deepeval]"</span><span class="w">     </span><span class="c1"># the same as adding deepeval yourself</span>
 </code></pre></div>
 <table>
@@ -1048,13 +1048,22 @@ depends on no runner and imports one only when that runner's results show up.</p
 <span class="k">def</span><span class="w"> </span><span class="nf">test_my_eval</span><span class="p">():</span>
     <span class="n">evaltrack</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">my_runner</span><span class="o">.</span><span class="n">evaluate</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
 </code></pre></div>
-<p>You hand <code>run</code> the eval, not its result, so evaltrack can call it again for another round. <code>run</code>
-takes no configuration of its own. Configuration lives on
-<a href=".././marker/#using-the-marker">the marker</a>, which decides what is recorded, gated and rerun.
-Everything you pass after the eval is passed to it on every round.</p>
+<p>You hand <code>run</code> the eval, not its result, so evaltrack can call it again for another round.
+Everything after the eval is passed to it on every round.</p>
 <h3 id="pydantic-evals">pydantic-evals<a class="headerlink" href="#pydantic-evals" title="Permanent link">&para;</a></h3>
+<p>pydantic-evals is the runner the <a href=".././getting-started/">Getting started</a> walkthrough and most of the
+examples use. A <code>Dataset</code> holds the cases and the evaluators, and <code>evaluate</code> runs a task over it.
+Hand evaltrack the method and the task, and it calls them once per round:</p>
 <div class="highlight"><pre><span></span><code><span class="k">await</span> <span class="n">evaltrack</span><span class="o">.</span><span class="n">run_async</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">evaluate</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
 </code></pre></div>
+<p>An evaluator that returns a bool is an assertion, and one that returns a number is a score, gated by
+the marker's <code>score_bars</code>. Three runnable examples:
+<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_01_function.py"><code>test_01_function.py</code></a>
+is the basics with a custom evaluator,
+<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_02_scores.py"><code>test_02_scores.py</code></a>
+gates numeric scores with <code>score_bars</code>, and
+<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_05_llm_judge.py"><code>test_05_llm_judge.py</code></a>
+uses <code>LLMJudge</code> as both a guardrail and a graded score.</p>
 <p>On Python 3.12 and 3.13, <code>evaluate_sync()</code> emits a harmless pydantic-evals
 <code>DeprecationWarning: There is no current event loop</code>, which <code>run_async()</code> does not hit. Under
 <code>filterwarnings = error</code> it fails the test, so ignore that one and keep <code>error</code> for the rest:</p>
@@ -1081,13 +1090,11 @@ on the instance afterwards, <code>threshold</code> included.</p>
 evaltrack calling the eval N times. There is no second count to set.</p>
 <p><code>evaluate()</code> writes its last run to <code>./.deepeval</code>, beside whatever evaltrack records. Add
 <code>.deepeval/</code> to your <code>.gitignore</code>.</p>
-<p>Three runnable examples:
-<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_08_deepeval.py"><code>test_08_deepeval.py</code></a>
-records and gates a run,
-<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_09_deepeval_repeats.py"><code>test_09_deepeval_repeats.py</code></a>
-adds the marker's <code>repeats=</code>, and
-<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_10_deepeval_traced.py"><code>test_10_deepeval_traced.py</code></a>
-scores the parts of a traced app with <code>@observe</code> and <code>dataset.evals_iterator()</code>.</p>
+<p>Two runnable examples:
+<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_07_deepeval.py"><code>test_07_deepeval.py</code></a>
+records and gates a run, and
+<a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_08_deepeval_repeats.py"><code>test_08_deepeval_repeats.py</code></a>
+adds the marker's <code>repeats=</code>.</p>
 <h2 id="what-each-runner-calls-these">What each runner calls these<a class="headerlink" href="#what-each-runner-calls-these" title="Permanent link">&para;</a></h2>
 <p>evaltrack uses one set of words for every runner, defined in
 <a href=".././eval-shape/">the shape of an eval</a>. A translator maps each runner's own words onto them. The
