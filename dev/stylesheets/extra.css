@@ -1,0 +1,21 @@
+/* The wordmark's blue (assets/wordmark.svg) as the theme color, in place of
+   a stock palette. */
+:root {
+  --md-primary-fg-color: #3f6fe4;
+  --md-primary-fg-color--light: #6b8ff0;
+  --md-primary-fg-color--dark: #2a52b8;
+  --md-accent-fg-color: #2a52b8;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #2a52b8;
+  --md-primary-fg-color--light: #3f6fe4;
+  --md-primary-fg-color--dark: #1f3d8a;
+  --md-accent-fg-color: #6b8ff0;
+}
+
+/* Wider than the default column, because the pages are mostly code blocks
+   and the wider ones scrolled sideways at the default width. */
+.md-grid {
+  max-width: 76rem;
+}

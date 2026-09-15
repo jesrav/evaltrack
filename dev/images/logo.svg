@@ -1,0 +1,8 @@
+<svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- The check-line glyph from assets/wordmark.svg. -->
+  <polyline points="6,28 18,40 46,12"
+            stroke="#3f6fe4" stroke-width="6.5"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="6" cy="28" r="3.8" fill="#3f6fe4"/>
+  <circle cx="46" cy="12" r="4.6" fill="#16a35a"/>
+</svg>
