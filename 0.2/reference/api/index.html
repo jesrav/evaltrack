@@ -1011,28 +1011,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.delete_ref_unchecked" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;delete_ref_unchecked
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.delete_run_unchecked" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;delete_run_unchecked
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#evaltrack.RunRepository.get_ref" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1092,28 +1070,6 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;load_run
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.move_ref" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;move_ref
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.save_run" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;save_run
       </span>
     </span>
   </a>
@@ -1382,7 +1338,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://github.com/jesrav/evaltrack/blob/main/CONTRIBUTING.md" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1719,28 +1675,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.delete_ref_unchecked" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;delete_ref_unchecked
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.delete_run_unchecked" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;delete_run_unchecked
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#evaltrack.RunRepository.get_ref" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1800,28 +1734,6 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;load_run
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.move_ref" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;move_ref
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaltrack.RunRepository.save_run" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;save_run
       </span>
     </span>
   </a>
@@ -3934,55 +3846,6 @@ serve the request.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="evaltrack.RunRepository.delete_ref_unchecked" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">delete_ref_unchecked</span>
-
-
-<a href="#evaltrack.RunRepository.delete_ref_unchecked" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">delete_ref_unchecked</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Delete a ref by deleting its reflog. A name that does not exist is a
-no-op.</p>
-<p>This is the storage primitive, not the way to remove a ref. It skips
-every guard <code>delete_ref_and_orphaned_runs</code> applies, <code>baseline</code> included.
-Runs that only this ref reached stay stored, and nothing reclaims them.</p>
-<p>It reads no history, so it can still drop a ref whose reflog no longer
-parses.</p>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="evaltrack.RunRepository.delete_run_unchecked" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">delete_run_unchecked</span>
-
-
-<a href="#evaltrack.RunRepository.delete_run_unchecked" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">delete_run_unchecked</span><span class="p">(</span><span class="n">run_id</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Delete one run. The id if deleted, <code>None</code> if it did not exist.</p>
-<p>This is the storage primitive. It does not ask whether a ref still
-reaches the run, so a delete here can leave a ref that points at nothing.
-<code>delete_run_if_unreferenced</code> is the way to remove a run.</p>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
 <h3 id="evaltrack.RunRepository.get_ref" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">get_ref</span>
 
@@ -4219,128 +4082,6 @@ this version does not read is skipped.</p>
               <div class="doc-md-description">
                 <p>when the run was recorded under a schema
 this version does not read. The stored run is intact.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="evaltrack.RunRepository.move_ref" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">move_ref</span>
-
-
-<a href="#evaltrack.RunRepository.move_ref" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">move_ref</span><span class="p">(</span>
-    <span class="n">name</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">,</span>
-    <span class="n">run_id</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">,</span>
-    <span class="o">*</span><span class="p">,</span>
-    <span class="n">commit</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">pr</span><span class="p">:</span> <span class="n"><span title="int">int</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">title</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;ReflogEntry&lt;/span&gt;" href="./#evaltrack.ReflogEntry">ReflogEntry</a></span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Repoint a ref and append a reflog entry, atomically. The ref is created if
-absent.</p>
-<p>Idempotent, so a move to the run the ref already points at appends no
-entry, and records none of the metadata passed with it.</p>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;ReflogEntry&lt;/span&gt;" href="./#evaltrack.ReflogEntry">ReflogEntry</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The ref's tip entry after the move.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-<p><span class="doc-section-title">Raises:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;InvalidIdentifierError&lt;/span&gt;" href="./#evaltrack.InvalidIdentifierError">InvalidIdentifierError</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>when no ref can be stored under <code>name</code>, or
-<code>run_id</code> is not a valid run id.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="evaltrack.RunRepository.save_run" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">save_run</span>
-
-
-<a href="#evaltrack.RunRepository.save_run" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">save_run</span><span class="p">(</span><span class="n">run</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;RunRecord&lt;/span&gt;" href="./#evaltrack.RunRecord">RunRecord</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Save a run. A save under an existing <code>run.id</code> replaces the stored run.
-Content is not compared, so an id must never be reused for different
-content.</p>
-
-
-<p><span class="doc-section-title">Raises:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;code class=&quot;doc-symbol doc-symbol-heading doc-symbol-class&quot;&gt;&lt;/code&gt;            &lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;RepositoryUnavailableError&lt;/span&gt;" href="./#evaltrack.RepositoryUnavailableError">RepositoryUnavailableError</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>when the storage cannot serve the write.</p>
               </div>
             </td>
           </tr>
@@ -5091,8 +4832,8 @@ If you change one loop, change the other.</p>
     </div>
 
 </div><h2 id="extension-surface">Extension surface<a class="headerlink" href="#extension-surface" title="Permanent link">&para;</a></h2>
-<p>A translator turns an eval runner's own result into an <code>EvalRound</code>. Registering one is how another
-runner joins pydantic-evals and DeepEval. See <a href="../../translators/">Translators</a>.</p>
+<p>A translator turns an eval runner's result into an <code>EvalRound</code>. Registering another runner allows
+you to use that runner with evaltrack. See <a href="../../translators/">Translators</a>.</p>
 
 
 <div class="doc doc-object doc-function">

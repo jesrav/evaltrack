@@ -861,7 +861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://github.com/jesrav/evaltrack/blob/main/CONTRIBUTING.md" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1040,10 +1040,8 @@ plugin.</p>
             <span class="n">Case</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"restore-backup"</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="s2">"How do I restore a backup?"</span><span class="p">),</span>
         <span class="p">],</span>
         <span class="n">evaluators</span><span class="o">=</span><span class="p">[</span>
-            <span class="c1"># An assertion: must be true, or the case fails.</span>
-            <span class="n">LLMJudge</span><span class="p">(</span><span class="n">rubric</span><span class="o">=</span><span class="s2">"The reply neither promises nor rules out a refund"</span><span class="p">,</span> <span class="n">include_input</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-            <span class="c1"># A score, gated at 0.8 by the marker's score bar.</span>
-            <span class="n">LLMJudge</span><span class="p">(</span>
+            <span class="n">LLMJudge</span><span class="p">(</span><span class="n">rubric</span><span class="o">=</span><span class="s2">"The reply neither promises nor rules out a refund"</span><span class="p">,</span> <span class="n">include_input</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># (1)!</span>
+            <span class="n">LLMJudge</span><span class="p">(</span>  <span class="c1"># (2)!</span>
                 <span class="n">rubric</span><span class="o">=</span><span class="p">(</span>
                     <span class="s2">"Rate how helpful and clear the reply is, from 0.0 to 1.0. "</span>
                     <span class="s2">"Declining to promise a refund is not unhelpful."</span>
@@ -1055,10 +1053,14 @@ plugin.</p>
         <span class="p">],</span>
     <span class="p">)</span>
 
-    <span class="c1"># The marker gates here: a failed assertion, or a score under 0.8, fails the test.</span>
-    <span class="c1"># `flake_reruns=2` runs the eval again while a case is failing, up to twice.</span>
-    <span class="n">evaltrack</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">evaluate_sync</span><span class="p">,</span> <span class="n">support_task</span><span class="p">)</span>
+    <span class="n">evaltrack</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">evaluate_sync</span><span class="p">,</span> <span class="n">support_task</span><span class="p">)</span>  <span class="c1"># (3)!</span>
 </code></pre></div>
+<ol>
+<li>An assertion: it must be true, or the case fails.</li>
+<li>A score, gated at 0.8 by the marker's <code>score_bars</code>.</li>
+<li>The marker gates here: a failed assertion, or a score under 0.8, fails the test. <code>flake_reruns=2</code>
+   runs the eval again while a case is failing, up to twice.</li>
+</ol>
 <p>The agent and the two LLM judges all call a real model, so this test needs an API key (here
 <code>OPENAI_API_KEY</code>). The <a href=".././examples/">examples</a> run without one — <a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_05_llm_judge.py"><code>test_05_llm_judge.py</code></a> is
 the same pattern, an <code>LLMJudge</code> guardrail plus a <code>score_bars</code>-gated score, with the model and the

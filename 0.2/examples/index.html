@@ -596,49 +596,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#no-llm-calls-no-api-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        No LLM calls, no API keys
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#evaluating-agents" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Evaluating agents
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Evaluating agents">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#making-a-faked-tools-setup-visible-test_06" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Making a faked tool's setup visible (test_06)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-them" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Run them
       </span>
     </span>
   </a>
@@ -869,7 +830,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://github.com/jesrav/evaltrack/blob/main/CONTRIBUTING.md" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -929,49 +890,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#no-llm-calls-no-api-keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        No LLM calls, no API keys
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#evaluating-agents" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Evaluating agents
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Evaluating agents">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#making-a-faked-tools-setup-visible-test_06" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Making a faked tool's setup visible (test_06)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-them" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Run them
       </span>
     </span>
   </a>
@@ -1008,26 +930,13 @@
 
 
 <h1 id="evaltrack-examples">evaltrack examples<a class="headerlink" href="#evaltrack-examples" title="Permanent link">&para;</a></h1>
-<p>Small, runnable evals that double as documentation. Each file is a self-contained pytest module that
-uses the <code>@pytest.mark.evaltrack</code> marker. The marker records the run (to <code>./.evaltrack</code> by default).</p>
-<p>Examples 1 to 6 are <code>async def</code> tests marked with <code>@pytest.mark.asyncio</code>, so they need
-<a href="https://pytest-asyncio.readthedocs.io/">pytest-asyncio</a>. The <a href="#run-them">command below</a> installs it
-for one run. Examples 7 to 10 are sync and need no async plugin.</p>
-<p>Your own evals can use any async plugin.
-<a href="https://anyio.readthedocs.io/en/stable/testing.html">anyio</a> uses <code>@pytest.mark.anyio</code> instead.</p>
-<blockquote>
-<p><strong>On pydantic-ai.</strong> The agent examples (4 to 6) use <a href="https://ai.pydantic.dev/">pydantic-ai</a>, but
-evaltrack does not require it. A pydantic-ai <code>FunctionModel</code> stands in for a real model. Examples
-1 to 6 record <a href="https://ai.pydantic.dev/evals/">pydantic-evals</a> runs, and pydantic-evals evaluates
-<em>any</em> callable, a plain function (examples 1 to 3) or an agent or LLM call from any framework.
-Examples 7 to 10 use no pydantic-evals at all.</p>
-</blockquote>
-<h2 id="no-llm-calls-no-api-keys">No LLM calls, no API keys<a class="headerlink" href="#no-llm-calls-no-api-keys" title="Permanent link">&para;</a></h2>
-<p>Every example runs offline, so CI runs them all. Examples 1 to 3 and 7 evaluate plain Python.
-Deterministic code does not normally need an eval, but these examples show the mechanics with
-nothing to configure. Examples 4 to 6 evaluate pydantic-ai agents, and 8 to 10 DeepEval test cases,
-whose model replies and judges are scripted, so they run without a key too. The
-<a href="#evaluating-agents">next section</a> says how to run them against a real model.</p>
+<p>Small, runnable evals that double as documentation. Each file is a self-contained pytest module with
+the <code>@pytest.mark.evaltrack</code> marker. Every example runs offline. The models and judges are scripted,
+so no API key is needed.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>pytest-asyncio<span class="w"> </span>pytest<span class="w"> </span>examples/<span class="w">   </span><span class="c1"># examples 1 to 6 are async tests</span>
+uv<span class="w"> </span>run<span class="w"> </span>evaltrack<span class="w"> </span>ui<span class="w">                             </span><span class="c1"># open the dashboard on the recorded runs</span>
+</code></pre></div>
+<p>To run one example, give its path instead of <code>examples/</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1038,77 +947,59 @@ whose model replies and judges are scripted, so they run without a key too. The
 <tbody>
 <tr>
 <td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_01_function.py"><code>test_01_function.py</code></a></td>
-<td>The basics: a function under test, a custom assertion evaluator, and the marker's gate and recording.</td>
+<td>The parts of an eval on a plain function: a task, cases, an evaluator, and the marker's gate.</td>
 </tr>
 <tr>
 <td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_02_scores.py"><code>test_02_scores.py</code></a></td>
-<td>Numeric scores + per-case <code>score_bars</code>, dataset- vs per-case evaluators, and reading <code>Case.metadata</code>.</td>
+<td>Scores and <code>score_bars</code>, evaluators on the dataset or on one case, and <code>Case.metadata</code>.</td>
 </tr>
 <tr>
 <td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_03_reliability.py"><code>test_03_reliability.py</code></a></td>
-<td>Absorbing a flaky failure with <code>flake_reruns</code>, plus <code>reliability_target</code> and <code>eval_version</code> for cross-run tracking. The flakiness is faked, so a rerun always happens.</td>
+<td>A flaky case absorbed by <code>flake_reruns</code>, with <code>reliability_target</code> and <code>eval_version</code>.</td>
 </tr>
 <tr>
 <td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_04_agent_tool_use.py"><code>test_04_agent_tool_use.py</code></a></td>
-<td>Evaluating tool use: the agent calls a tool only when the query needs it (<code>ToolCalled</code> / <code>NoToolCalled</code>, per-case).</td>
+<td>An agent that must call its tool only when the question needs it.</td>
 </tr>
 <tr>
 <td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_05_llm_judge.py"><code>test_05_llm_judge.py</code></a></td>
-<td><code>LLMJudge</code> grading the output as a binary assertion (a guardrail) and a graded score (gated by <code>score_bars</code>), plus a cheap deterministic check. One case misses the bar on purpose.</td>
+<td>An LLM judge as a must-pass assertion and as a score gated by <code>score_bars</code>. One case fails on purpose.</td>
 </tr>
 <tr>
 <td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_06_fake_tool_in_inputs.py"><code>test_06_fake_tool_in_inputs.py</code></a></td>
-<td>Making a faked tool's data visible in the run by seeding it from <code>Case.inputs</code> instead of a fixture, so the dashboard shows what the agent could retrieve.</td>
+<td>A faked tool's documents put in <code>Case.inputs</code>, so the run shows what the agent could search.</td>
 </tr>
 <tr>
-<td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_07_other_eval_runner.py"><code>test_07_other_eval_runner.py</code></a></td>
-<td>Recording a made-up eval runner: a translator plus <code>evaltrack.run()</code>. Not an async test, so it needs no async plugin.</td>
+<td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_07_deepeval.py"><code>test_07_deepeval.py</code></a></td>
+<td>A DeepEval <code>evaluate()</code> recorded and gated. A metric's threshold is its bar, and <code>score_bars</code> gives a bar to one without.</td>
 </tr>
 <tr>
-<td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_08_deepeval.py"><code>test_08_deepeval.py</code></a></td>
-<td>A <a href="https://deepeval.com/">DeepEval</a> <code>evaluate()</code> recorded and gated: a <code>GEval</code> judge's threshold and verdict as the case's bar, a metric with no threshold gated by <code>score_bars</code>.</td>
+<td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_08_deepeval_repeats.py"><code>test_08_deepeval_repeats.py</code></a></td>
+<td><code>repeats=N</code> over DeepEval, which has no repeat of its own. One case fails a round, so the test fails.</td>
 </tr>
 <tr>
-<td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_09_deepeval_repeats.py"><code>test_09_deepeval_repeats.py</code></a></td>
-<td>The marker's <code>repeats=N</code> over a runner with no repeat of its own: evaltrack calls <code>evaluate()</code> N times and demands every attempt passes. One case fails a round, so the test fails.</td>
-</tr>
-<tr>
-<td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_10_deepeval_traced.py"><code>test_10_deepeval_traced.py</code></a></td>
-<td>Scoring the parts of a traced app: <code>@observe</code> metrics, driving <code>dataset.evals_iterator()</code>, and naming every scored span so two cases never share an id.</td>
+<td><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_09_other_eval_runner.py"><code>test_09_other_eval_runner.py</code></a></td>
+<td>A translator for a runner evaltrack does not know, registered from the test file.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="evaluating-agents">Evaluating agents<a class="headerlink" href="#evaluating-agents" title="Permanent link">&para;</a></h2>
-<p>Examples 4 to 6 evaluate pydantic-ai agents, their tool use and their output quality. The agent, its
-tools, the dataset and the evaluators are what you write for a real model. Only the model is a
-stand-in, a pydantic-ai <a href="https://ai.pydantic.dev/testing/"><code>FunctionModel</code></a> with replies scripted in
-the example file. In example 5, the judge is one too. This stand-in makes the examples deterministic
-and runnable in CI. It is also what you lose. The model never surprises you.</p>
+<p>Examples 4 to 6 evaluate <a href="https://ai.pydantic.dev/">pydantic-ai</a> agents. evaltrack does not require
+pydantic-ai, and pydantic-evals evaluates any callable. The agent, its tools, the dataset and the
+evaluators are what you write for a real model. Only the model is a stand-in, a
+<a href="https://ai.pydantic.dev/testing/"><code>FunctionModel</code></a> with scripted replies. In example 5, the judge
+is one too.</p>
 <p>To run one against a real model, pass a model string such as <code>"openai:gpt-4o-mini"</code> to <code>Agent(...)</code>.
 In example 5, pass it to <code>LLMJudge(model=...)</code> too. Then remove the <code>ALLOW_MODEL_REQUESTS = False</code>
-line. Set the provider's key:</p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w">                  </span><span class="c1"># dev deps include pydantic-ai-slim[openai]</span>
+line and set the provider's key:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w">                  </span><span class="c1"># the dev group includes pydantic-ai-slim[openai]</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span>sk-...
 </code></pre></div>
-<h3 id="making-a-faked-tools-setup-visible-test_06">Making a faked tool's setup visible (test_06)<a class="headerlink" href="#making-a-faked-tools-setup-visible-test_06" title="Permanent link">&para;</a></h3>
-<p><a href="https://github.com/jesrav/evaltrack/blob/main/examples/test_06_fake_tool_in_inputs.py"><code>test_06_fake_tool_in_inputs.py</code></a>
-seeds a faked document store from <code>Case.inputs</code> rather than from a fixture, so the run records what
-the agent could retrieve. Its docstring says why. This is what that looks like in the dashboard:</p>
-<p><img alt="Dashboard: a case opened to show the faked document store in its input, and the answer the agent grounded in it" src="https://raw.githubusercontent.com/jesrav/evaltrack/main/examples/images/fake-tool-input.png" /></p>
-<h2 id="run-them">Run them<a class="headerlink" href="#run-them" title="Permanent link">&para;</a></h2>
-<p><code>--with</code> installs the async plugin for that one command. To run a single example, replace
-<code>examples/</code> with its file path.</p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>pytest-asyncio<span class="w"> </span>pytest<span class="w"> </span>examples/
-uv<span class="w"> </span>run<span class="w"> </span>evaltrack<span class="w"> </span>ui<span class="w">   </span><span class="c1"># open the dashboard on the recorded runs</span>
-</code></pre></div>
 <h2 id="in-the-dashboard">In the dashboard<a class="headerlink" href="#in-the-dashboard" title="Permanent link">&para;</a></h2>
-<p>After you run some examples, <code>evaltrack ui</code> shows each run with its per-case verdicts, scores, and
-the test docstring as context.</p>
+<p><code>evaltrack ui</code> shows each run with its per-case verdicts, scores, and the test docstring as context.</p>
 <p><img alt="Dashboard: an example run: the case table with pass/fail pills, per-case metadata, scores against their bars, and the docstring under the test header" src="https://raw.githubusercontent.com/jesrav/evaltrack/main/examples/images/run-detail.png" /></p>
-<p>Every example is deterministic. Examples 5, 7 and 9 each fail on purpose (5 misses a score bar, 7
-misses a runner's bar, 9 answers one of its rounds wrong), and all three have an <code>xfail</code> mark, so
-the suite stays green. To see a failure in the others, raise a <code>score_bars</code> bar or change a case's
-expected value.</p>
+<p>Examples 5, 8 and 9 fail on purpose and carry an <code>xfail</code> mark, so the suite stays green. To see a
+failure in the others, raise a <code>score_bars</code> bar or change a case's expected value.</p>
 <p><img alt="Dashboard: a case failing on a tightened score bar, with the score in red against the bar it missed" src="https://raw.githubusercontent.com/jesrav/evaltrack/main/examples/images/failing-case.png" /></p>
 
 
