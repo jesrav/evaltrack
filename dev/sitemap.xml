@@ -1,48 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/getting-started/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/getting-started/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/eval-shape/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/eval-shape/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/marker/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/marker/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/flakiness/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/flakiness/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/eval-runners/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/eval-runners/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/translators/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/translators/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/repositories/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/repositories/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/ci-cd/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/ci-cd/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/examples/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/examples/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/cli/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/cli/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/configuration/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/configuration/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/reference/api/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/reference/api/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/changelog/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/changelog/</loc>
       </url>
       <url>
-        <loc>https://evaltrack.jesravnbol.dk/dev/roadmap/</loc>
+        <loc>https://evaltrack.jesravnbol.dk/latest/roadmap/</loc>
       </url>
 </urlset>
