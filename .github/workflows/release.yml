@@ -60,3 +60,33 @@ jobs:
           name: dist
           path: dist
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+
+  # The versioned docs follow the package: a release that never reached PyPI
+  # gets no docs, and a docs failure cannot block the publish. `latest` moves
+  # to this version. `dev` is docs.yml's, built from main.
+  deploy-docs:
+    if: github.event_name == 'release'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # docs.yml pushes to the same branch, so the two never push at once.
+    concurrency:
+      group: gh-pages
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --no-default-groups --group docs
+      # mike commits on top of the remote branch, so it has to be fetched first.
+      - run: git fetch origin gh-pages --depth=1
+      - name: Deploy the docs for this minor version
+        env:
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        # check-tag already verified that this is the released version.
+        run: |
+          version=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          minor="${version%.*}"
+          uv run mike deploy --push --update-aliases "$minor" latest

@@ -129,6 +129,19 @@ jobs:
   build:
     uses: ./.github/workflows/build-dist.yml
 
+  # The strict build fails on a broken link or an unresolved docstring
+  # cross-reference, so a PR cannot leave the site broken. Deploys are in
+  # docs.yml (dev, from main) and release.yml (a version, after publish).
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --no-default-groups --group docs
+      - run: uv run zensical build --strict
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

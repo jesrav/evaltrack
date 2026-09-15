@@ -74,3 +74,10 @@ merged, publish a GitHub release with the tag `v<version>` and the changelog sec
 That runs `release.yml`, which refuses a tag that does not match the declared version, builds and
 smoke-tests the distribution, and uploads it to PyPI through the `pypi` environment. Releasing needs
 write access to the repository and approval on that environment.
+
+Once the package is on PyPI, the same workflow deploys the docs for the release's minor version
+(`0.2` for `0.2.x`) and moves `latest` to it. `dev` is deployed from `main` on every push. Both go
+to the `gh-pages` branch through [mike]. The branch, the Pages settings and the DNS record were set
+up once by hand.
+
+[mike]: https://github.com/squidfunk/mike
