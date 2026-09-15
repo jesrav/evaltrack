@@ -51,7 +51,8 @@ _ISSUES_URL = "https://github.com/jesrav/evaltrack/issues"
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run one invocation and return the exit code (`docs/cli.md` lists them)."""
+    """Run one invocation and return the exit code ([`docs/cli.md`][exit-codes] lists
+    them)."""
     args = _build_parser().parse_args(argv)
     try:
         # Every subparser stores its handler, and the parser refuses a session

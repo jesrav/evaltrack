@@ -32,3 +32,7 @@ dist/
 # directory, so `node_modules/` does not match it and it lands in a commit.
 node_modules
 evaltrack/ui/static/
+
+# documentation site build output
+site/
+site-fallback/

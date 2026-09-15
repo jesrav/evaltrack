@@ -44,6 +44,18 @@ Locally, the Azure tests use `az login`. The S3 tests use the AWS profile that `
 Run `AWS_PROFILE=<profile> just integration_test`, or put `AWS_PROFILE=<profile>` in a `.env` file.
 The justfile loads that file and git ignores it.
 
+## Documentation
+
+The guides in `docs/` are the source. The site at
+[evaltrack.jesravnbol.dk](https://evaltrack.jesravnbol.dk) is built from them with Zensical, plus an
+API reference from the docstrings.
+
+```bash
+just docs_build       # strict: a broken link or docstring cross-reference fails it, as in CI
+just docs_serve       # live preview on http://localhost:8000
+just docs_fallback    # the same site with MkDocs and mkdocs-material, which must keep working
+```
+
 ## Conventions
 
 - Branch off `main`. A pre-commit hook blocks direct commits to `main`.

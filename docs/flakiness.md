@@ -29,17 +29,20 @@ cannot un-pass it.
 A rerun here is another round of the eval inside the same test, not pytest running the test again.
 
 ```python
-# Run the eval up to two extra times while a case is failing. The test passes if all cases pass.
-@pytest.mark.evaltrack(flake_reruns=2)
+@pytest.mark.evaltrack(flake_reruns=2)  # (1)!
 async def test_addition(my_agent_task) -> None:
     dataset = Dataset(
         name="addition",
-        # Name every case. A rerun is matched to the attempt it retries by case id.
-        cases=[Case(name="3+5", inputs="What is 3 + 5?")],
+        cases=[Case(name="3+5", inputs="What is 3 + 5?")],  # (2)!
         evaluators=[Contains("8")],
     )
     await evaltrack.run_async(dataset.evaluate, my_agent_task)
 ```
+
+1. Run the eval up to two extra times while a case is failing. The test passes if all cases pass.
+2. Name every case. A rerun is matched to the attempt it retries by case id.
+
+What a rerun does and does not cover:
 
 - **Only a _verdict_ failure gets a rerun.** An exception (a bug in your code or eval, or an
   unstable service such as an LLM API) errors the test immediately. Flake reruns absorb the
@@ -90,9 +93,9 @@ the test, and it is not a flakiness sample.
 
 ### Which runs pool
 
-The pooled runs are the **mainline**, the runs [`baseline`] has pointed at, in a window of the 50
-most recent entries in its [reflog](./repositories.md#ref). Runs from assorted PR tips and local
-branches do not pool.
+The pooled runs are the **mainline**, the runs [`baseline`][baseline] has pointed at, in a window of
+the 50 most recent entries in its [reflog](./repositories.md#ref). Runs from assorted PR tips and
+local branches do not pool.
 
 The pooled rate is always the mainline's (your deploy history). The run you view (a PR run or a
 local run) is _not_ folded into it, so the number keeps its meaning of "how reliable is this eval on
@@ -126,4 +129,4 @@ History is also keyed by the case id, the name you gave it. Give every case one
 
 [configuration]: ./configuration.md#marker-keyword-arguments
 [case]: ./eval-shape.md
-[`baseline`]: ./repositories.md#baseline-and-mainline
+[baseline]: ./repositories.md#baseline-and-mainline
