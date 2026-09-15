@@ -40,6 +40,9 @@ interface Props {
   /** True on a page with no sidebar to pick another view from, the static
    *  report, which then gives no hint about one. */
   standalone?: boolean;
+  /** The comparison as the single-file report, to share with someone without
+   *  the dashboard. Absent on a page that cannot serve one. */
+  reportHref?: string;
   onSwap: () => void;
   onOpenDrawer: (content: DrawerContent) => void;
 }
@@ -51,6 +54,7 @@ export function RunDiff({
   viaA,
   viaB,
   standalone,
+  reportHref,
   onSwap,
   onOpenDrawer,
 }: Props) {
@@ -85,6 +89,18 @@ export function RunDiff({
 
   return (
     <div>
+      {reportHref && (
+        <div className="page-actions">
+          <a
+            className="page-action"
+            href={reportHref}
+            download
+            title="Save this comparison as a single-file HTML report that opens anywhere, to share with someone without the dashboard"
+          >
+            ↓ Report
+          </a>
+        </div>
+      )}
       <header className="view-title">
         <h1>Eval run comparison</h1>
         <p className="hint">

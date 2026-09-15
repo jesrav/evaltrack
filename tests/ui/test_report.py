@@ -9,12 +9,13 @@ from pathlib import Path
 import pytest
 
 import evaltrack.ui.report as report_module
+from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import ReportData
 from evaltrack.ui.report import collect_report_data, render_report
 
 from ..factories import make_attempt, make_round
-from ..fakes import MemoryStore
+from ..fakes import MemoryStore, RaisingStore
 from .conftest import make_recorded_run
 
 # What a built page carries: the element the CLI fills, inside markup the
@@ -152,7 +153,7 @@ def test_collected_data_drops_raw_results_and_finds_the_mainline() -> None:
     repo.move_ref("baseline", run.id, commit="main-0", pr=3, title="Land it")
     assert run.tests["test_x"].raw_results, "the fixture records raw results"
 
-    data = collect_report_data(repo, run, via="baseline")
+    data = collect_report_data(repo, run, mainline=repo, via="baseline")
 
     assert data.run.tests["test_x"].raw_results == []
     assert data.mainline is not None
@@ -176,7 +177,7 @@ def test_collected_history_is_measured_over_the_repository_baseline() -> None:
     viewed = make_recorded_run(make_round(), commit="pr", reliability_target=0.9)
     repo.save_run(viewed)
 
-    data = collect_report_data(repo, viewed)
+    data = collect_report_data(repo, viewed, mainline=repo)
 
     reliability = data.history.reliability["test_x"]["test_case"]
     assert reliability.pooled_runs == 3
@@ -194,8 +195,62 @@ def test_a_comparison_reads_no_history() -> None:
     viewed = make_recorded_run(make_round(), commit="c1")
     repo.save_run(viewed)
 
-    data = collect_report_data(repo, viewed, against=base, against_via="baseline")
+    data = collect_report_data(
+        repo, viewed, mainline=repo, against=base, against_via="baseline"
+    )
 
     assert data.history.reliability == {}
     assert data.against is not None
     assert data.against.id == base.id
+
+
+def test_collected_history_is_measured_over_the_given_mainline() -> None:
+    """A developer's own run is held locally while the team's baseline lives
+    on the remote. The report then measures over the remote, as the dashboard
+    shows it, and finds no promotion for a run that was never on it."""
+    local, remote = RunRepository(MemoryStore()), RunRepository(MemoryStore())
+    promoted = make_recorded_run(make_round(), commit="c0", reliability_target=0.9)
+    remote.save_run(promoted)
+    remote.move_ref("baseline", promoted.id, commit="main-0")
+    viewed = make_recorded_run(make_round(), commit="wip", reliability_target=0.9)
+    local.save_run(viewed)
+
+    data = collect_report_data(local, viewed, mainline=remote)
+
+    assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
+    assert data.mainline is None
+
+
+def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
+    """The page shows which refs reach the run, with the PR a ref records,
+    the way the dashboard does. A ref pointing elsewhere is not among them."""
+    repo = RunRepository(MemoryStore())
+    run = make_recorded_run(make_round(), commit="c0")
+    other = make_recorded_run(make_round(), commit="c1")
+    repo.save_run(run)
+    repo.save_run(other)
+    repo.move_ref("pr/7", run.id, pr=7, title="Tighten the prompt")
+    repo.move_ref("pr/8", other.id, pr=8)
+    repo.move_ref("baseline", run.id)
+
+    data = collect_report_data(repo, run, mainline=None)
+
+    assert [r.name for r in data.refs] == ["baseline", "pr/7"]
+    pr = data.refs[1].tip
+    assert pr is not None and (pr.pr, pr.title) == (7, "Tighten the prompt")
+
+
+def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
+    """A local run with the remote down is still a run worth sharing. The
+    page says why it carries no history rather than showing none."""
+    repo = RunRepository(MemoryStore())
+    run = make_recorded_run(make_round(), commit="c0")
+    repo.save_run(run)
+    down = RunRepository(RaisingStore(RepositoryUnavailableError("no route to host")))
+
+    data = collect_report_data(repo, run, mainline=down)
+
+    assert data.history.reliability == {}
+    assert data.mainline is None
+    assert data.history_error is not None and "no route" in data.history_error
+    assert data.run.id == run.id

@@ -15,6 +15,7 @@ describe("parseReportData", () => {
         via: "pr/12",
         against: run,
         against_via: "baseline",
+        refs: [{ name: "pr/12", tip: null, kind: "other" }],
         history: { reliability: {}, score_history: {} },
         mainline: null,
         generated_at: "2026-01-01T00:00:00Z",
@@ -26,6 +27,7 @@ describe("parseReportData", () => {
     expect(data.via).toBe("pr/12");
     expect(data.against?.id).toBe(run.id);
     expect(data.against_via).toBe("baseline");
+    expect(data.refs.map((r) => r.name)).toEqual(["pr/12"]);
     expect(data.generated_by).toBe("0.3.0");
   });
 
@@ -37,6 +39,9 @@ describe("parseReportData", () => {
     expect(data.via).toBeNull();
     expect(data.against).toBeNull();
     expect(data.mainline).toBeNull();
+    expect(data.refs).toEqual([]);
+    expect(data.pr_url_template).toBeNull();
+    expect(data.history_error).toBeNull();
     expect(data.history).toEqual({ reliability: {}, score_history: {} });
   });
 
@@ -63,4 +68,13 @@ describe("parseReportData", () => {
   ])("rejects %s with a message the page can show", (_what, text) => {
     expect(() => parseReportData(text)).toThrow(ReportDataError);
   });
+});
+
+it("keeps the reason the history is missing", () => {
+  const data = parseReportData(
+    JSON.stringify({ run, history_error: "no route to host" }),
+  );
+
+  expect(data.history_error).toBe("no route to host");
+  expect(data.history).toEqual({ reliability: {}, score_history: {} });
 });

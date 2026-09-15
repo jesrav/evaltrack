@@ -6,8 +6,12 @@ generated without the `[ui]` extra."""
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
-from evaltrack.core.errors import UnsupportedSchemaError
-from evaltrack.core.refs import BASELINE_REF, ReflogEntry
+from evaltrack.core.errors import (
+    CorruptRecordError,
+    InvalidIdentifierError,
+    UnsupportedSchemaError,
+)
+from evaltrack.core.refs import BASELINE_REF, Ref, ReflogEntry
 from evaltrack.core.run_record import RunRecord
 from evaltrack.history.reliability import report_all_case_reliability_over
 from evaltrack.history.score_history import report_all_score_history_over
@@ -125,3 +129,18 @@ def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry |
         title=match.title,
         moved_at=match.moved_at,
     )
+
+
+def refs_pointing_at(repo: RunRepository, run_id: str) -> list[Ref]:
+    """The refs whose tip is `run_id`, by name. A ref whose history cannot be
+    read is left out, since its tip is unknown, not absent."""
+    refs: list[Ref] = []
+    for name in sorted(repo.list_refs()):
+        try:
+            tip = repo.get_ref(name)
+        except (CorruptRecordError, InvalidIdentifierError) as exc:
+            _logger.warning("ref %s has an unreadable history: %s", name, exc)
+            continue
+        if tip is not None and tip.run_id == run_id:
+            refs.append(Ref(name=name, tip=tip))
+    return refs

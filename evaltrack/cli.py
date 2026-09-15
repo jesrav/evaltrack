@@ -18,6 +18,7 @@ from evaltrack.config import (
     REMOTE_ENV,
     ConfiguredRemote,
     EvaltrackConfig,
+    PrUrlTemplate,
     RepositoryRole,
     load_config,
     resolve_local,
@@ -585,6 +586,27 @@ def _load_comparison(
     return loaded
 
 
+@dataclass(frozen=True)
+class _Mainline:
+    """Where the report reads the team's history from, and the project's PR link."""
+
+    repository: RunRepository
+    url: str
+    pr_url_template: PrUrlTemplate | None
+
+
+def _open_mainline(target: _OpenedRepository) -> _Mainline:
+    """The configured remote, whichever repository holds the run, since the
+    team's `baseline` lives there. Without one, `target` is its own mainline,
+    as the sole dashboard mount is."""
+    config = load_config()
+    remote = resolve_remote(config)
+    if remote is None or remote.url == target.url:
+        return _Mainline(target.repository, target.url, config.pr_url_template)
+    print(f"reading the mainline from {remote.url}", file=sys.stderr)
+    return _Mainline(open_repository(remote.url), remote.url, config.pr_url_template)
+
+
 def _cmd_report(args: argparse.Namespace) -> int:
     target = _open_resolved_repository(args)
     try:
@@ -599,13 +621,22 @@ def _cmd_report(args: argparse.Namespace) -> int:
     against: _NamedRun | None = None
     if args.against is not None:
         against = _load_comparison(target, subject, against=args.against)
+    mainline = _open_mainline(target)
     data = collect_report_data(
         target.repository,
         subject.run,
+        mainline=mainline.repository,
         via=subject.via,
         against=against.run if against else None,
         against_via=against.via if against else None,
+        pr_url_template=mainline.pr_url_template,
     )
+    if data.history_error is not None:
+        print(
+            f"warning: could not read the mainline from {mainline.url}, so the "
+            f"report has no history: {data.history_error}",
+            file=sys.stderr,
+        )
     html = render_report(data)
     if args.output == "-":
         sys.stdout.write(html)

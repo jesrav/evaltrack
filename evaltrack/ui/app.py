@@ -152,7 +152,9 @@ def create_app(
 
     app.include_router(build_static_router())
     app.include_router(build_meta_router(project_config, infos))
-    app.include_router(build_runs_router(resolve, mainline))
+    app.include_router(
+        build_runs_router(resolve, mainline, pr_url_template=pr_url_template)
+    )
     app.include_router(build_refs_router(resolve))
     app.include_router(build_history_router(resolve, mainline))
 

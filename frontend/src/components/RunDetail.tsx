@@ -55,6 +55,9 @@ export interface RunActions {
   slug: string;
   /** The full run as a file, the eval runner's own result objects included. */
   downloadHref: string;
+  /** The run as the single-file report, to share with someone without the
+   *  dashboard. */
+  reportHref: string;
   onDeleteRun: (slug: string, runId: string) => void;
   onDeleteRef: (slug: string, refName: string) => void;
 }
@@ -916,6 +919,16 @@ function RunHeader({
               title="Download this run as JSON (includes the eval runner's own result objects)"
             >
               ↓ Download
+            </a>
+          )}
+          {actions && (
+            <a
+              className="page-action"
+              href={actions.reportHref}
+              download
+              title="Save this run as a single-file HTML report that opens anywhere, to share with someone without the dashboard"
+            >
+              ↓ Report
             </a>
           )}
           {onCompareToBaseline && (

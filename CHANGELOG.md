@@ -13,8 +13,10 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 - `evaltrack report`, which writes a recorded run, or a run against the baseline, as one HTML file
   with the run embedded. It shows the run as the dashboard does and opens anywhere with no server
-  and no network, for CI artifacts and release notes. PR numbers in the page are plain text for now,
-  since the page does not apply `pr_url_template`. See [CLI › report](docs/cli.md#evaltrack-report).
+  and no network, for CI artifacts and release notes. See
+  [CLI › report](docs/cli.md#evaltrack-report).
+- **Report** in the dashboard, on a run and on a comparison, which saves the same page for the run
+  on screen, to share with someone without the dashboard.
 
 ## [0.2.0] - 2026-09-15
 

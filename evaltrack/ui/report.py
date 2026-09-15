@@ -5,10 +5,16 @@ import importlib.metadata
 from datetime import UTC, datetime
 from pathlib import Path
 
+from evaltrack.config import PrUrlTemplate
+from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.run_record import RunRecord, strip_raw_results
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import ReportData, RunHistory
-from evaltrack.ui.views import find_mainline_entry, load_run_history
+from evaltrack.ui.models import MainlineEntry, ReportData, RunHistory
+from evaltrack.ui.views import (
+    find_mainline_entry,
+    load_run_history,
+    refs_pointing_at,
+)
 
 # Beside the dashboard bundle, so one frontend build ships both.
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
@@ -21,31 +27,46 @@ def collect_report_data(
     repository: RunRepository,
     run: RunRecord,
     *,
+    mainline: RunRepository | None,
     via: str | None = None,
     against: RunRecord | None = None,
     against_via: str | None = None,
+    pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
-    """The report's data for `run`, held by `repository`, whose `baseline`
-    history is the mainline the report measures over.
+    """The report's data for `run`, held by `repository`, with its history and
+    promotion measured over `mainline`'s `baseline`. The two differ when the
+    run is a developer's own and the team's mainline lives elsewhere.
 
     The runner's own result objects are dropped, as the page never renders
     them. The cross-run history is read only without `against`, since a
     comparison does not show it and it costs a run body per mainline entry.
+    A mainline that cannot be reached leaves the report without history and
+    says so, as the dashboard drops the column, since the run itself is
+    what the report is for.
 
     Raises:
         CorruptRecordError: when the `baseline` reflog does not parse.
     """
+    history = RunHistory()
+    mainline_entry: MainlineEntry | None = None
+    history_error: str | None = None
+    try:
+        if against is None:
+            history = load_run_history(repository, mainline=mainline, run_id=run.id)
+        if mainline is not None:
+            mainline_entry = find_mainline_entry(mainline, run.id)
+    except RepositoryUnavailableError as exc:
+        history, mainline_entry, history_error = RunHistory(), None, str(exc)
     return ReportData(
         run=strip_raw_results(run),
         via=via,
         against=strip_raw_results(against) if against is not None else None,
         against_via=against_via,
-        history=(
-            load_run_history(repository, mainline=repository, run_id=run.id)
-            if against is None
-            else RunHistory()
-        ),
-        mainline=find_mainline_entry(repository, run.id),
+        refs=refs_pointing_at(repository, run.id),
+        history=history,
+        mainline=mainline_entry,
+        history_error=history_error,
+        pr_url_template=pr_url_template,
         generated_at=datetime.now(UTC),
         generated_by=importlib.metadata.version("evaltrack"),
     )

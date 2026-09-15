@@ -106,6 +106,30 @@ export const api = {
       id,
     )}/download`;
   },
+  /** URL of the run as the single-file HTML report, as a file attachment, to
+   *  hand to someone without the dashboard. With `against`, the page opens on
+   *  the comparison from that run to this one. The `via` labels are the refs
+   *  the runs were reached by, so the page names them as this one does. */
+  runReportUrl(
+    slug: string,
+    id: string,
+    opts: {
+      via?: string;
+      against?: { slug: string; id: string; via?: string };
+    } = {},
+  ): string {
+    const q = new URLSearchParams();
+    if (opts.via) q.set("via", opts.via);
+    if (opts.against) {
+      q.set("against", opts.against.id);
+      q.set("against_slug", opts.against.slug);
+      if (opts.against.via) q.set("against_via", opts.against.via);
+    }
+    const query = q.size > 0 ? `?${q.toString()}` : "";
+    return `/api/repositories/${encodePath(slug)}/runs/${encodePath(
+      id,
+    )}/report${query}`;
+  },
   /** Pooled reliability and per-case score history over the mainline, with the
    *  viewed run as the newest point. One request, because the server measures
    *  both over the same history. */

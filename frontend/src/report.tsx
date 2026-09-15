@@ -60,6 +60,14 @@ function Report({ data }: { data: ReportData }) {
         <ThemeToggle />
       </header>
       <main className="main">
+        {data.history_error && (
+          <div className="notice-banner" role="alert">
+            <span className="notice-text">
+              This report has no reliability history: the mainline could not be
+              read when it was written ({data.history_error}).
+            </span>
+          </div>
+        )}
         {sides ? (
           <RunDiff
             a={sides.a}
@@ -74,11 +82,15 @@ function Report({ data }: { data: ReportData }) {
           <RunDetail
             run={data.run}
             via={data.via ?? undefined}
-            refs={[]}
+            refs={data.refs}
             standalone
-            history={{ status: "ready", data: data.history }}
+            history={
+              data.history_error
+                ? { status: "error" }
+                : { status: "ready", data: data.history }
+            }
             mainline={data.mainline}
-            prUrlTemplate={null}
+            prUrlTemplate={data.pr_url_template}
             onOpenDrawer={setDrawer}
             attemptSel={attemptSel}
             onSelectAttempt={selectAttempt}

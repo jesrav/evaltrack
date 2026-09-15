@@ -83,9 +83,10 @@ class ReportData(BaseModel):
     the page reads them as the dashboard does.
 
     `via` and `against_via` name the ref each run was reached by, when it was
-    one. `history` and `mainline` are measured over the run's own repository,
-    which is the report's mainline. `history` is empty for a comparison, which
-    does not render it.
+    one. `refs` are the refs pointing at the run in its own repository.
+    `history` and `mainline` are measured over the mainline the generator
+    chose. `history` is empty for a comparison, which does not render it, and
+    when the mainline could not be read, which `history_error` then says.
     """
 
     # The top-level serializer decides how a non-finite score is written, and
@@ -96,7 +97,10 @@ class ReportData(BaseModel):
     via: str | None = None
     against: RunRecord | None = None
     against_via: str | None = None
+    refs: list[Ref] = []
     history: RunHistory = RunHistory()
     mainline: MainlineEntry | None = None
+    history_error: str | None = None
+    pr_url_template: PrUrlTemplate | None = None
     generated_at: AwareDatetime
     generated_by: str

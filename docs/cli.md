@@ -83,7 +83,13 @@ the `baseline` the report compares against, so the job need not name it again. `
 `export` are for looking into a repository by hand, and there the flag says which one you are
 looking at.
 
-PR numbers in the page are plain text. The page does not apply `pr_url_template`.
+The reliability history and the mainline entry are read from the configured remote whichever
+repository holds the run, since the team's `baseline` lives there. Without a configured remote, the
+named repository is its own mainline. When the remote cannot be reached, the page has no history and
+says so, and a warning names the remote. The page names the refs that point at the run, with the PR
+each records, and links the number when `pr_url_template` is set. The dashboard offers the same page
+as **Report** on a run and on a comparison, so a run you are looking at can be handed over without
+the command.
 
 **Exit codes:** `0` when the report was written. `1` when the named repository does not hold the run
 or the ref, and the error names that repository. Nothing is written then. `2` when no repository is
