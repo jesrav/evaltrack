@@ -11,6 +11,7 @@ import evaltrack
 from evaltrack.core import errors
 
 from .factories import make_case_run
+from .fakes import MemoryStore
 
 
 def test_every_public_exception_can_be_caught_as_an_evaltrack_error() -> None:
@@ -93,6 +94,24 @@ def test_reading_a_run_hands_back_only_types_the_root_can_name() -> None:
     marker = recorded_test.marker
     assert marker is not None, "the factory records the marker's settings"
     for obj in (run_record, recorded_test, case, case.attempts[0], marker):
+        name = type(obj).__name__
+        assert name in evaltrack.__all__, f"the read path reaches {name}, unexported"
+        assert getattr(evaltrack, name) is type(obj)
+
+
+def test_reading_a_repository_hands_back_only_types_the_root_can_name() -> None:
+    """The documented repository read path lists runs and follows a ref to the
+    run it names. Same rule as the run read path above: every step must bind a
+    type the root exports, or a reader cannot annotate it."""
+    repository = evaltrack.RunRepository(MemoryStore())
+    run_record = make_case_run("refpath", "2024-01-01T00:00:00Z", "P")
+    repository.save_run(run_record)
+    repository.move_ref("baseline", run_record.id)
+    summary = next(repository.list_runs())
+    entry = repository.get_ref("baseline")
+    assert entry is not None, "the ref was just moved"
+    loaded = repository.load_run(entry.run_id)
+    for obj in (repository, summary, entry, loaded):
         name = type(obj).__name__
         assert name in evaltrack.__all__, f"the read path reaches {name}, unexported"
         assert getattr(evaltrack, name) is type(obj)

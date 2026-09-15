@@ -1,19 +1,7 @@
 """Example 2: scores, score bars, and where evaluators attach.
 
-Still a plain function and still no API key (see example 1). The point here is
-the evaluator mechanics, which work the same on an LLM or agent task:
-- An evaluator can return a float: pydantic-evals routes numeric values into
-  the case's `scores` (bools go to `assertions`). The marker's `score_bars` then
-  gate each case: it passes only if every named score clears its bar.
-- Evaluators attach at the dataset level (run on every case) or on a single
-  `Case` (run only there).
-- `Case.metadata` carries per-case context. Evaluators can read it (the task
-  cannot, it only receives `inputs`) and it shows in the dashboard.
-
-No LLM and no API key.
-
-    uv run --with pytest-asyncio pytest examples/test_02_scores.py
-    uv run evaltrack ui
+uv run --with pytest-asyncio pytest examples/test_02_scores.py
+uv run evaltrack ui
 """
 
 import pytest
@@ -22,11 +10,9 @@ from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorCont
 
 import evaltrack
 
-# --- system under test: a deterministic "summarizer" -----------------------
-
 
 def summarize(text: str) -> str:
-    """Toy summarizer: return the first sentence."""
+    """A toy summarizer that returns the first sentence."""
     first = text.split(".")[0].strip()
     return f"{first}." if first else ""
 
@@ -35,15 +21,11 @@ async def summarize_task(text: str) -> str:
     return summarize(text)
 
 
-# --- a score evaluator (returns a float) -----------------------------------
-
-
 class Compression(Evaluator[str, str, dict[str, str]]):
-    """Score in [0, 1]: how much shorter the summary is than the input.
+    """How much shorter the summary is than the input, from 0 to 1.
 
-    A float `value` lands in the `scores` bucket.
-    `get_default_evaluation_name` names it `compression`, so `score_bars` can
-    gate it.
+    A float value makes this a score. A score gates nothing on its own. The
+    marker's `score_bars` gives it a bar under the name `compression`.
     """
 
     def get_default_evaluation_name(self) -> str:
@@ -59,12 +41,12 @@ class Compression(Evaluator[str, str, dict[str, str]]):
         )
 
 
-# --- an assertion evaluator that reads Case.metadata -----------------------
-
-
 class MentionsKeyword(Evaluator[str, str, dict[str, str]]):
-    """Assertion: the summary still contains the case's key term, taken from
-    ``Case.metadata['keyword']``. Evaluators see metadata, the task does not."""
+    """The summary still contains the key term from `Case.metadata`.
+
+    An evaluator can read the metadata. The task cannot, it gets only the
+    inputs. The metadata also shows in the dashboard.
+    """
 
     def get_default_evaluation_name(self) -> str:
         return "mentions_keyword"
@@ -80,7 +62,7 @@ class MentionsKeyword(Evaluator[str, str, dict[str, str]]):
 
 
 class OneSentence(Evaluator[str, str, dict[str, str]]):
-    """Assertion: the summary is a single sentence (exactly one period)."""
+    """The summary is one sentence, with exactly one period."""
 
     def get_default_evaluation_name(self) -> str:
         return "one_sentence"
@@ -92,8 +74,7 @@ class OneSentence(Evaluator[str, str, dict[str, str]]):
         return EvaluationReason(value=n == 1, reason=f"{n} sentence(s)")
 
 
-# `score_bars` gate the `compression` score: every case must drop at least 30%
-# of the text (score >= 0.30). Assertions must also all pass.
+# Every case must drop at least 30% of the text and pass every assertion.
 @pytest.mark.evaltrack(score_bars={"compression": 0.30})
 @pytest.mark.asyncio
 async def test_summarize() -> None:
@@ -115,8 +96,7 @@ async def test_summarize() -> None:
                 inputs="Rome wasn't built in a day. Patience matters. Keep going.",
                 name="rome",
                 metadata={"keyword": "Rome"},
-                # Per-case evaluator: only this case is also checked for being a
-                # single sentence.
+                # A per-case evaluator runs on this case only.
                 evaluators=(OneSentence(),),
             ),
         ],

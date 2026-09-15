@@ -1,28 +1,8 @@
 """Example 3: absorbing a flaky failure with flake reruns.
 
-A real eval can be flaky because the model is non-deterministic. The same case
-passes most runs and fails now and then. To reproduce that on demand you need an
-API key and some luck, so the task here fails its first attempt at each case and
-passes after.
-
-- `flake_reruns=N` re-runs the whole eval while a case is still unproven, up to
-  `N` extra rounds. A case that already passed stays passed, so a one-off miss
-  does not fail the build.
-- `reliability_target` compares the pooled pass-rate against what you expect,
-  in the dashboard only. It never fails a test. It is 0.5 here because every
-  case fails one attempt in two by construction. A real eval would set it near 1.
-- `eval_version` segments the recorded pass-rate history. Bump it when the
-  prompt or model changes so a fresh window starts.
-
-The test passes, because the rerun rescued it. The dashboard still records the
-case at one pass out of two attempts. That is the point. Flake reruns hide the
-failure from the gate, and the recorded rate tells you the case is shaky.
-
-The rate `reliability_target` compares against pools runs promoted to the
-mainline, so a single local run has nothing in the pool yet. See
-docs/flakiness.md for how that pool is built.
-
-No API key needed.
+The task fails its first attempt at each case and passes after, to stand in for
+a model that is not deterministic. The test passes because the rerun rescued
+it, and the dashboard still shows the case at one pass out of two attempts.
 
     uv run --with pytest-asyncio pytest examples/test_03_reliability.py
     uv run evaltrack ui
@@ -34,20 +14,19 @@ from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorCont
 
 import evaltrack
 
-# Attempts so far per input, for this pytest session. A real eval needs no such
-# counter, because the model fails on its own. The counter makes the flakiness
-# reproducible, so the example always shows exactly one rerun.
+# Attempts per input so far. A real eval needs no counter, the model fails on
+# its own. This one makes the flakiness reproducible.
 _attempts: dict[str, int] = {}
 
 
 async def shout_task(word: str) -> str:
     _attempts[word] = _attempts.get(word, 0) + 1
-    # First attempt returns the word unchanged, which fails the assertion below.
+    # The first attempt returns the word unchanged and fails the assertion.
     return word.upper() if _attempts[word] > 1 else word
 
 
 class IsUpper(Evaluator[str, str, object]):
-    """Assertion: the output is uppercase."""
+    """The output is uppercase."""
 
     def get_default_evaluation_name(self) -> str:
         return "is_upper"
@@ -58,12 +37,15 @@ class IsUpper(Evaluator[str, str, object]):
         )
 
 
-# `flake_reruns=2` gives each failing case up to two more attempts. `eval_version`
-# starts a fresh pass-rate window when the task or its prompt changes.
+# `flake_reruns=2` reruns the eval while a case is failing, up to twice. A case
+# that passed stays passed. `reliability_target` is a target for the dashboard
+# and never fails a test. It is 0.5 here because every case fails one attempt in
+# two. A real eval sets it near 1. `eval_version` starts a fresh pass-rate
+# history when the prompt or the model changes.
 @pytest.mark.evaltrack(flake_reruns=2, reliability_target=0.5, eval_version="shout-v1")
 @pytest.mark.asyncio
 async def test_shout() -> None:
-    """Each case fails its first attempt and passes when re-run."""
+    """Each case fails its first attempt and passes on the rerun."""
     dataset = Dataset[str, str](
         name="shout",
         cases=[

@@ -1,29 +1,12 @@
-"""Example 9: demanding consistency from a DeepEval eval with `repeats`.
+"""Example 8: demanding consistency from a DeepEval eval with `repeats`.
 
-Example 8 scores each case once. A nondeterministic agent needs more than one
-try before you believe a pass, and the marker's `repeats=N` is what demands
-that every case passes all N times.
+`repeats=N` runs the eval N times and demands that every case passes every
+time. `flake_reruns` is the opposite trade, and the marker takes one or the
+other. One case here fails one of its three rounds, so the test fails and
+carries an `xfail`.
 
-DeepEval's `evaluate()` runs each case once and has no repeat of its own, so
-evaltrack supplies the repetition. It calls the eval N times and stacks the
-rounds into N **attempts** per case. Nothing in the eval changes, and there is
-no second count to set.
-
-    @pytest.mark.evaltrack(repeats=3)     # every case: 3 attempts, all passing
-
-`flake_reruns=N` is the opposite trade, and the marker takes one or the other.
-It re-runs only the cases that failed, and one pass settles the case. Use
-`repeats` where a lucky pass is not good enough. Use `flake_reruns` where a
-flaky judge must not fail the build.
-
-The assistant here answers one case wrong on the first of its three rounds, so
-`repeats=3` fails a test that a single round passes. That is the
-point: the `xfail` below is only so the example suite stays green.
-
-    uv run pytest examples/test_09_deepeval_repeats.py
-    uv run evaltrack ui          # every attempt is recorded, not just the last
-
-[DeepEval]: https://deepeval.com/
+    uv run pytest examples/test_08_deepeval_repeats.py
+    uv run evaltrack ui
 """
 
 from itertools import count
@@ -47,20 +30,17 @@ _rounds = count()
 
 
 def flaky_assistant() -> dict[str, str]:
-    """Answers the Japan question wrong once in every three tries.
-
-    A real agent is nondeterministic for its own reasons. This one is scripted
-    so the example fails the same way every run.
-    """
+    """Answers the Japan question wrong once in every three tries, so that the
+    example fails the same way every run."""
     wrong = next(_rounds) == 0
     return {"france": "Paris", "japan": "Kyoto" if wrong else "Tokyo"}
 
 
 class ExactMatch(BaseMetric):
-    """A verdict, not a score: the answer is the expected one or it is not."""
+    """The answer is the expected one, or it is not."""
 
-    # DeepEval leaves threshold optional, so `score >= threshold` only type checks
-    # once a metric that always has a bar says so.
+    # DeepEval leaves the threshold optional. Declaring it here is what lets
+    # `score >= threshold` type check.
     threshold: float = 1.0  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def measure(self, test_case: LLMTestCase, *args: Any, **kwargs: Any) -> float:
@@ -104,9 +84,9 @@ def capitals_round() -> Any:
 @pytest.mark.xfail(reason="the 'japan' case answers Kyoto on one of its three rounds")
 @pytest.mark.evaltrack(repeats=REPEATS, eval_version="capitals-v1")
 def test_capitals_are_answered_consistently() -> None:
-    """Every case has to pass all three rounds, not just its best one.
+    """Every case has to pass all three rounds, not only its best one.
 
-    Drop the `xfail` and this is an ordinary failing eval: the dashboard shows
-    `japan` at 2/3, and the pytest failure names the case.
+    Without the `xfail`, this is an ordinary failing eval. The dashboard shows
+    `japan` at 2 of 3, and the pytest failure names the case.
     """
     evaltrack.run(capitals_round)

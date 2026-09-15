@@ -1,24 +1,9 @@
-"""Example 6: make a faked tool's data visible in the run, via inputs.
+"""Example 6: making a faked tool's data visible in the run.
 
-A common test setup: the agent calls a tool backed by something external (a
-document store, a search index, an API). To test the agent under a known setup,
-you swap that backend for a fake with a fixed dataset. Here a pydantic-ai
-`FunctionModel` scripts the model's replies too, so the example runs offline
-and in CI. The model searches first, then answers from the first hit.
-
-Where must the fake's data live? A fixture or a closure hides it from the
-dashboard, so you cannot tell what the agent could retrieve. Put it in
-`Case.inputs` instead. `inputs` is the only channel that a task can read (to
-build the fake) and that evaltrack records, so the faked dataset shows up in the
-run.
-
-The agent and its tool look like production code. They depend on a
-`DocumentStore` interface, and the test injects a `FakeDocumentStore` built from
-the case input. The answer check is a plain phrase match, not the `LLMJudge` of
-example 5. The fake store fixes what a grounded answer says, so a judge adds a
-model call and nothing else.
-
-The example needs no API key. `--with` installs the async plugin for this one command.
+The agent's tool reads from a document store that the test fakes. A fixture
+would hold the fake's documents where the recorded run cannot see them. Putting
+them in `Case.inputs` instead makes them part of the case, so the dashboard
+shows what the agent could search.
 
     uv run --with pytest-asyncio pytest examples/test_06_fake_tool_in_inputs.py
     uv run evaltrack ui
@@ -44,19 +29,15 @@ from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorCont
 
 import evaltrack
 
-# Every model in this example is scripted. A real request means a bug, so it
-# must raise, not reach a provider.
+# Every model here is scripted, so a real request is a bug and must raise.
 models.ALLOW_MODEL_REQUESTS = False
 
 NO_HITS = "(no matching documents)"
 
 
-# --- production code: the store interface, the agent's deps, and its tool ---
-
-
 class DocumentStore(Protocol):
-    """The interface the agent's tool depends on. A real index backs it in
-    production. A fake backs it in the eval."""
+    """What the agent's tool depends on. A real index in production, a fake in
+    the eval."""
 
     def search(self, query: str) -> list[str]: ...
 
@@ -67,25 +48,20 @@ class Deps:
 
 
 def search_documents(ctx: RunContext[Deps], query: str) -> str:
-    """The agent's tool. It talks to the `DocumentStore` interface, and the
-    caller decides which implementation backs it."""
+    """The agent's tool. The caller decides which store backs it."""
     hits = ctx.deps.store.search(query)
     return "\n".join(hits) if hits else NO_HITS
 
 
-# --- the test doubles: the store, built per case from the input, and the model
-
-
 @dataclass
 class FakeDocumentStore:
-    """A `DocumentStore` stand-in over a fixed `{title: text}` map."""
+    """A `DocumentStore` over a fixed map of title to text."""
 
     documents: dict[str, str]
 
     def search(self, query: str) -> list[str]:
-        # Naive keyword search: match any non-trivial query term against the
-        # title or text. A real store would do better. This is enough to let the
-        # agent find relevant docs from a reasonable query.
+        # A keyword match on the title or the text. Enough for the agent to
+        # find the right documents from a reasonable query.
         terms = [t for t in query.lower().split() if len(t) > 2]
         return [
             f"{title}: {text}"
@@ -95,8 +71,8 @@ class FakeDocumentStore:
 
 
 def scripted_qa_model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-    """Stand in for the model. Search with the question as the query, then
-    answer from the first hit."""
+    """Searches with the question as the query, then answers from the first
+    hit."""
     latest = messages[-1].parts[-1]
     if isinstance(latest, ToolReturnPart):
         hits = str(latest.content)
@@ -115,15 +91,15 @@ def scripted_qa_model(messages: list[ModelMessage], info: AgentInfo) -> ModelRes
     )
 
 
-# The swap to a real model is `Agent("openai:gpt-4o-mini", ...)`. A real model
-# needs OPENAI_API_KEY, and you must remove the ALLOW_MODEL_REQUESTS line above.
+# For a real model, pass "openai:gpt-4o-mini" to Agent instead, set
+# OPENAI_API_KEY, and remove the ALLOW_MODEL_REQUESTS line above.
 MODEL = FunctionModel(scripted_qa_model)
 
 
 class DocsInput(BaseModel):
-    """The eval input. `question` is what the user asks. `documents` is the data
-    the fake store holds. It lives in the input, not in a fixture, so the
-    dashboard shows exactly what the agent could search."""
+    """The eval input. `question` is what the user asks. `documents` is what the
+    fake store holds, so that the recorded run shows what the agent could
+    search."""
 
     question: str
     documents: dict[str, str]
@@ -131,10 +107,8 @@ class DocsInput(BaseModel):
 
 @dataclass
 class ToolCalled(Evaluator[Any, Any, Any]):
-    """Assertion: the agent used `tool_name` rather than its own knowledge.
-
-    Read from the run's message history.
-    """
+    """The agent called `tool_name` instead of answering from its own
+    knowledge."""
 
     tool_name: str
 
@@ -154,9 +128,8 @@ class ToolCalled(Evaluator[Any, Any, Any]):
 
 @dataclass
 class AnswerStates(Evaluator[Any, Any, Any]):
-    """Assertion for one case: the reply states `fact`, a phrase from that
-    case's documents. Written per case, it names the exact information the
-    answer must contain. It is stricter than one shared check."""
+    """The reply states `fact`, a phrase from the case's documents. One per case,
+    so each names exactly what its answer must contain."""
 
     fact: str
 
@@ -172,14 +145,7 @@ class AnswerStates(Evaluator[Any, Any, Any]):
 @pytest.mark.evaltrack
 @pytest.mark.asyncio
 async def test_document_qa_agent() -> None:
-    """The agent must search its document store and answer from what it finds.
-
-    There are two checks. A shared assertion says the agent calls
-    `search_documents` rather than guesses. A per-case `AnswerStates` names the
-    fact that this case's answer must contain. The agent runs against a
-    `FakeDocumentStore` built per case from `DocsInput.documents`, so each
-    recorded run shows the exact documents the agent could search.
-    """
+    """The agent must search its document store and answer from what it finds."""
     agent = Agent(
         MODEL,
         deps_type=Deps,
@@ -191,13 +157,12 @@ async def test_document_qa_agent() -> None:
     )
 
     async def qa_task(inp: DocsInput) -> Any:
-        # Swap the real store for a fake built from the input. In production you
-        # pass the real store here.
+        # A fake store built from the input. In production, pass the real store.
         deps = Deps(store=FakeDocumentStore(inp.documents))
         return await agent.run(inp.question, deps=deps)
 
-    # Two docs answer the questions and three are unrelated noise, so the recorded
-    # input shows the agent had to pick the right ones out of a realistic store.
+    # Two documents answer the questions and three are noise, so the agent has
+    # to pick the right ones.
     store = {
         "Refund policy": "Customers may request a refund within 30 days of purchase.",
         "Shipping": "Orders ship within 2 business days.",
@@ -214,7 +179,7 @@ async def test_document_qa_agent() -> None:
                 ),
                 name="refund window",
                 metadata={"note": "answer should come from the Refund policy doc"},
-                # Per-case check: the fact specific to this question's answer.
+                # The fact that this answer must state.
                 evaluators=(AnswerStates("within 30 days"),),
             ),
             Case(
@@ -226,7 +191,7 @@ async def test_document_qa_agent() -> None:
                 evaluators=(AnswerStates("within 2 business days"),),
             ),
         ],
-        # Shared across all cases: the agent must consult the store, not guess.
+        # For every case, the agent must consult the store rather than guess.
         evaluators=[ToolCalled("search_documents")],
     )
     await evaltrack.run_async(dataset.evaluate, qa_task)

@@ -1,25 +1,8 @@
-"""Example 5: LLM-as-judge, assertion vs score.
+"""Example 5: an LLM judge as an assertion and as a score.
 
-An assistant answers a prompt, and the reply is checked three ways. Both the
-assistant and the judge are pydantic-ai `FunctionModel`s with scripted replies,
-so the example runs offline and in CI. The checks:
-
-- a deterministic assertion: the reply is not too long
-- an `LLMJudge` assertion, a must-pass guardrail: the reply answers the question
-  and stays on topic
-- an `LLMJudge` score: a graded 0-1 helpfulness rating, gated by `score_bars`
-
-The judge works as both an assertion and a score only because the two ask
-different questions. The assertion asks "did it do the job at all?" (pass or
-fail). The score asks "how good was it?" (graded). One property judged both ways
-would be redundant. The marker runs the gate: every case must pass the
-assertions and clear the bar.
-
-The third case shows the difference. Its reply is on topic, so it passes the
-guardrail. But it only hedges, so the judge scores it under the bar and the
-test fails. The `xfail` keeps the example suite green.
-
-The example needs no API key. `--with` installs the async plugin for this one command.
+The two judge evaluators ask different questions. The assertion asks whether
+the reply did the job at all. The score asks how good it was. The third case
+passes the first and fails the second, so the test fails and carries an `xfail`.
 
     uv run --with pytest-asyncio pytest examples/test_05_llm_judge.py
     uv run evaltrack ui
@@ -45,8 +28,7 @@ from pydantic_evals.evaluators import (
 
 import evaltrack
 
-# Every model in this example is scripted. A real request means a bug, so it
-# must raise, not reach a provider.
+# Every model here is scripted, so a real request is a bug and must raise.
 models.ALLOW_MODEL_REQUESTS = False
 
 
@@ -82,9 +64,8 @@ def scripted_assistant(messages: list[ModelMessage], info: AgentInfo) -> ModelRe
 
 
 def scripted_judge(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-    """Stand in for the judge model. It grades by two rules that a real judge
-    applies with more nuance. A refusal fails. A reply that only hedges is on
-    topic but scores low."""
+    """Grades by two rules. A refusal fails. A reply that only hedges is on topic
+    but scores low."""
     prompt = latest_prompt(messages)
     reply = prompt.split("<Output>")[1].split("</Output>")[0].strip().lower()
     if "sorry" in reply:
@@ -105,23 +86,21 @@ def scripted_judge(messages: list[ModelMessage], info: AgentInfo) -> ModelRespon
             "score": 0.9,
             "reason": "Answers the question with a concrete suggestion.",
         }
-    # The judge asks its model for structured output, so the grade goes back
-    # as a call to the judge's output tool.
+    # The judge asks for structured output, so the grade is a tool call.
     return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, grade)])
 
 
-# The swap to real models is `Agent("openai:gpt-4o-mini", ...)` and
-# `LLMJudge(model="openai:gpt-4o-mini", ...)`. Real models need OPENAI_API_KEY,
-# and you must remove the ALLOW_MODEL_REQUESTS line above.
+# For real models, pass "openai:gpt-4o-mini" to Agent and to LLMJudge instead,
+# set OPENAI_API_KEY, and remove the ALLOW_MODEL_REQUESTS line above.
 MODEL = FunctionModel(scripted_assistant)
-# One scripted judge serves both judge evaluators below. A real judge reads
-# each rubric. This one applies the same rules to both.
+# One scripted judge serves both LLMJudge evaluators. A real judge reads each
+# rubric. This one applies the same rules to both.
 JUDGE = FunctionModel(scripted_judge)
 
 
 class MaxLength(Evaluator[str, str, object]):
-    """The reply stays within 300 characters. A check you can write in code must
-    not cost a judge call."""
+    """The reply stays within 300 characters. What code can decide must not cost
+    a judge call."""
 
     def get_default_evaluation_name(self) -> str:
         return "within_length"
@@ -145,7 +124,7 @@ async def test_assistant_helpfulness() -> None:
     )
 
     async def assistant_task(prompt: str) -> str:
-        # Return the text output (a string) so the LLMJudge grades the reply itself.
+        # The text only, so that the judge grades the reply itself.
         result = await assistant.run(prompt)
         return result.output
 
@@ -158,8 +137,7 @@ async def test_assistant_helpfulness() -> None:
         ],
         evaluators=[
             MaxLength(),
-            # LLMJudge as an assertion, a must-pass guardrail: did the reply do
-            # the job at all? A different question from the score below.
+            # As an assertion. Did the reply do the job at all?
             LLMJudge(
                 rubric=(
                     "The reply actually answers the user and stays on topic: it "
@@ -172,8 +150,8 @@ async def test_assistant_helpfulness() -> None:
                     "include_reason": True,
                 },
             ),
-            # LLMJudge as a score: how good was it? Named `helpfulness` so
-            # `score_bars` can gate it. `assertion=False` keeps it score-only.
+            # As a score. How good was it? `score_bars` gates it by this name,
+            # and `assertion=False` keeps it a score only.
             LLMJudge(
                 rubric=(
                     "Rate how helpful and clear the reply is, from 0.0 (unhelpful) "

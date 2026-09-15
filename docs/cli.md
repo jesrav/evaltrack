@@ -30,9 +30,9 @@ $ evaltrack runs --local
 
 ## evaltrack refs
 
-Lists refs and the runs they point at. [`baseline`] comes first, then the PR refs, then the rest. A
-line holds the ref name, the run it targets, when it last moved (UTC), and the PR number and title
-when the move recorded them.
+Lists refs and the runs they point at. [`baseline`][baseline] comes first, then the PR refs, then
+the rest. A line holds the ref name, the run it targets, when it last moved (UTC), and the PR number
+and title when the move recorded them.
 
 ```text
 $ evaltrack refs --remote
@@ -83,6 +83,7 @@ Only [`export`](#evaltrack-export) exits `1` today, for a run the repository doe
 
 **Related:** [CI/CD](./ci-cd.md) · [Repositories and storage](./repositories.md)
 
-[`baseline`]: ./repositories.md#baseline-and-mainline
+[baseline]: ./repositories.md#baseline-and-mainline
 [reading runs from python]: ./repositories.md#reading-runs-from-python
-[dashboard trust model]: ../SECURITY.md#dashboard-trust-model
+[dashboard trust model]:
+  https://github.com/jesrav/evaltrack/blob/main/SECURITY.md#dashboard-trust-model

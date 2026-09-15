@@ -1,0 +1,33 @@
+name: Docs
+
+# Deploy the `dev` docs from main. A release version deploys from release.yml,
+# after the package is on PyPI. The first deploy and `mike set-default` are
+# one-time steps, described in CONTRIBUTING.md under Releasing.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # release.yml pushes to the same branch, so the two never push at once.
+    concurrency:
+      group: gh-pages
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --no-default-groups --group docs
+      # mike commits on top of the remote branch, so it has to be fetched first.
+      - run: git fetch origin gh-pages --depth=1
+      - name: Deploy the dev docs
+        env:
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: uv run mike deploy --push dev

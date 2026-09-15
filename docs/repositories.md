@@ -153,7 +153,8 @@ Deleting is the dashboard's one write feature, and `baseline` is protected, so t
 both.
 
 The dashboard is an unauthenticated server bound to `127.0.0.1`. The
-[security policy](../SECURITY.md#dashboard-trust-model) has the threat model.
+[security policy](https://github.com/jesrav/evaltrack/blob/main/SECURITY.md#dashboard-trust-model)
+has the threat model.
 
 ### Repairing a torn reflog
 
@@ -175,20 +176,21 @@ Recorded runs are available in Python via `open_repository` / `load_run`. The CL
 from evaltrack import open_repository
 
 repo = open_repository("./.evaltrack")
-run = repo.load_run("<run-id>")  # a RunRecord, or None if absent
+run = repo.load_run("<run-id>")  # (1)!
 
-# Structured per-case data: outcome, attempts, latency, errors. A test that
-# never evaluated (it errored or skipped) has no case.
-for nodeid, test in run.tests.items():
+for nodeid, test in run.tests.items():  # (2)!
     for case_id, case in test.cases.items():
         attempt = case.attempts[0]
         print(case_id, case.outcome, attempt.outcome, attempt.task_duration)
 
-# The eval runner's own result objects, one per round, when keep_raw_results
-# is on. Plain JSON data, not the runner's own types (see
-# docs/configuration.md#raw-results):
-raw_results = run.tests["tests/test_x.py::test_x"].raw_results
+raw_results = run.tests["tests/test_x.py::test_x"].raw_results  # (3)!
 ```
+
+1. A `RunRecord`, or `None` if absent.
+2. Structured per-case data: outcome, attempts, latency, errors. A test that never evaluated (it
+   errored or skipped) has no case.
+3. The eval runner's own result objects, one per round, when `keep_raw_results` is on. Plain JSON
+   data, not the runner's own types. See [Raw results](./configuration.md#raw-results).
 
 ---
 
