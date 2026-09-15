@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+### Added
+
+- `RunRepository`, `RunSummary` and `ReflogEntry` are exported from the package root. They are what
+  `open_repository()`, `list_runs()` and `get_ref()` hand back, so a reader can now name every type
+  on the repository read path.
+
 ## [0.2.0] - 2026-09-15
 
 ### Added
@@ -22,5 +28,6 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 The first public release. evaltrack is a pytest plugin that records, gates and tracks LLM evals. See
 the [README](README.md) to get started.
 
+[unreleased]: https://github.com/jesrav/evaltrack/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/jesrav/evaltrack/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jesrav/evaltrack/releases/tag/v0.1.0
