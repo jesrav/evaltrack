@@ -997,10 +997,13 @@ the results offline. For live production monitoring and tracing, see something l
     pr --&gt;|merge| base["CI: promote → baseline"]
     base -.-&gt;|review against baseline| ui</code></pre>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">"evaltrack[ui,pydantic-evals]"</span>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span>evaltrack
 <span class="c1"># or</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"evaltrack[ui,pydantic-evals]"</span>
+pip<span class="w"> </span>install<span class="w"> </span>evaltrack
 </code></pre></div>
+<p>Add the <code>ui</code> extra for the dashboard, and the <code>azure</code> or <code>s3</code> extra for a
+<a href="./repositories/#backends">shared remote</a>. Then install the runner you write your evals in,
+pydantic-evals or DeepEval. See <a href="./eval-runners/">Eval runners</a>.</p>
 <p>Linux and macOS are supported, on Python 3.11 to 3.14. <a href="./getting-started/">Getting started</a> walks
 through a first eval, from the marker to the dashboard.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Permanent link">&para;</a></h2>
