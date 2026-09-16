@@ -18,6 +18,7 @@ from evaltrack.core.eval_round import (
     RoundAttempt,
     RoundErrorRecord,
 )
+from evaltrack.core.refs import ReflogEntry
 from evaltrack.core.results import (
     EvaluatorInfo,
     EvaluatorResult,
@@ -31,9 +32,10 @@ from evaltrack.core.run_record import (
     RunRecord,
 )
 from evaltrack.marked_test import repeats, run, run_async
-from evaltrack.repositories import open_repository
+from evaltrack.repositories import RunRepository, RunSummary, open_repository
 
 __version__ = importlib.metadata.version("evaltrack")
+"""The installed evaltrack version, as PyPI knows it."""
 
 # Hand-maintained. A name belongs here when a user writes it or catches it.
 __all__ = [
@@ -50,10 +52,13 @@ __all__ = [
     "InvalidIdentifierError",
     "MarkerSettings",
     "RecordedTest",
+    "ReflogEntry",
     "RepositoryUnavailableError",
     "RoundAttempt",
     "RoundErrorRecord",
     "RunRecord",
+    "RunRepository",
+    "RunSummary",
     "RunnerInfo",
     "TranslatorNotFoundError",
     "UnsupportedSchemaError",

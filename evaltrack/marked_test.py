@@ -52,8 +52,9 @@ def run(evaluate: Callable[P, Any], /, *args: P.args, **kwargs: P.kwargs) -> Non
     """Run an eval through evaltrack, and add rounds as the marker requires.
 
     Call this from a test marked `@pytest.mark.evaltrack(...)`. Every round is
-    recorded, and the test fails when a case fails. `docs/marker.md` says how many
-    rounds the marker asks for, and which attempts must pass.
+    recorded, and the test fails when a case fails.
+    [`docs/marker.md`][the-evaltrack-marker] says how many rounds the marker asks
+    for, and which attempts must pass.
 
     Args:
         evaluate: Runs the eval and returns whatever the runner produces. It is

@@ -50,3 +50,18 @@ frontend_typecheck:
 # Run the frontend test suite (mirrors CI's frontend job)
 frontend_test:
     cd frontend && npm run test
+
+# Build the documentation site. Strict, so a broken link or an unresolved
+# docstring cross-reference fails the build, as it does in CI.
+docs_build:
+    uv run zensical build --strict
+
+# Serve the documentation site locally with live reload
+docs_serve:
+    uv run zensical serve
+
+# Build the documentation site with MkDocs and mkdocs-material instead of
+# Zensical, to prove mkdocs.yml still works as a fallback. The mike fork in the
+# docs group registers no MkDocs plugin, so the original mike is brought in.
+docs_fallback:
+    uv run --with mkdocs-material --with mike==2.2.0 mkdocs build --strict --site-dir site-fallback

@@ -1,25 +1,10 @@
-"""Example 7: recording an eval runner evaltrack has no translator for.
+"""Example 9: a translator for a runner that evaltrack does not know.
 
-Examples 1 to 6 use pydantic-evals, which evaltrack ships a translator for, so
-they only hand the eval to `evaltrack.run()`. This one uses a made-up runner
-instead, which stands in for whatever you already have. It also writes the
-translator that a shipped runner comes with.
+The runner is made up. The translator reads its result into evaltrack's model
+and is registered here. A real one lives in a `conftest.py`.
 
-Two pieces make that work:
-
-* A **translator** reads the runner's own result into evaltrack's model. This
-  file registers one. A real one lives in a `conftest.py`.
-* `evaltrack.run()` translates, records and gates in one step. A failing
-  case fails the test right there.
-
-Everything downstream is the same as for any other runner: the dashboard, the
-per-case reliability history, the diffs across runs.
-
-Run it. No API key needed, and no async plugin either, because the eval is
-driven by the test rather than awaited.
-
-    uv run pytest examples/test_07_other_eval_runner.py
-    uv run evaltrack ui          # then open the recorded run
+    uv run pytest examples/test_09_other_eval_runner.py
+    uv run evaltrack ui
 """
 
 from dataclasses import dataclass
@@ -29,10 +14,8 @@ import pytest
 import evaltrack
 from evaltrack.translators import register
 
-# --- the eval runner ------------------------------------------------------
-#
-# Stands in for a real one. What matters is the shape every batch eval runner
-# shares: cases in, one scored result per case out.
+# The runner. What matters is the shape that every batch eval runner shares,
+# cases in and one scored result per case out.
 
 
 @dataclass
@@ -60,8 +43,8 @@ class RunnerReport:
     """The runner's own result type, which the translator below reads."""
 
     results: list[SampleResult]
-    # This runner grades every metric against its own bar. evaltrack honors it,
-    # so the marker declares no score bar.
+    # The runner's own bar. The translator passes it on, so the marker
+    # declares none.
     relevance_threshold: float
 
 
@@ -96,18 +79,12 @@ def _score_relevance(answer: str, expected: str) -> float:
     return sum(word in wanted for word in words) / len(words)
 
 
-# --- the translator -------------------------------------------------------
-
-
 RUNNER_NAME = "example-runner"
 
 
 class RunnerTranslator:
-    """Reads `RunnerReport` into evaltrack's model.
-
-    evaltrack dispatches on the type of the object handed to `evaltrack.run`,
-    so a project whose tests use two runners needs no annotation on either.
-    """
+    """Reads a `RunnerReport` into evaltrack's model. evaltrack picks the
+    translator by the type of the result, so the test names none."""
 
     def translate(self, result: RunnerReport) -> evaltrack.EvalRound:
         evaluator = evaltrack.EvaluatorInfo(name="relevance")
@@ -122,8 +99,8 @@ class RunnerTranslator:
                     results={
                         "relevance": evaltrack.EvaluatorResult(
                             value=sample.relevance,
-                            # The runner's own bar. `score_bars` for the same
-                            # name on the marker replaces it.
+                            # A `score_bars` entry of the same name would
+                            # replace this bar.
                             runner_bar=result.relevance_threshold,
                             evaluator=evaluator,
                         )
@@ -141,14 +118,11 @@ register(
 )
 
 
-# --- the eval -------------------------------------------------------------
-
-
 SAMPLES = [
     Sample(id="france", question="capital of France", expected="Paris"),
     Sample(id="japan", question="capital of Japan", expected="Tokyo"),
-    # Scores 1/3: two of its three words are not in the expected answer. Under
-    # the runner's own 0.6 bar this case fails, which fails the test.
+    # Scores 1/3, since two of its three words are not in the expected answer.
+    # That is under the runner's bar of 0.6, so the test fails.
     Sample(id="peru", question="capital of Peru", expected="Lima"),
 ]
 
@@ -158,8 +132,7 @@ SAMPLES = [
 def test_capitals() -> None:
     """Answers to capital-city questions stay relevant to the expected answer.
 
-    `evaltrack.run` gates as well as records, so the failing case fails this
-    test. The `xfail` above is only so the example suite stays green. Drop it
-    and this is an ordinary failing eval.
+    The `xfail` keeps the example suite green. Without it, this is an ordinary
+    failing eval.
     """
     evaltrack.run(run_eval, SAMPLES)

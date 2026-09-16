@@ -30,9 +30,9 @@ $ evaltrack runs --local
 
 ## evaltrack refs
 
-Lists refs and the runs they point at. [`baseline`] comes first, then the PR refs, then the rest. A
-line holds the ref name, the run it targets, when it last moved (UTC), and the PR number and title
-when the move recorded them.
+Lists refs and the runs they point at. [`baseline`][baseline] comes first, then the PR refs, then
+the rest. A line holds the ref name, the run it targets, when it last moved (UTC), and the PR number
+and title when the move recorded them.
 
 ```text
 $ evaltrack refs --remote
@@ -67,11 +67,11 @@ evaltrack report --ref pr/482 --against baseline --output evaltrack-report.html
 `--against` embeds a second run and opens the page on the changes from that run to the reported one,
 the way **Compare to mainline** does in the dashboard. A value that is a run id names a run,
 anything else a ref. Without it the page shows the one run, with the reliability history the
-repository's [`baseline`] gives it. When the repository does not hold the `--against` target, or it
-is the reported run itself, the page shows the one run too, and a warning on stderr says why. A
-project's first pull request has no `baseline` yet, and its job still gets a report. The reader can
-inspect cases and attempts in the page but not delete, download or navigate, since nothing behind
-the page can answer.
+repository's [`baseline`][baseline] gives it. When the repository does not hold the `--against`
+target, or it is the reported run itself, the page shows the one run too, and a warning on stderr
+says why. A project's first pull request has no `baseline` yet, and its job still gets a report. The
+reader can inspect cases and attempts in the page but not delete, download or navigate, since
+nothing behind the page can answer.
 
 The eval runner's own result objects are not in the page. `export` has them. The page holds every
 input and output the run recorded, so share it as you would the run.
@@ -125,6 +125,7 @@ with the traceback.
 
 **Related:** [CI/CD](./ci-cd.md) · [Repositories and storage](./repositories.md)
 
-[`baseline`]: ./repositories.md#baseline-and-mainline
+[baseline]: ./repositories.md#baseline-and-mainline
 [reading runs from python]: ./repositories.md#reading-runs-from-python
-[dashboard trust model]: ../SECURITY.md#dashboard-trust-model
+[dashboard trust model]:
+  https://github.com/jesrav/evaltrack/blob/main/SECURITY.md#dashboard-trust-model

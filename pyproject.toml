@@ -47,7 +47,7 @@ keywords = [
 [project.urls]
 Homepage = "https://github.com/jesrav/evaltrack"
 Repository = "https://github.com/jesrav/evaltrack"
-Documentation = "https://github.com/jesrav/evaltrack/tree/main/docs"
+Documentation = "https://evaltrack.jesravnbol.dk"
 Issues = "https://github.com/jesrav/evaltrack/issues"
 Changelog = "https://github.com/jesrav/evaltrack/blob/main/CHANGELOG.md"
 
@@ -87,7 +87,8 @@ evaltrack = "evaltrack.cli:main"
 evaltrack = "evaltrack.pytest_plugin"
 
 [build-system]
-requires = ["hatchling>=1.27"]
+# 1.32.1 gave the build hook base class a second type parameter.
+requires = ["hatchling>=1.32.1"]
 build-backend = "hatchling.build"
 
 # The dashboard's built frontend (evaltrack/ui/static) is a gitignored build
@@ -108,6 +109,7 @@ exclude = [
     ".pre-commit-config.yaml",
     "CLAUDE.md",
     "justfile",
+    "mkdocs.yml",
     "uv.lock",
     "docs/images",
     "examples/images",
@@ -139,7 +141,13 @@ dev = [
     # Only for testing how a whole-test rerun plugin is met.
     "pytest-rerunfailures>=14.0",
     # So basedpyright can resolve hatch_build.py's imports.
-    "hatchling>=1.27",
+    "hatchling>=1.32.1",
+]
+docs = [
+    "mike",
+    "mkdocstrings-python==2.0.8",
+    "ruff==0.15.5",
+    "zensical==0.0.62",
 ]
 
 [tool.ruff.lint]
@@ -198,3 +206,6 @@ xfail_strict = true
 markers = [
     "integration: needs live cloud storage (Azure, S3). Excluded from `just test`, run with `just integration_test`",
 ]
+
+[tool.uv.sources]
+mike = { git = "https://github.com/squidfunk/mike.git", rev = "2d4ad799442f4592db8ad53b179bfb33db8c69ac" }

@@ -13,7 +13,7 @@ from typing import Any
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 
-class RequireFrontendHook(BuildHookInterface[Any]):
+class RequireFrontendHook(BuildHookInterface[Any, Any]):
     PLUGIN_NAME = "custom"
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:

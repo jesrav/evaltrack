@@ -1,8 +1,8 @@
 # Translators
 
-A **translator** turns one eval runner's results into evaltrack's model. Write one to connect a
-runner evaltrack ships none for. pydantic-evals and DeepEval work out of the
-[box](./eval-runners.md).
+A **translator** turns one eval runner's results into evaltrack's model. evaltrack ships translators
+for [pydantic-evals and DeepEval](./eval-runners.md). Write one to connect another runner that fits
+[the shape of an eval](./eval-shape.md).
 
 ```python
 from evaltrack.translators import EvalRound, Translator, register
@@ -21,8 +21,8 @@ register("my-runner", native_types=("my_runner.results.EvalReport",), load=MyTra
 Register from a `conftest.py`. `Translator` is a protocol matched by shape, so nothing inherits from
 it: annotate against it and a type checker reports a missing or mistyped method. `native_types` are
 dotted paths compared as text, so registering imports no runner.
-[`examples/test_07_other_eval_runner.py`](../examples/test_07_other_eval_runner.py) is a runnable
-one, for a made-up runner.
+[`examples/test_09_other_eval_runner.py`](https://github.com/jesrav/evaltrack/blob/main/examples/test_09_other_eval_runner.py)
+is a runnable one, for a made-up runner.
 
 ## The model
 
@@ -50,7 +50,9 @@ position or after the running test.
 
 **Related:** [Eval runners](./eval-runners.md) · [The evaltrack marker](./marker.md)
 
-[models]: ../evaltrack/core/eval_round.py
-[result model]: ../evaltrack/core/results.py
-[pydantic-evals translator]: ../evaltrack/translators/pydantic_evals.py
-[deepeval translator]: ../evaltrack/translators/deepeval.py
+[models]: https://github.com/jesrav/evaltrack/blob/main/evaltrack/core/eval_round.py
+[result model]: https://github.com/jesrav/evaltrack/blob/main/evaltrack/core/results.py
+[pydantic-evals translator]:
+  https://github.com/jesrav/evaltrack/blob/main/evaltrack/translators/pydantic_evals.py
+[deepeval translator]:
+  https://github.com/jesrav/evaltrack/blob/main/evaltrack/translators/deepeval.py

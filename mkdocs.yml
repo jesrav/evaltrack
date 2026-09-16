@@ -1,0 +1,148 @@
+# Read by Zensical (`just docs_build`) and, as the fallback, by MkDocs with
+# mkdocs-material. Only settings both understand belong here.
+site_name: evaltrack
+site_url: https://evaltrack.jesravnbol.dk/
+site_description: >-
+  A pytest plugin that records, gates and tracks LLM eval runs from
+  pydantic-evals, DeepEval or a runner you write a translator for.
+site_author: Jes Ravnbøl
+
+repo_url: https://github.com/jesrav/evaltrack
+repo_name: jesrav/evaltrack
+
+# The guides link to each other with `./page.md` and to source files with
+# absolute GitHub URLs, so the strict build catches a moved page or heading.
+strict: true
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+theme:
+  name: material
+  # Zensical's own look. The mkdocs-material fallback ignores this and renders
+  # the classic look instead.
+  variant: modern
+  language: en
+  logo: images/logo.svg
+  favicon: images/logo.svg
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - navigation.footer
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - toc.follow
+  # The colors come from the wordmark, set in docs/stylesheets/extra.css.
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Guides:
+      - The shape of an eval: eval-shape.md
+      - The evaltrack marker: marker.md
+      - Flakiness & reliability: flakiness.md
+      - Eval runners: eval-runners.md
+      - Translators: translators.md
+      - Repositories and storage: repositories.md
+      - CI/CD: ci-cd.md
+      - Examples: examples.md
+  - Reference:
+      - CLI: cli.md
+      - Configuration: configuration.md
+      - API reference: reference/api.md
+  - Changelog: changelog.md
+  - Roadmap: roadmap.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  # The changelog, contributing and examples pages are the root
+  # files pulled in, so the site never carries a second copy.
+  - pymdownx.snippets:
+      base_path: [.]
+      check_paths: true
+
+plugins:
+  - search
+  # Every version's pages name /latest/ as canonical, so search results keep
+  # sending people to the newest docs after a release.
+  - mike:
+      canonical_version: latest
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            members_order: alphabetical
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            separate_signature: true
+            signature_crossrefs: true
+            show_signature_annotations: true
+            merge_init_into_class: true
+            show_if_no_docstring: false
+            filters:
+              - "!^_[^_]"
+              # The repository's mutation methods. No guide asks a user to call
+              # them, and the errors they raise stay unexported for the same reason.
+              - "!^(save_run|move_ref|delete_run_unchecked|delete_ref_unchecked)$"
+
+extra:
+  # Preferences such as the color scheme are stored per base path, so without
+  # this each version under mike remembers its own.
+  scope: /
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jesrav/evaltrack
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/evaltrack/

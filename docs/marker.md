@@ -31,7 +31,8 @@ case clears it when `value >= bar`. It replaces a threshold the runner set. The 
 name the runner reports the score under. In pydantic-evals that is an `LLMJudge`'s
 `evaluation_name`, or an evaluator's class name unless it overrides `get_default_evaluation_name()`.
 In DeepEval it is the name the metric reports, which for `GEval` carries a `[GEval]` suffix.
-[`examples/test_02_scores.py`](../examples/test_02_scores.py) is a runnable one.
+[`examples/test_02_scores.py`](https://github.com/jesrav/evaltrack/blob/main/examples/test_02_scores.py)
+is a runnable one.
 
 **A bar applies only to the cases that produced the score.** That bar does not gate the other cases.
 Their own results must still pass.
@@ -50,8 +51,8 @@ as `EvalExecutionError`.
 ## Expected failures (xfail)
 
 To record a failing eval without failing CI (an acknowledged regression, or a model that temporarily
-underperforms), mark the test with pytest's own [`xfail`] marker. The eval still runs, the gate
-still evaluates every case, and the results are recorded. Only the pytest outcome changes.
+underperforms), mark the test with pytest's own [`xfail`][xfail] marker. The eval still runs, the
+gate still evaluates every case, and the results are recorded. Only the pytest outcome changes.
 
 **Under `xfail(strict=True)` an unexpected pass is recorded as `failed`**, since pytest treats a
 strict xpass as a genuine failure.
@@ -74,5 +75,5 @@ nothing is recorded.
 [CI/CD](./ci-cd.md)
 
 [configuration reference]: ./configuration.md#marker-keyword-arguments
-[`xfail`]:
+[xfail]:
   https://docs.pytest.org/en/stable/how-to/skipping.html#xfail-mark-test-functions-as-expected-to-fail

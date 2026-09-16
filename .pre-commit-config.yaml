@@ -27,7 +27,10 @@ repos:
       - id: check-merge-conflict
       # Check that various config files are well-formatted
       - id: check-toml
+      # mkdocs.yml carries a `!!python/name:` tag for the mermaid fence, which
+      # the safe loader refuses. --unsafe checks the syntax only.
       - id: check-yaml
+        args: [--unsafe]
 
   # format markdown and yaml files. The upstream pre-commit/mirrors-prettier is
   # archived (frozen at prettier 3.1); this is the maintained community mirror.

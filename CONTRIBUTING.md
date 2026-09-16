@@ -44,6 +44,18 @@ Locally, the Azure tests use `az login`. The S3 tests use the AWS profile that `
 Run `AWS_PROFILE=<profile> just integration_test`, or put `AWS_PROFILE=<profile>` in a `.env` file.
 The justfile loads that file and git ignores it.
 
+## Documentation
+
+The guides in `docs/` are the source. The site at
+[evaltrack.jesravnbol.dk](https://evaltrack.jesravnbol.dk) is built from them with Zensical, plus an
+API reference from the docstrings.
+
+```bash
+just docs_build       # strict: a broken link or docstring cross-reference fails it, as in CI
+just docs_serve       # live preview on http://localhost:8000
+just docs_fallback    # the same site with MkDocs and mkdocs-material, which must keep working
+```
+
 ## Conventions
 
 - Branch off `main`. A pre-commit hook blocks direct commits to `main`.
@@ -62,3 +74,10 @@ merged, publish a GitHub release with the tag `v<version>` and the changelog sec
 That runs `release.yml`, which refuses a tag that does not match the declared version, builds and
 smoke-tests the distribution, and uploads it to PyPI through the `pypi` environment. Releasing needs
 write access to the repository and approval on that environment.
+
+Once the package is on PyPI, the same workflow deploys the docs for the release's minor version
+(`0.2` for `0.2.x`) and moves `latest` to it. `dev` is deployed from `main` on every push. Both go
+to the `gh-pages` branch through [mike]. The branch, the Pages settings and the DNS record were set
+up once by hand.
+
+[mike]: https://github.com/squidfunk/mike

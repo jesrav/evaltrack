@@ -2,10 +2,10 @@
 
 Your evals are pytest tests, so the CI you already have runs them. This is how to wire the evaltrack
 CLI into it. Every pull request records a run and pushes it to a shared repository, and a merge
-promotes that run to [`baseline`]. The examples use an `azure://` remote, but not a concrete CI
-system. The commands are the same wherever you run them. Promote-on-merge is a convention here, not
-a rule of the tool. If a merge is not the moment code ships in your process (for example if you use
-GitOps), see [Adapting the flow].
+promotes that run to [`baseline`][baseline]. The examples use an `azure://` remote, but not a
+concrete CI system. The commands are the same wherever you run them. Promote-on-merge is a
+convention here, not a rule of the tool. If a merge is not the moment code ships in your process
+(for example if you use GitOps), see [Adapting the flow].
 
 ## The flow
 
@@ -58,20 +58,21 @@ works the same way with the AWS credentials in place of the Azure ones:
 Run the evals, write a run file, and push it under `pr/{n}`:
 
 ```bash
-# The run records these. A CI checkout is usually a shallow clone on a detached
-# HEAD, so the git context evaltrack would read is not the one you want.
-export EVALTRACK_COMMIT="$COMMIT_SHA"
+export EVALTRACK_COMMIT="$COMMIT_SHA"  # (1)!
 export EVALTRACK_BRANCH="$BRANCH_NAME"
 
 pytest -m evaltrack --evaltrack-run-file run.json
 
-# --commit records the same SHA on the ref's reflog entry, next to the PR.
 evaltrack push --run-file run.json \
   --ref "pr/$PR_NUMBER" \
   --pr "$PR_NUMBER" \
   --title "$PR_TITLE" \
-  --commit "$COMMIT_SHA"
+  --commit "$COMMIT_SHA"  # (2)!
 ```
+
+1. The run records these. A CI checkout is usually a shallow clone on a detached HEAD, so the git
+   context evaltrack would read is not the one you want.
+2. `--commit` records the same SHA on the ref's reflog entry, next to the PR.
 
 That is the whole integration. What the job around it has to get right:
 
@@ -157,7 +158,7 @@ biases the [tracked pass-rate][cross-run reliability] upward.
 **Related:** [CLI](./cli.md) · [Repositories and storage](./repositories.md) ·
 [Flakiness & reliability](./flakiness.md)
 
-[`baseline`]: ./repositories.md#baseline-and-mainline
+[baseline]: ./repositories.md#baseline-and-mainline
 [adapting the flow]: #adapting-the-flow-to-your-delivery-process
 [repositories › azure blob storage]: ./repositories.md#azure-blob-storage
 [repositories › amazon s3]: ./repositories.md#amazon-s3

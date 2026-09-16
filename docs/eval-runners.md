@@ -5,7 +5,8 @@ you already use.
 
 A **translator** turns a runner's results into evaltrack's own model, and everything downstream of
 the eval reads that model. Translators for pydantic-evals and DeepEval ship with evaltrack. To
-connect another runner, write a small [translator](./translators.md).
+connect another runner that fits [the shape of an eval](./eval-shape.md), write a small
+[translator](./translators.md).
 
 The only thing that differs is how you hand evaltrack the eval. pydantic-evals' `evaluate` is a
 coroutine, so use `run_async`. DeepEval's is not, so use `run`. After that, the gate, the recorded
@@ -13,10 +14,8 @@ run, the history and the dashboard work the same for both.
 
 ## Installing a runner
 
-Install the runner you already write your evals in, and evaltrack reads what it produces. evaltrack
-depends on no runner and imports one only when that runner's results show up.
-
-An extra exists for each shipped translator, so the install is one line instead of two:
+evaltrack depends on no runner, so install the one you write your evals in. An extra exists for each
+shipped translator, so that is one line:
 
 ```bash
 uv add "evaltrack[deepeval]"     # the same as adding deepeval yourself
@@ -39,16 +38,27 @@ def test_my_eval():
     evaltrack.run(my_runner.evaluate, dataset)
 ```
 
-You hand `run` the eval, not its result, so evaltrack can call it again for another round. `run`
-takes no configuration of its own. Configuration lives on
-[the marker](./marker.md#using-the-marker), which decides what is recorded, gated and rerun.
-Everything you pass after the eval is passed to it on every round.
+You hand `run` the eval, not its result, so evaltrack can call it again for another round.
+Everything after the eval is passed to it on every round.
 
 ### pydantic-evals
+
+pydantic-evals is the runner the [Getting started](./getting-started.md) walkthrough and most of the
+examples use. A `Dataset` holds the cases and the evaluators, and `evaluate` runs a task over it.
+Hand evaltrack the method and the task, and it calls them once per round:
 
 ```python
 await evaltrack.run_async(dataset.evaluate, task)
 ```
+
+An evaluator that returns a bool is an assertion, and one that returns a number is a score, gated by
+the marker's `score_bars`. Three runnable examples:
+[`test_01_function.py`](https://github.com/jesrav/evaltrack/blob/main/examples/test_01_function.py)
+is the basics with a custom evaluator,
+[`test_02_scores.py`](https://github.com/jesrav/evaltrack/blob/main/examples/test_02_scores.py)
+gates numeric scores with `score_bars`, and
+[`test_05_llm_judge.py`](https://github.com/jesrav/evaltrack/blob/main/examples/test_05_llm_judge.py)
+uses `LLMJudge` as both a guardrail and a graded score.
 
 On Python 3.12 and 3.13, `evaluate_sync()` emits a harmless pydantic-evals
 `DeprecationWarning: There is no current event loop`, which `run_async()` does not hit. Under
@@ -87,10 +97,11 @@ evaltrack calling the eval N times. There is no second count to set.
 `evaluate()` writes its last run to `./.deepeval`, beside whatever evaltrack records. Add
 `.deepeval/` to your `.gitignore`.
 
-Three runnable examples: [`test_08_deepeval.py`](../examples/test_08_deepeval.py) records and gates
-a run, [`test_09_deepeval_repeats.py`](../examples/test_09_deepeval_repeats.py) adds the marker's
-`repeats=`, and [`test_10_deepeval_traced.py`](../examples/test_10_deepeval_traced.py) scores the
-parts of a traced app with `@observe` and `dataset.evals_iterator()`.
+Two runnable examples:
+[`test_07_deepeval.py`](https://github.com/jesrav/evaltrack/blob/main/examples/test_07_deepeval.py)
+records and gates a run, and
+[`test_08_deepeval_repeats.py`](https://github.com/jesrav/evaltrack/blob/main/examples/test_08_deepeval_repeats.py)
+adds the marker's `repeats=`.
 
 ## What each runner calls these
 
