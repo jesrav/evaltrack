@@ -87,7 +87,7 @@ evaltrack = "evaltrack.cli:main"
 evaltrack = "evaltrack.pytest_plugin"
 
 [build-system]
-requires = ["hatchling>=1.27"]
+requires = ["hatchling>=1.32.1"]
 build-backend = "hatchling.build"
 
 # The dashboard's built frontend (evaltrack/ui/static) is a gitignored build
@@ -140,7 +140,7 @@ dev = [
     # Only for testing how a whole-test rerun plugin is met.
     "pytest-rerunfailures>=14.0",
     # So basedpyright can resolve hatch_build.py's imports.
-    "hatchling>=1.27",
+    "hatchling>=1.32.1",
 ]
 docs = [
     "mike",
