@@ -949,9 +949,9 @@
 
 <h1 id="evaltrack">evaltrack<a class="headerlink" href="#evaltrack" title="Permanent link">&para;</a></h1>
 <p>Evals are tests. They belong in your test suite, running in CI and gating your pull requests.</p>
-<p>evaltrack is a pytest plugin that records, gates and tracks your evals. Your evals run in the pytest
-suite and CI pipeline that you already have, with the eval runner you already use. Mark a test with
-<code>@pytest.mark.evaltrack</code> and hand it the eval:</p>
+<p>evaltrack is a pytest plugin that gates and tracks your evals, and handles LLM flakiness without
+rerunning CI. Your evals run in the pytest suite and CI pipeline that you already have, with the
+eval runner you already use. Mark a test with <code>@pytest.mark.evaltrack</code> and hand it the eval:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">evaltrack</span>
 
 
