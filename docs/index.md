@@ -2,9 +2,9 @@
 
 Evals are tests. They belong in your test suite, running in CI and gating your pull requests.
 
-evaltrack is a pytest plugin that records, gates and tracks your evals. Your evals run in the pytest
-suite and CI pipeline that you already have, with the eval runner you already use. Mark a test with
-`@pytest.mark.evaltrack` and hand it the eval:
+evaltrack is a pytest plugin that gates and tracks your evals, and handles LLM flakiness without
+rerunning CI. Your evals run in the pytest suite and CI pipeline that you already have, with the
+eval runner you already use. Mark a test with `@pytest.mark.evaltrack` and hand it the eval:
 
 ```python
 import evaltrack
