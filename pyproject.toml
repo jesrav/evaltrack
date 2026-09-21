@@ -87,7 +87,6 @@ evaltrack = "evaltrack.cli:main"
 evaltrack = "evaltrack.pytest_plugin"
 
 [build-system]
-# 1.32.1 gave the build hook base class a second type parameter.
 requires = ["hatchling>=1.32.1"]
 build-backend = "hatchling.build"
 
