@@ -4,7 +4,9 @@ the run landed on the mainline. No web framework here, so the report can be
 generated without the `[ui]` extra."""
 
 import logging
+from collections.abc import Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from typing import NamedTuple
 
 from evaltrack.core.errors import (
     CorruptRecordError,
@@ -42,6 +44,26 @@ def load_run_tolerating_another_schema(
         return None
 
 
+class RefTip(NamedTuple):
+    """A ref and its tip. `tip` is None with `error` set when the ref's history
+    cannot be read, and None alone when the ref points at nothing."""
+
+    name: str
+    tip: ReflogEntry | None
+    error: str | None
+
+
+def iter_ref_tips(repo: RunRepository) -> Iterator[RefTip]:
+    """Every ref by name with its tip. A ref whose history cannot be read is
+    still yielded, logged, so a caller can show or repair it."""
+    for name in sorted(repo.list_refs()):
+        try:
+            yield RefTip(name, repo.get_ref(name), None)
+        except (CorruptRecordError, InvalidIdentifierError) as exc:
+            _logger.warning("ref %s has an unreadable history: %s", name, exc)
+            yield RefTip(name, None, str(exc))
+
+
 def _newest_entry_per_run(entries: list[ReflogEntry]) -> list[ReflogEntry]:
     """Keep one entry per run in a newest-first reflog tail, the newest of each."""
     seen: set[str] = set()
@@ -54,21 +76,22 @@ def _newest_entry_per_run(entries: list[ReflogEntry]) -> list[ReflogEntry]:
     return unique
 
 
-def _load_mainline_history(repo: RunRepository, window: int) -> list[HistoryRun]:
-    """The runs on the `baseline` reflog, newest-first, one per run.
+def _load_mainline_history(
+    mainline: RunRepository, reflog: list[ReflogEntry], *, window: int
+) -> list[HistoryRun]:
+    """The newest `window` runs on the oldest-first `baseline` reflog, newest-first,
+    one per run.
 
     Each carries the promote-time commit, not the run's eval-time commit. A run
     promoted more than once is taken from its newest entry.
     """
-    # Read strictly, because a pass rate over dropped entries is worse than no
-    # number.
-    entries = _newest_entry_per_run(repo.tail_reflog(BASELINE_REF, window))
+    entries = _newest_entry_per_run(reflog[-window:][::-1]) if window > 0 else []
     if not entries:
         return []
 
     # Each load is one store read, so they overlap well.
     def load(entry: ReflogEntry) -> RunRecord | None:
-        return load_run_tolerating_another_schema(repo, entry.run_id)
+        return load_run_tolerating_another_schema(mainline, entry.run_id)
 
     workers = min(len(entries), _LOAD_WORKERS)
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -80,28 +103,22 @@ def _load_mainline_history(repo: RunRepository, window: int) -> list[HistoryRun]
     ]
 
 
-def load_run_history(
-    repo: RunRepository,
+def run_history_over(
+    mainline: RunRepository,
+    reflog: list[ReflogEntry],
     *,
-    mainline: RunRepository | None,
-    run_id: str | None,
+    viewed: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
-    """The reliability and score history over `mainline`'s promoted runs, with
-    the run `run_id` names in `repo` drawn over them when it is not itself one
-    of them. Empty without a mainline, or when it holds no history.
-
-    Raises:
-        CorruptRecordError: when the mainline's reflog does not parse.
-    """
-    history = _load_mainline_history(mainline, window) if mainline else []
-    if history and run_id is not None:
-        viewed = load_run_tolerating_another_schema(repo, run_id)
-        if viewed is not None and all(h.run.id != viewed.id for h in history):
-            history = [
-                HistoryRun(viewed, viewed.commit, viewed.created_at, off_mainline=True),
-                *history,
-            ]
+    """The reliability and score history over the runs `reflog`, `mainline`'s
+    oldest-first `baseline` history, promotes, with `viewed` drawn over them
+    when it is not itself one of them. Empty when there is no history."""
+    history = _load_mainline_history(mainline, reflog, window=window)
+    if history and viewed is not None and all(h.run.id != viewed.id for h in history):
+        history = [
+            HistoryRun(viewed, viewed.commit, viewed.created_at, off_mainline=True),
+            *history,
+        ]
     if not history:
         return RunHistory()
     return RunHistory(
@@ -110,15 +127,33 @@ def load_run_history(
     )
 
 
-def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry | None:
-    """Where the run landed on the mainline, from the newest `baseline` reflog
-    entry pointing at it. None for a run never promoted.
+def load_run_history(
+    mainline: RunRepository | None,
+    *,
+    viewed: RunRecord | None,
+    window: int = DEFAULT_WINDOW,
+) -> RunHistory:
+    """The reliability and score history over `mainline`'s promoted runs, with
+    `viewed` drawn over them when it is not itself one of them. Empty without
+    a mainline, or when it holds no history.
 
     Raises:
-        CorruptRecordError: when the reflog does not parse.
+        CorruptRecordError: when the mainline's reflog does not parse.
     """
+    if mainline is None:
+        return RunHistory()
+    reflog = list(mainline.get_reflog(BASELINE_REF))
+    return run_history_over(mainline, reflog, viewed=viewed, window=window)
+
+
+def mainline_entry_in(
+    reflog: Iterable[ReflogEntry], run_id: str
+) -> MainlineEntry | None:
+    """Where the run landed on the mainline, from the newest entry of the
+    oldest-first `baseline` `reflog` pointing at it. None for a run never
+    promoted."""
     match: ReflogEntry | None = None
-    for entry in mainline.get_reflog(BASELINE_REF):  # oldest-first
+    for entry in reflog:
         if entry.run_id == run_id:
             match = entry
     if match is None:
@@ -131,16 +166,20 @@ def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry |
     )
 
 
+def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry | None:
+    """`mainline_entry_in` over `mainline`'s own `baseline` reflog.
+
+    Raises:
+        CorruptRecordError: when the reflog does not parse.
+    """
+    return mainline_entry_in(mainline.get_reflog(BASELINE_REF), run_id)
+
+
 def refs_pointing_at(repo: RunRepository, run_id: str) -> list[Ref]:
     """The refs whose tip is `run_id`, by name. A ref whose history cannot be
     read is left out, since its tip is unknown, not absent."""
-    refs: list[Ref] = []
-    for name in sorted(repo.list_refs()):
-        try:
-            tip = repo.get_ref(name)
-        except (CorruptRecordError, InvalidIdentifierError) as exc:
-            _logger.warning("ref %s has an unreadable history: %s", name, exc)
-            continue
-        if tip is not None and tip.run_id == run_id:
-            refs.append(Ref(name=name, tip=tip))
-    return refs
+    return [
+        Ref(name=name, tip=tip)
+        for name, tip, _ in iter_ref_tips(repo)
+        if tip is not None and tip.run_id == run_id
+    ]

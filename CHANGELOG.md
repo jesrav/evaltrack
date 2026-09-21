@@ -23,6 +23,12 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 - **Report** in the dashboard, on a run and on a comparison, which saves the same page for the run
   on screen, to share with someone without the dashboard.
 
+### Changed
+
+- The mainline is the configured `remote` and nothing else. A dashboard with only a local repository
+  mounted no longer measures reliability history over the local `baseline`. Point `remote` at a
+  second local directory to keep that history when working alone.
+
 ## [0.2.0] - 2026-09-15
 
 ### Added

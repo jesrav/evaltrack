@@ -254,3 +254,19 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
     assert data.mainline is None
     assert data.history_error is not None and "no route" in data.history_error
     assert data.run.id == run.id
+
+
+def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None:
+    """The generator, not the collector, opens the mainline. When it cannot,
+    the page still says why it carries no history."""
+    repo = RunRepository(MemoryStore())
+    run = make_recorded_run(make_round(), commit="c0")
+    repo.save_run(run)
+
+    data = collect_report_data(
+        repo, run, mainline=None, mainline_error="the azure extra is not installed"
+    )
+
+    assert data.history.reliability == {}
+    assert data.mainline is None
+    assert data.history_error == "the azure extra is not installed"

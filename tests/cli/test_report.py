@@ -123,10 +123,13 @@ def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
     )
 
 
-def test_report_against_a_ref_embeds_both_runs(tmp_path: Path) -> None:
+def test_report_against_a_ref_embeds_both_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """`--against baseline` is the CI case: the PR's run with the mainline run
     beside it, so the page opens on the comparison."""
     url = str(tmp_path / "repo")
+    monkeypatch.setenv("EVALTRACK_REMOTE", url)
     baseline = seed_run_in_repo(url)
     pr_run = seed_run_in_repo(url)
     repo = open_repository(url)
@@ -221,11 +224,12 @@ def test_report_missing_ref_exits_1(tmp_path: Path) -> None:
 
 
 def test_report_missing_comparison_reports_the_run_alone_with_a_warning(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The first PR of a project has no baseline to compare against yet. The
     CI step still gets its report, of the run alone, and stderr says why."""
     url = str(tmp_path / "repo")
+    monkeypatch.setenv("EVALTRACK_REMOTE", url)
     run_id = seed_run_in_repo(url)
     output = tmp_path / "report.html"
 
@@ -250,10 +254,13 @@ def test_report_missing_comparison_reports_the_run_alone_with_a_warning(
     assert "against" not in result.out, "the summary line claims no comparison"
 
 
-def test_report_against_the_run_itself_reports_it_alone(tmp_path: Path) -> None:
+def test_report_against_the_run_itself_reports_it_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A run promoted to baseline compared against baseline would diff itself,
     which the dashboard does not offer either."""
     url = str(tmp_path / "repo")
+    monkeypatch.setenv("EVALTRACK_REMOTE", url)
     run_id = seed_run_in_repo(url)
     open_repository(url).move_ref("baseline", run_id)
     output = tmp_path / "report.html"
@@ -341,9 +348,12 @@ def test_report_of_a_local_run_measures_history_over_the_remote(
     assert history["reliability"]["test_x"]["test_case"]["pooled_runs"] == 1
 
 
-def test_report_without_a_remote_measures_history_over_the_named_repository(
+def test_report_without_a_remote_has_no_history_and_resolves_no_ref(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """The mainline is the remote and nothing else. A `baseline` in the named
+    repository is a developer's own promotion, so the page does not draw over
+    it, and `--against baseline` has nowhere to look."""
     url = str(tmp_path / "repo")
     configure_local(tmp_path, url)
     monkeypatch.chdir(tmp_path)
@@ -352,13 +362,17 @@ def test_report_without_a_remote_measures_history_over_the_named_repository(
     run_id = seed_run_in_repo(url)
     output = tmp_path / "report.html"
 
-    result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
+    result = run_cli(
+        ["report", "--run-id", run_id, "--local", "--against", "baseline"]
+        + ["--output", str(output)]
+    )
 
-    assert result.code == 0
-    assert "mainline" not in result.err, "nothing else was read"
-    history = embedded_json(output.read_text(encoding="utf-8"))["history"]
-    assert isinstance(history, dict)
-    assert history["reliability"]["test_x"]["test_case"]["pooled_runs"] == 1
+    assert result.code == 0, "no remote is not a failure of the report"
+    assert "no remote configured" in result.err
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    assert data["history"] == {"reliability": {}, "score_history": {}}
+    assert data["history_error"] is not None
+    assert data["against"] is None
 
 
 def test_report_carries_the_configured_pr_link_template(
@@ -399,6 +413,103 @@ def test_report_of_a_local_run_with_the_remote_down_has_no_history(
     result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
 
     assert result.code == 0, "an unreachable mainline does not fail the report"
+    assert "warning" in result.err and remote in result.err
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    assert data["history"] == {"reliability": {}, "score_history": {}}
+    assert data["history_error"] is not None
+
+
+def test_report_against_a_ref_resolves_it_on_the_remote(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A PR job reporting a local run against `baseline` means the team's
+    baseline, which lives on the remote and never in the local repository."""
+    repos = configure_repositories(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    promoted = seed_run_in_repo(repos.remote)
+    open_repository(repos.remote).move_ref("baseline", promoted, commit="main-0")
+    run_id = seed_run_in_repo(repos.local)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        ["report", "--run-id", run_id, "--local", "--against", "baseline"]
+        + ["--output", str(output)]
+    )
+
+    assert result.code == 0
+    assert "warning" not in result.err
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    against = data["against"]
+    assert isinstance(against, dict)
+    assert (against["id"], data["against_via"]) == (promoted, "baseline")
+
+
+def test_report_against_a_run_id_looks_in_the_named_repository(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A run id names a run where the report reads from, so two local runs
+    compare without the remote holding either."""
+    repos = configure_repositories(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    seed_run_in_repo(repos.remote)
+    earlier = seed_run_in_repo(repos.local)
+    run_id = seed_run_in_repo(repos.local)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        ["report", "--run-id", run_id, "--local", "--against", earlier]
+        + ["--output", str(output)]
+    )
+
+    assert result.code == 0
+    against = embedded_json(output.read_text(encoding="utf-8"))["against"]
+    assert isinstance(against, dict)
+    assert against["id"] == earlier
+
+
+def test_report_against_a_ref_with_the_remote_down_reports_the_run_alone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Offline, the comparison is out of reach like the history. The run is
+    still worth sharing, so neither fails the report."""
+    url = str(tmp_path / "local")
+    configure_local(tmp_path, url)
+    remote = mount_fake_azure(
+        monkeypatch, RaisingStore(RepositoryUnavailableError("no route to host"))
+    )
+    monkeypatch.setenv("EVALTRACK_REMOTE", remote)
+    monkeypatch.chdir(tmp_path)
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        ["report", "--run-id", run_id, "--local", "--against", "baseline"]
+        + ["--output", str(output)]
+    )
+
+    assert result.code == 0, "an unreachable mainline does not fail the report"
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    assert data["against"] is None
+    assert data["history_error"] is not None
+
+
+def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A remote whose backend is not installed, or whose URL is malformed,
+    is as far out of reach as one that is down, and the local run is still
+    the report's subject."""
+    url = str(tmp_path / "local")
+    configure_local(tmp_path, url)
+    remote = "nosuchscheme://team/evals"
+    monkeypatch.setenv("EVALTRACK_REMOTE", remote)
+    monkeypatch.chdir(tmp_path)
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
+
+    assert result.code == 0, "an unopenable mainline does not fail the report"
     assert "warning" in result.err and remote in result.err
     data = embedded_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}

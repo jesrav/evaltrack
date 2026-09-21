@@ -118,7 +118,8 @@ a CI job, for an artifact or a release note. See [CLI › report](./cli.md#evalt
 
 Declare your repositories in `pyproject.toml`. `local` is where the plugin saves runs. `remote` is a
 shared repository that your CI writes to (Azure Blob Storage or Amazon S3). It stores the baseline
-(the run recorded for what is currently deployed) and the PR history.
+(the run recorded for what is currently deployed) and the PR history, and it is the only place the
+reliability history is measured over. Working alone, point `remote` at a second local directory.
 
 ```toml
 [tool.evaltrack]

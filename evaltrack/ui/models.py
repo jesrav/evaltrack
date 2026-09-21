@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel
 
 from evaltrack.config import PrUrlTemplate, RepositoryRole
 from evaltrack.core.refs import Ref, ReflogEntry
@@ -88,10 +88,6 @@ class ReportData(BaseModel):
     chose. `history` is empty for a comparison, which does not render it, and
     when the mainline could not be read, which `history_error` then says.
     """
-
-    # The top-level serializer decides how a non-finite score is written, and
-    # the API writes it as a string.
-    model_config = ConfigDict(ser_json_inf_nan="strings")
 
     run: RunRecord
     via: str | None = None

@@ -65,13 +65,14 @@ evaltrack report --ref pr/482 --against baseline --output evaltrack-report.html
 ```
 
 `--against` embeds a second run and opens the page on the changes from that run to the reported one,
-the way **Compare to mainline** does in the dashboard. A value that is a run id names a run,
-anything else a ref. Without it the page shows the one run, with the reliability history the
-repository's [`baseline`][baseline] gives it. When the repository does not hold the `--against`
-target, or it is the reported run itself, the page shows the one run too, and a warning on stderr
-says why. A project's first pull request has no `baseline` yet, and its job still gets a report. The
-reader can inspect cases and attempts in the page but not delete, download or navigate, since
-nothing behind the page can answer.
+the way **Compare to mainline** does in the dashboard. A value that is a run id names a run in the
+repository the report reads from. Anything else is a ref, looked up on the configured remote, where
+the team's refs live. Without `--against` the page shows the one run, with the reliability history
+the remote's [`baseline`][baseline] gives it. When the `--against` target cannot be found, or it is
+the reported run itself, the page shows the one run too, and a warning on stderr says why. A
+project's first pull request has no `baseline` yet, and its job still gets a report. The reader can
+inspect cases and attempts in the page but not delete, download or navigate, since nothing behind
+the page can answer.
 
 The eval runner's own result objects are not in the page. `export` has them. The page holds every
 input and output the run recorded, so share it as you would the run.
@@ -84,12 +85,11 @@ the `baseline` the report compares against, so the job need not name it again. `
 looking at.
 
 The reliability history and the mainline entry are read from the configured remote whichever
-repository holds the run, since the team's `baseline` lives there. Without a configured remote, the
-named repository is its own mainline. When the remote cannot be reached, the page has no history and
-says so, and a warning names the remote. The page names the refs that point at the run, with the PR
-each records, and links the number when `pr_url_template` is set. The dashboard offers the same page
-as **Report** on a run and on a comparison, so a run you are looking at can be handed over without
-the command.
+repository holds the run, since the team's `baseline` lives there and nowhere else. Without a
+configured remote, or when it cannot be opened or reached, the page has no history and says so, and
+a warning says why. The page names the refs that point at the run, with the PR each records, and
+links the number when `pr_url_template` is set. The dashboard offers the same page as **Report** on
+a run and on a comparison, so a run you are looking at can be handed over without the command.
 
 **Exit codes:** `0` when the report was written. `1` when the named repository does not hold the run
 or the ref, and the error names that repository. Nothing is written then. `2` when no repository is

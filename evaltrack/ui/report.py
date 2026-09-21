@@ -3,18 +3,16 @@ so it opens anywhere with no server and no network."""
 
 import importlib.metadata
 from datetime import UTC, datetime
+from functools import cache
 from pathlib import Path
 
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
+from evaltrack.core.refs import BASELINE_REF
 from evaltrack.core.run_record import RunRecord, strip_raw_results
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import MainlineEntry, ReportData, RunHistory
-from evaltrack.ui.views import (
-    find_mainline_entry,
-    load_run_history,
-    refs_pointing_at,
-)
+from evaltrack.ui.views import mainline_entry_in, refs_pointing_at, run_history_over
 
 # Beside the dashboard bundle, so one frontend build ships both.
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
@@ -28,6 +26,7 @@ def collect_report_data(
     run: RunRecord,
     *,
     mainline: RunRepository | None,
+    mainline_error: str | None = None,
     via: str | None = None,
     against: RunRecord | None = None,
     against_via: str | None = None,
@@ -36,6 +35,8 @@ def collect_report_data(
     """The report's data for `run`, held by `repository`, with its history and
     promotion measured over `mainline`'s `baseline`. The two differ when the
     run is a developer's own and the team's mainline lives elsewhere.
+    `mainline_error` says why there is no mainline when the caller could not
+    open the one it wanted, and the page carries it as `history_error`.
 
     The runner's own result objects are dropped, as the page never renders
     them. The cross-run history is read only without `against`, since a
@@ -49,14 +50,17 @@ def collect_report_data(
     """
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
-    history_error: str | None = None
-    try:
-        if against is None:
-            history = load_run_history(repository, mainline=mainline, run_id=run.id)
-        if mainline is not None:
-            mainline_entry = find_mainline_entry(mainline, run.id)
-    except RepositoryUnavailableError as exc:
-        history, mainline_entry, history_error = RunHistory(), None, str(exc)
+    history_error = mainline_error
+    if mainline is not None:
+        try:
+            # One read serves both, since the history is a window of the same
+            # reflog the entry is found in.
+            reflog = list(mainline.get_reflog(BASELINE_REF))
+            if against is None:
+                history = run_history_over(mainline, reflog, viewed=run)
+            mainline_entry = mainline_entry_in(reflog, run.id)
+        except RepositoryUnavailableError as exc:
+            history, mainline_entry, history_error = RunHistory(), None, str(exc)
     return ReportData(
         run=strip_raw_results(run),
         via=via,
@@ -89,6 +93,27 @@ def escape_json_for_html(json_text: str) -> str:
     )
 
 
+@cache
+def _load_template(path: Path) -> tuple[str, str]:
+    """The template split at its data slot. Cached, because the built page is
+    fixed for the life of the process and the dashboard renders it per download.
+    A failure is not cached, so a build that lands later is picked up."""
+    try:
+        template = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"the report template is not built ({path} is missing). "
+            "In a checkout, run `just frontend_build`."
+        ) from None
+    head, slot, tail = template.partition(_DATA_SLOT)
+    if not slot:
+        raise ValueError(
+            f"{path} carries no data slot, so it is not the report "
+            "template this evaltrack writes. Rebuild it with `just frontend_build`."
+        )
+    return head, tail
+
+
 def render_report(data: ReportData) -> str:
     """The report page for `data`, as one self-contained HTML document.
 
@@ -97,21 +122,9 @@ def render_report(data: ReportData) -> str:
         ValueError: when the template carries no data slot, so it is not the
             template this version writes into.
     """
-    try:
-        template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            f"the report template is not built ({TEMPLATE_PATH} is missing). "
-            "In a checkout, run `just frontend_build`."
-        ) from None
-    if _DATA_SLOT not in template:
-        raise ValueError(
-            f"{TEMPLATE_PATH} carries no data slot, so it is not the report "
-            "template this evaltrack writes. Rebuild it with `just frontend_build`."
-        )
+    head, tail = _load_template(TEMPLATE_PATH)
     payload = escape_json_for_html(data.model_dump_json())
-    return template.replace(
-        _DATA_SLOT,
-        f'<script type="application/json" id="evaltrack-data">{payload}</script>',
-        1,
+    return (
+        f'{head}<script type="application/json" id="evaltrack-data">{payload}'
+        f"</script>{tail}"
     )

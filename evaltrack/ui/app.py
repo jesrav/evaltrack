@@ -122,12 +122,11 @@ def create_app(
         s: RepositoryInfo(slug=s, url=m.url, role=m.role)
         for s, m in repositories.items()
     }
-    # The mainline lives on the remote. Without one, the sole mount is it. A
-    # local `baseline` beside a remote is a developer's own promotion, not the
-    # team's, so no view reads it.
+    # The mainline lives on the remote and nowhere else. A local `baseline` is
+    # a developer's own promotion, not the team's, so no view reads it.
     mainline: RunRepository | None = next(
         (m.repository for m in repositories.values() if m.role == "remote"), None
-    ) or (next(iter(mounts.values())) if len(mounts) == 1 else None)
+    )
 
     def resolve(slug: str) -> RunRepository:
         try:
