@@ -12,7 +12,10 @@ from typing import Any
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 
-class RequireFrontendHook(BuildHookInterface[Any, Any]):
+# Unsubscripted, because hatchling changed how many type parameters the
+# interface takes in 1.32.1 and again in 1.32.4, and a build runs whichever
+# hatchling is newest, not the locked one.
+class RequireFrontendHook(BuildHookInterface):  # pyright: ignore[reportMissingTypeArgument]
     PLUGIN_NAME = "custom"
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
