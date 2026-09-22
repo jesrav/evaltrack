@@ -79,6 +79,9 @@ ui = [
 # The first release whose S3 model carries `IfMatch` on PutObject, which
 # `append` needs for its conditional write.
 s3 = ["boto3>=1.35.60"]
+# The release where the Files API client lost its 5 GiB upload limit, and
+# the oldest checked to carry every call the store makes.
+databricks = ["databricks-sdk>=0.72.0"]
 
 [project.scripts]
 evaltrack = "evaltrack.cli:main"
@@ -125,7 +128,7 @@ packages = ["evaltrack"]
 dev = [
     # The project's own extras, so one `uv sync` installs every backend and
     # the dashboard, and no tool has to name them.
-    "evaltrack[ui,azure,s3]",
+    "evaltrack[ui,azure,s3,databricks]",
     "httpx>=0.27.0",
     "basedpyright>=1.29.0",
     # Used only by examples/. The [openai] extra powers the real-LLM examples.
@@ -203,7 +206,7 @@ filterwarnings = [
 ]
 xfail_strict = true
 markers = [
-    "integration: needs live cloud storage (Azure, S3). Excluded from `just test`, run with `just integration_test`",
+    "integration: needs live cloud storage (Azure, S3, Databricks). Excluded from `just test`, run with `just integration_test`",
 ]
 
 [tool.uv.sources]

@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 # All backend URL schemes for the messages that list them.
-_KNOWN_SCHEMES = ("azure", "s3")
+_KNOWN_SCHEMES = ("azure", "databricks", "s3")
 _KNOWN_SCHEMES_TEXT = "known schemes: " + ", ".join(_KNOWN_SCHEMES)
 
 
@@ -66,6 +66,15 @@ def open_repository(location: str) -> RunRepository:
                     f"({exc})"
                 ) from exc
             return azure_repository.open_from_url(location)
+        case "databricks":
+            try:
+                import evaltrack.repositories.databricks as databricks_repository
+            except ImportError as exc:
+                raise ImportError(
+                    "the 'databricks' repository requires the "
+                    f"`evaltrack[databricks]` extra ({exc})"
+                ) from exc
+            return databricks_repository.open_from_url(location)
         case "s3":
             try:
                 import evaltrack.repositories.s3 as s3_repository

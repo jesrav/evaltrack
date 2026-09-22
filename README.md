@@ -40,11 +40,11 @@ That one marker gives you three things:
 - **Handle flakiness without rerunning CI.** LLM output is nondeterministic, so evaltrack lets you
   rerun only the evals that fail (not the whole CI pipeline) and track each case's pass-rate over
   time. See [Flakiness & reliability].
-- **Keep every run.** Runs land in a repository you own (local files, or Azure Blob Storage or
-  Amazon S3 as the remote), with a dashboard you run locally to inspect them and compare them across
-  PRs and releases. Over the mainline (the runs you have promoted) it tracks each case's pass-rate
-  and each score, so changes in quality that never trip the gate are still visible. See
-  [Repositories and storage] and [CI/CD].
+- **Keep every run.** Runs land in a repository you own (local files, or Azure Blob Storage, Amazon
+  S3 or a Databricks volume as the remote), with a dashboard you run locally to inspect them and
+  compare them across PRs and releases. Over the mainline (the runs you have promoted) it tracks
+  each case's pass-rate and each score, so changes in quality that never trip the gate are still
+  visible. See [Repositories and storage] and [CI/CD].
 
 ![Animated demo: a failing eval run in the dashboard, with per-case verdicts, scores against their bars, reliability history, and a comparison against the baseline][dashboard-demo]
 

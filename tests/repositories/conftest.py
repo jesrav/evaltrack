@@ -2,9 +2,9 @@
 fixtures it looks up.
 
 The whole suite runs through these fixtures, so every backend (file, live
-Azure and live S3) holds the same behavior. The cloud parametrizations run
-against real storage and carry the `integration` marker, so `just test` skips
-them.
+Azure, live S3 and a live Databricks volume) holds the same behavior. The
+cloud parametrizations run against real storage and carry the `integration`
+marker, so `just test` skips them.
 
 There is no fake of a cloud SDK here, on purpose. A hand-written stand-in for
 Azure once passed an append-race guarantee that the real backend did not
@@ -12,6 +12,7 @@ provide. The S3 append is only correct if the service enforces its
 preconditions, and only the service can show that.
 """
 
+import os
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import cast
@@ -21,9 +22,12 @@ import boto3
 import pytest
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, ContainerClient
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors import NotFound
 
 from evaltrack.repositories import RunRepository
 from evaltrack.repositories.azure import AzureBlobStore
+from evaltrack.repositories.databricks import DatabricksVolumeStore, FilesClient
 from evaltrack.repositories.file import FileStore
 from evaltrack.repositories.s3 import S3Client, S3ObjectStore
 from evaltrack.repositories.store import ObjectStore
@@ -105,11 +109,71 @@ def s3_store_factory(
     return lambda: S3ObjectStore(s3_client, S3_TEST_BUCKET, prefix=s3_prefix)
 
 
+# There is no maintainer workspace for Databricks, so the volume for live
+# testing is named by whoever runs the tests, as `/Volumes/<catalog>/<schema>/
+# <volume>`. The workspace and credentials come from Databricks unified
+# authentication. Unset, the `databricks` parametrization skips.
+DATABRICKS_TEST_VOLUME_ENV = "EVALTRACK_DATABRICKS_TEST_VOLUME"
+
+
+@pytest.fixture(scope="session")
+def databricks_volume() -> str:
+    volume = os.environ.get(DATABRICKS_TEST_VOLUME_ENV)
+    if not volume:
+        pytest.skip(f"{DATABRICKS_TEST_VOLUME_ENV} names no volume to test against")
+    return volume.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def databricks_files(databricks_volume: str) -> FilesClient:
+    """Session-scoped so the whole run resolves credentials once."""
+    return WorkspaceClient(product="evaltrack-tests").files
+
+
+def delete_databricks_tree(files: FilesClient, directory: str) -> None:
+    """Delete `directory` and everything under it. The API deletes only an
+    empty directory, so the tree is walked. A missing directory is a no-op."""
+    try:
+        entries = list(files.list_directory_contents(directory))
+    except NotFound:
+        return
+    for entry in entries:
+        path = f"{directory}/{entry.name}"
+        if entry.is_directory:
+            delete_databricks_tree(files, path)
+        else:
+            files.delete(path)
+    files.delete_directory(directory)
+
+
+@pytest.fixture
+def databricks_prefix(
+    databricks_files: FilesClient, databricks_volume: str
+) -> Iterator[str]:
+    """Unique per-test directory inside the shared volume, deleted on teardown."""
+    prefix = f"itest-{uuid4().hex}"
+    yield prefix
+    delete_databricks_tree(databricks_files, f"{databricks_volume}/{prefix}")
+
+
+@pytest.fixture
+def databricks_store_factory(
+    databricks_files: FilesClient, databricks_volume: str, databricks_prefix: str
+) -> Callable[[], DatabricksVolumeStore]:
+    """StoreFactory for the contract suite's `databricks` parametrization.
+    Injects the shared client. For the `from_url` construction path, see
+    `repositories/test_databricks_store.py`."""
+    return lambda: DatabricksVolumeStore(
+        databricks_files, databricks_volume, prefix=databricks_prefix
+    )
+
+
 @pytest.fixture(
     params=[
         "file",
         pytest.param("azure", marks=pytest.mark.integration),
         pytest.param("s3", marks=pytest.mark.integration),
+        pytest.param("databricks", marks=pytest.mark.integration),
     ]
 )
 def store_factory(request: pytest.FixtureRequest, tmp_path: Path) -> StoreFactory:

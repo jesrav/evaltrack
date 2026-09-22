@@ -35,11 +35,12 @@ flowchart TB
 
 ## Prerequisites
 
-You need a shared remote and credentials for it. The examples use `azure://`, and an `s3://` remote
-works the same way with the AWS credentials in place of the Azure ones:
+You need a shared remote and credentials for it. The examples use `azure://`, and an `s3://` or
+`databricks://` remote works the same way with that backend's credentials in place of the Azure
+ones:
 
-- For the URL shape and how evaltrack authenticates, see [Repositories › Azure Blob Storage] or
-  [Repositories › Amazon S3].
+- For the URL shape and how evaltrack authenticates, see [Repositories › Azure Blob Storage],
+  [Repositories › Amazon S3] or [Repositories › Databricks volume].
 - Point `[tool.evaltrack].remote` at the remote, so `evaltrack ui` mounts it next to your local
   runs:
 
@@ -76,8 +77,8 @@ evaltrack push --run-file run.json \
 
 That is the whole integration. What the job around it has to get right:
 
-- **Install `evaltrack[azure]`**, or `evaltrack[s3]`, alongside your project's own dependencies, or
-  the push fails.
+- **Install `evaltrack[azure]`**, or `evaltrack[s3]` or `evaltrack[databricks]`, alongside your
+  project's own dependencies, or the push fails.
 - **Name the remote once.** Set `EVALTRACK_REMOTE` for the job and neither command needs to name a
   repository (see [Configuration › Precedence rules](./configuration.md#precedence-rules)).
 - **Push even when an eval failed.** The run is written when the pytest session finishes, whatever
@@ -148,5 +149,6 @@ biases the [tracked pass-rate][cross-run reliability] upward.
 [adapting the flow]: #adapting-the-flow-to-your-delivery-process
 [repositories › azure blob storage]: ./repositories.md#azure-blob-storage
 [repositories › amazon s3]: ./repositories.md#amazon-s3
+[repositories › databricks volume]: ./repositories.md#databricks-volume
 [pytest-xdist]: https://github.com/pytest-dev/pytest-xdist
 [cross-run reliability]: ./flakiness.md#cross-run-reliability

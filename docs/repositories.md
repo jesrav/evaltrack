@@ -67,11 +67,12 @@ different `--commit`, the first commit stays.
 
 A repository is named by a directory path, or by a URL whose scheme picks the backend:
 
-| Name                        | Backend                              |
-| --------------------------- | ------------------------------------ |
-| `./.evaltrack`              | Local directory (default)            |
-| `azure://account/container` | Azure Blob Storage (`[azure]` extra) |
-| `s3://bucket`               | Amazon S3 (`[s3]` extra)             |
+| Name                                 | Backend                                                |
+| ------------------------------------ | ------------------------------------------------------ |
+| `./.evaltrack`                       | Local directory (default)                              |
+| `azure://account/container`          | Azure Blob Storage (`[azure]` extra)                   |
+| `s3://bucket`                        | Amazon S3 (`[s3]` extra)                               |
+| `databricks://catalog/schema/volume` | Databricks Unity Catalog volume (`[databricks]` extra) |
 
 How a relative path resolves is in
 [Configuration › Repository names](./configuration.md#repository-names).
@@ -132,6 +133,47 @@ secret to manage:
 Both need `s3:ListBucket` on the bucket and `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on
 its objects.
 
+## Databricks volume
+
+> Requires the `[databricks]` extra: `uv add "evaltrack[databricks]"`.
+
+A shared remote is a [Unity Catalog volume], addressed as
+`databricks://<catalog>/<schema>/<volume>[/<prefix>]`, the same three names as the volume's
+`/Volumes/<catalog>/<schema>/<volume>` path. The optional prefix is a directory inside the volume,
+so several projects can share one, for example `databricks://main/default/evals/project-a`. The
+workspace is not part of the URL. It comes from your Databricks configuration, like the region does
+for S3. The volume has to exist. The prefix is created on the first write.
+
+evaltrack talks to the volume through the [Files API], so it works from anywhere the workspace is
+reachable, not only from a cluster. Nothing is mounted and no compute is needed.
+
+The Files API cannot append to a file, so a ref's reflog is a directory at the reflog's name, with
+one file per move of the ref. Each move creates its own file, so two moves at the same time never
+overwrite each other. Reading the reflog lists the directory and downloads the files, up to eight at
+a time, so reading a ref that has moved thousands of times is slower here than on the other
+backends. The files are ordered by the clock of the machine that moved the ref, so two machines
+whose clocks disagree by more than the time between two moves can record them the other way round. A
+CI runner's clock is well within that.
+
+### Authentication
+
+evaltrack authenticates with [Databricks unified authentication], so there is no evaltrack-specific
+secret to manage:
+
+- **Developers** run `databricks auth login --host <workspace-url>` once with the Databricks CLI, or
+  set `DATABRICKS_HOST` and `DATABRICKS_TOKEN`. A profile in `~/.databrickscfg` is picked with
+  `DATABRICKS_CONFIG_PROFILE`.
+- **CI** sets `DATABRICKS_HOST` with either a personal access token in `DATABRICKS_TOKEN` or a
+  service principal's `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET`.
+- **A notebook or a job** on Databricks needs nothing. The SDK uses the session's own credentials.
+
+Whoever runs needs `READ VOLUME` and `WRITE VOLUME` on the volume, and `USE CATALOG` and
+`USE SCHEMA` on its parents.
+
+[unity catalog volume]: https://docs.databricks.com/aws/en/volumes/
+[files api]: https://docs.databricks.com/api/workspace/files
+[databricks unified authentication]: https://docs.databricks.com/aws/en/dev-tools/auth/unified-auth
+
 ## Cleaning up runs
 
 A shared remote repository grows with every PR run, and merged or abandoned PRs leave behind
@@ -165,7 +207,9 @@ The dashboard shows the ref as `unreadable history`.
 
 To repair it, write the readable lines back without the torn one, each ending in a newline. On
 Azure, write them in one append to a new append blob, since a block blob refuses every later append.
-On S3 a plain upload of the repaired file is enough.
+On S3 a plain upload of the repaired file is enough. On a Databricks volume the reflog is a
+directory of one file per entry, so delete the file holding the torn line, or upload a repaired copy
+of it under the same name.
 
 ## Reading runs from Python
 

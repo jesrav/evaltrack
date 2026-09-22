@@ -99,8 +99,9 @@ The local repository, plus the remote when one is configured, resolved exactly a
 
 ## Repository names
 
-A repository is named by a directory path, or by a URL such as `azure://account/container[/prefix]`
-or `s3://bucket[/prefix]` ([Backends](./repositories.md#backends)).
+A repository is named by a directory path, or by a URL such as `azure://account/container[/prefix]`,
+`s3://bucket[/prefix]` or `databricks://catalog/schema/volume[/prefix]`
+([Backends](./repositories.md#backends)).
 
 Where a relative path resolves from depends on where you wrote it:
 

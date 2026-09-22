@@ -44,6 +44,12 @@ Locally, the Azure tests use `az login`. The S3 tests use the AWS profile that `
 Run `AWS_PROFILE=<profile> just integration_test`, or put `AWS_PROFILE=<profile>` in a `.env` file.
 The justfile loads that file and git ignores it.
 
+There is no maintainer workspace for Databricks. The Databricks tests run against the volume that
+`EVALTRACK_DATABRICKS_TEST_VOLUME` names, as `/Volumes/<catalog>/<schema>/<volume>`, with the
+workspace and credentials from Databricks unified authentication (`databricks auth login`, or
+`DATABRICKS_HOST` and `DATABRICKS_TOKEN`). Unset, they skip, in CI too. If your change touches that
+backend, run them against a workspace you have and say so in the PR.
+
 ## Documentation
 
 The guides in `docs/` are the source. The site at

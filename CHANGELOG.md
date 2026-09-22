@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ### Added
 
+- Databricks Unity Catalog volumes as a remote repository backend, addressed as
+  `databricks://catalog/schema/volume[/prefix]` and installed with the `[databricks]` extra. It goes
+  through the Files API, so no cluster is needed, and authenticates with Databricks unified
+  authentication. See
+  [Repositories › Databricks volume](https://evaltrack.jesravnbol.dk/latest/repositories/#databricks-volume).
 - The documentation site at [evaltrack.jesravnbol.dk](https://evaltrack.jesravnbol.dk), versioned by
   minor release, with an API reference generated from the docstrings.
 - `RunRepository`, `RunSummary` and `ReflogEntry` are exported from the package root. They are what
