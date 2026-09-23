@@ -56,44 +56,32 @@ and the error names that repository. `2` when no repository is named. Only `repo
 
 ## evaltrack report
 
-Writes a recorded run as one HTML file that shows it the way the dashboard does, with the run
-embedded in the page. It opens from disk, with no server and no network, so it can be attached to a
-CI job or a release. Name the run with `--run-id`, or with `--ref` to take the run a ref points at.
+Writes a recorded run as one HTML file, with the run embedded in the page. The page shows the run as
+the dashboard does. It opens from disk with no server, so you can attach it to a CI job or a
+release. Name the run with `--run-id`, or with `--ref` to take the run that a ref points at.
 
 ```bash
 evaltrack report --ref pr/482 --against baseline --output evaltrack-report.html
 ```
 
-`--against` embeds a second run and opens the page on the changes from that run to the reported one,
-the way **Compare to mainline** does in the dashboard. A value that is a run id names a run in the
-repository the report reads from. Anything else is a ref, looked up on the configured remote, where
-the team's refs live. Without `--against` the page shows the one run, with the reliability history
-the remote's [`baseline`][baseline] gives it. When the `--against` target cannot be found, or it is
-the reported run itself, the page shows the one run too, and a warning on stderr says why. A
-project's first pull request has no `baseline` yet, and its job still gets a report. The reader can
-inspect cases and attempts in the page but not delete, download or navigate, since nothing behind
-the page can answer.
+`--against` embeds a second run and opens the page on the changes from that run to the reported one.
+A run id names a run in the repository. Anything else names a ref on the remote, so
+`--against baseline` compares against the mainline. If the target is not found, or it is the
+reported run itself, the page shows the one run and a warning says why. Without `--against` the page
+shows the one run, with its history over the remote's [`baseline`][baseline].
 
-The eval runner's own result objects are not in the page. `export` has them. The page holds every
-input and output the run recorded, so share it as you would the run.
+The page holds every input and output that the run recorded. Share it as you would share the run.
+The raw results of the eval runner are not in the page. `export` has them.
 
-`--output` defaults to `evaltrack-report.html` in the working directory, and `-` writes the page to
-stdout. Like `push` and `promote`, the command reads the configured remote unless a repository flag
-names another. Its place is the CI job, where the remote is already named and holds the PR refs and
-the `baseline` the report compares against, so the job need not name it again. `runs`, `refs` and
-`export` are for looking into a repository by hand, and there the flag says which one you are
-looking at.
+`--output` defaults to `evaltrack-report.html`. `-` writes the page to stdout. Like `push` and
+`promote`, the command reads the remote unless a repository flag names another. The history is
+always read from the remote. Without a remote, or when it cannot be reached, the page has no history
+and a warning says why.
 
-The reliability history and the mainline entry are read from the configured remote whichever
-repository holds the run, since the team's `baseline` lives there and nowhere else. Without a
-configured remote, or when it cannot be opened or reached, the page has no history and says so, and
-a warning says why. The page names the refs that point at the run, with the PR each records, and
-links the number when `pr_url_template` is set. The dashboard offers the same page as **Report** on
-a run and on a comparison, so a run you are looking at can be handed over without the command.
+The dashboard offers the same page as **Report** on a run and on a comparison.
 
-**Exit codes:** `0` when the report was written. `1` when the named repository does not hold the run
-or the ref, and the error names that repository. Nothing is written then. `2` when no repository is
-named, or the page template is missing because the frontend was not built.
+**Exit codes:** `0` when the report was written. `1` when the repository does not hold the run or
+the ref. Nothing is written then. `2` when no repository is named.
 
 ## evaltrack ui
 
