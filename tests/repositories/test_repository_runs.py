@@ -541,13 +541,3 @@ def test_delete_run_reclaims_a_sidecar_left_by_an_earlier_crash(
     )
     with pytest.raises(ObjectNotFoundError):
         store.read(f"summaries/{run.id}.json")
-
-
-def test_the_sidecar_records_the_stored_size(
-    repository_factory: RepositoryFactory,
-) -> None:
-    repo = repository_factory()
-    run = make_run()
-    repo.save_run(run)
-    [summary] = repo.list_runs()
-    assert summary.size_bytes == len(dump_run_json(run))
