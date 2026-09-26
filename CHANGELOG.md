@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-26
+
 ### Added
 
 - The documentation site at [evaltrack.jesravnbol.dk](https://evaltrack.jesravnbol.dk), versioned by
@@ -65,6 +67,7 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 The first public release. evaltrack is a pytest plugin that records, gates and tracks LLM evals. See
 the [README](https://github.com/jesrav/evaltrack#readme) to get started.
 
-[unreleased]: https://github.com/jesrav/evaltrack/compare/v0.2.0...HEAD
+[unreleased]: https://github.com/jesrav/evaltrack/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jesrav/evaltrack/releases/tag/v0.3.0
 [0.2.0]: https://github.com/jesrav/evaltrack/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jesrav/evaltrack/releases/tag/v0.1.0
