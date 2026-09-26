@@ -3,12 +3,15 @@
 The view is the stored run with each large `inputs`, `expected_output`,
 `metadata` and attempt `output` replaced by an envelope, `{"$deferred": {...}}`.
 The envelope holds a preview, the size, a hash, and the address of the whole
-value. The hash lets the dashboard compare two runs without the values. The
+value. The hash lets the dashboard compare two runs without the values. It
+covers the part of the value that the dashboard compares for a small value, so
+that a large value and a small one count as changed for the same reasons. The
 `raw_results` that a run recorded before 0.3.0 can hold are left out. Everything
 else is as stored.
 """
 
 import hashlib
+import json
 from typing import Any
 
 from evaltrack.core.run_record import (
@@ -52,6 +55,14 @@ def _build_preview(value: Any, data: bytes) -> str:
     return text.decode()[:PREVIEW_CHARS]
 
 
+def _hash_primary_view(value: Any) -> str:
+    """The hash of the primary view, with keys sorted, so that key order is no
+    change."""
+    plain = json.loads(dump_plain_json(_primary_view(value)))
+    text = json.dumps(plain, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
 def _defer(value: Any, *, limit: int, address: dict[str, Any]) -> Any:
     """`value` itself when it stores small, else its envelope."""
     if value is None:
@@ -63,7 +74,7 @@ def _defer(value: Any, *, limit: int, address: dict[str, Any]) -> Any:
         DEFERRED_KEY: {
             "preview": _build_preview(value, data),
             "size": len(data),
-            "sha256": hashlib.sha256(data).hexdigest(),
+            "sha256": _hash_primary_view(value),
             **address,
         }
     }

@@ -24,9 +24,10 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
   [Stored outputs › Converters](https://evaltrack.jesravnbol.dk/latest/outputs/#converters).
 - The dashboard stays responsive on a large run. It sends each value over 16 KB to the browser as a
   preview with its size and a hash, and sends the whole value when a pane needs it. This applies to
-  inputs, expected outputs, metadata and attempt outputs. Two runs still diff by the hash. The
-  server still reads the whole stored run. It keeps the last few runs that it read, so the panes of
-  an open run do not read the run again.
+  inputs, expected outputs, metadata and attempt outputs. Two runs still diff. A large value is
+  compared by a hash of the same part that is compared for a small value. The server still reads the
+  whole stored run. It keeps the last few runs that it read, so the panes of an open run do not read
+  the run again.
 - While a run loads, the dashboard shows how much of it has arrived. The run list shows the stored
   size of each run, which the summary sidecar now records.
 
@@ -37,8 +38,9 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
   history of an agent framework. When a task returned such an object, a run grew to hundreds of
   megabytes. See
   [Stored outputs › Private fields](https://evaltrack.jesravnbol.dk/latest/outputs/#private-fields).
-- evaltrack writes a run as compact JSON, not indented. For a large run, this is about a third of
-  the bytes. evaltrack still reads indented runs, so the run schema version does not change.
+- evaltrack writes a run as compact JSON, not indented. The saving is largest for deeply nested
+  values. The run that prompted this change went from 221 MB to 79 MB. A run of mostly long text
+  saves much less. evaltrack still reads indented runs, so the run schema version does not change.
   `evaltrack export` prints the compact form.
 
 ### Removed

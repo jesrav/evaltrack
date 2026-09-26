@@ -587,6 +587,23 @@ def test_equal_large_values_in_two_runs_share_a_hash() -> None:
     assert hashes[0] == hashes[1] != hashes[2]
 
 
+def _read_output_hash(client: TestClient, run_id: str) -> str:
+    data = client.get(f"/api/repositories/main/runs/{run_id}").json()
+    return _get_case(data)["attempts"][0]["output"]["$deferred"]["sha256"]
+
+
+def test_the_hash_ignores_what_a_small_value_would_not_compare() -> None:
+    """A small value compares by its answer with keys sorted, so a large one must
+    too. Otherwise the same answer shows as changed only because it is large."""
+    repo = RunRepository(MemoryStore())
+    answer = {"text": "the answer", "sources": ["a", "b"]}
+    reordered = {"sources": ["a", "b"], "text": "the answer"}
+    first = _save_run_with_output(repo, {"answer": answer, "_trace": "x" * 20_000})
+    second = _save_run_with_output(repo, {"answer": reordered, "_trace": "y" * 30_000})
+    with make_repo_client(repo) as client:
+        assert _read_output_hash(client, first) == _read_output_hash(client, second)
+
+
 def test_get_case_returns_the_case_whole() -> None:
     repo = RunRepository(MemoryStore())
     output = {"output": "the answer", "_state": "x" * 20_000}
