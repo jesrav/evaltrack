@@ -8,14 +8,14 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from evaltrack.config import PrUrlTemplate
+from evaltrack.config import PrUrlTemplate, RepositoryRole
 from evaltrack.core.eval_round import EvalRound
 from evaltrack.core.recorder import EvalRecorder
 from evaltrack.core.run_context import RunContext
 from evaltrack.core.run_record import MarkerSettings, RunRecord, TestOutcome
 from evaltrack.core.score_bars import apply_score_bars
 from evaltrack.repositories import RunRepository
-from evaltrack.ui import MountedRepository, create_app
+from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_round
 from ..fakes import MemoryStore
@@ -78,11 +78,15 @@ def make_client(app: FastAPI, *, raise_server_exceptions: bool = True) -> TestCl
 
 
 def make_repo_app(
-    repo: RunRepository, *, pr_url_template: PrUrlTemplate | None = None
+    repo: RunRepository,
+    *,
+    role: RepositoryRole = "remote",
+    pr_url_template: PrUrlTemplate | None = None,
 ) -> FastAPI:
-    """A single-mount app over `repo`, mounted as slug `main`."""
+    """A single-mount app over `repo`, mounted as slug `main`. The remote by
+    default, so the mount is the mainline and its `baseline` gives history."""
     return create_app(
-        {"main": MountedRepository(url="/x", repository=repo, role="local")},
+        {"main": MountedRepository(url="/x", repository=repo, role=role)},
         pr_url_template=pr_url_template,
     )
 

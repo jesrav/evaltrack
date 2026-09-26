@@ -981,6 +981,26 @@ export function App() {
     ? extrasByRun[runKey(selA.repository, selA.runId)]
     : undefined;
 
+  // The single-file report of what is on screen: the open run, or the
+  // comparison from base to compare, labelled with the refs they were reached by.
+  const runReportHref = useMemo(
+    () =>
+      selA
+        ? api.runReportUrl(selA.repository, selA.runId, { via: selA.via })
+        : "",
+    [selA],
+  );
+  const diffReportHref = useMemo(
+    () =>
+      selA && selB
+        ? api.runReportUrl(selB.repository, selB.runId, {
+            via: selB.via,
+            against: { slug: selA.repository, id: selA.runId, via: selA.via },
+          })
+        : undefined,
+    [selA, selB],
+  );
+
   const totalRuns = repositories.reduce((n, r) => n + r.runs.items.length, 0);
   const awaiting = awaitingRun(fetchedA, selA) || awaitingRun(fetchedB, selB);
 
@@ -1049,6 +1069,7 @@ export function App() {
             b={runB}
             viaA={selA?.via}
             viaB={selB?.via}
+            reportHref={diffReportHref}
             onSwap={swap}
             onOpenDrawer={openDrawer}
           />
@@ -1058,14 +1079,19 @@ export function App() {
             run={runA}
             via={selA.via}
             refs={refsForA}
-            slug={selA.repository}
+            actions={{
+              slug: selA.repository,
+              downloadHref: api.runDownloadUrl(selA.repository, runA.id),
+              reportHref: runReportHref,
+              onDeleteRun: handleDeleteRun,
+              onDeleteRef: handleDeleteRef,
+            }}
             history={extrasA?.history}
             mainline={extrasA?.mainline}
             prUrlTemplate={prUrlTemplate}
-            canCompareToBaseline={baselineForCompare !== null}
-            onCompareToBaseline={compareToBaseline}
-            onDeleteRun={handleDeleteRun}
-            onDeleteRef={handleDeleteRef}
+            onCompareToBaseline={
+              baselineForCompare !== null ? compareToBaseline : undefined
+            }
             onOpenDrawer={openDrawer}
             attemptSel={attemptSel}
             onSelectAttempt={selectAttempt}

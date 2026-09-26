@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from evaltrack.core.run_record import RUN_SCHEMA_VERSION, dump_run_json, parse_run_json
 from evaltrack.repositories import RunRepository
-from evaltrack.ui import MountedRepository, create_app
+from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_attempt, make_crash_round, make_round
 from ..fakes import MemoryStore
@@ -26,7 +26,7 @@ from .conftest import (
 
 def test_list_repositories(client_factory: TestClient) -> None:
     data = client_factory.get("/api/repositories").json()
-    assert data == [{"slug": "main", "url": "/x", "role": "local"}]
+    assert data == [{"slug": "main", "url": "/x", "role": "remote"}]
 
 
 def test_list_runs_returns_summaries(client_factory: TestClient) -> None:

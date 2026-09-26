@@ -10,6 +10,8 @@ Source layout (main modules):
 
     src/
       App.tsx             top-level layout, fetches + state
+      report.tsx          the static report page, rendered from data embedded in it
+      reportData.ts       reads that embedded data
       api.ts              fetch wrappers over /api/*
       deferred.ts         reading the envelopes that stand in for large values
       drawerOpener.ts     opening a pane that needs values the run left out
@@ -38,7 +40,8 @@ default). The dev server has full data and hot-reload on every TS save.
     just frontend_build
 
 This writes the bundle into `../evaltrack/ui/static/`. The FastAPI app then serves it at `/` (and
-`/assets/*`) the next time you run `evaltrack ui`.
+`/assets/*`) the next time you run `evaltrack ui`. The same build writes `report.html` beside it,
+one self-contained file (`vite.report.config.ts`) that `evaltrack report` fills with a run.
 
 Package builds (`uv build`) fail until this bundle exists (`hatch_build.py` at the repo root
 enforces this). So a from-source install cannot ship without the dashboard. Editable installs

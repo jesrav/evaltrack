@@ -39,12 +39,27 @@ interface Props {
   b: RunRecord;
   viaA?: string;
   viaB?: string;
+  /** True on a page with no sidebar to pick another view from, the static
+   *  report, which then gives no hint about one. */
+  standalone?: boolean;
+  /** The comparison as the single-file report, to share with someone without
+   *  the dashboard. Absent on a page that cannot serve one. */
+  reportHref?: string;
   onSwap: () => void;
   onOpenDrawer: (content: DrawerContent) => void;
 }
 
 /** One test's marker score bars, kept apart per side of the diff. */
-export function RunDiff({ a, b, viaA, viaB, onSwap, onOpenDrawer }: Props) {
+export function RunDiff({
+  a,
+  b,
+  viaA,
+  viaB,
+  standalone,
+  reportHref,
+  onSwap,
+  onOpenDrawer,
+}: Props) {
   const diff = useMemo(() => diffRuns(a, b), [a, b]);
 
   // Merge the two runs' test records so grouping can resolve a module path for
@@ -76,11 +91,24 @@ export function RunDiff({ a, b, viaA, viaB, onSwap, onOpenDrawer }: Props) {
 
   return (
     <div>
+      {reportHref && (
+        <div className="page-actions">
+          <a
+            className="page-action"
+            href={reportHref}
+            download
+            title="Save this comparison as a single-file HTML report that opens anywhere, to share with someone without the dashboard"
+          >
+            ↓ Report
+          </a>
+        </div>
+      )}
       <header className="view-title">
         <h1>Eval run comparison</h1>
         <p className="hint">
-          Showing what changed from base (left) to compare (right). Pick a
-          single run in the sidebar to leave this view.
+          Showing what changed from base (left) to compare (right).
+          {!standalone &&
+            " Pick a single run in the sidebar to leave this view."}
         </p>
       </header>
       <div className="run-pickers">

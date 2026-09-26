@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from evaltrack.core.run_record import RUN_SCHEMA_VERSION, RunRecord
 from evaltrack.repositories import RunRepository, promote
-from evaltrack.ui import MountedRepository, create_app
+from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_repeat_round, make_round
 from ..fakes import MemoryStore
@@ -217,6 +217,25 @@ def test_reliability_local_run_draws_over_remote_mainline() -> None:
     assert points[-1]["off_mainline"] is True, "the local run is the newest point"
     assert points[-1]["commit"] == "local-tip"
     assert [p["commit"] for p in points[:4]] == ["main-0", "main-1", "main-2", "main-3"]
+
+
+def test_a_local_only_dashboard_has_no_mainline() -> None:
+    """The mainline is the remote and nothing else. A `baseline` promoted in
+    the local repository is the developer's own, so a dashboard with no remote
+    mount shows no history and no promotion for it."""
+    local = _make_baseline_repo()
+    tip = local.get_ref("baseline")
+    assert tip is not None
+    app = create_app(
+        {"local": MountedRepository(url="/x", repository=local, role="local")}
+    )
+
+    with make_client(app) as client:
+        history = client.get(f"/api/repositories/local/history?run_id={tip.run_id}")
+        mainline = client.get(f"/api/repositories/local/runs/{tip.run_id}/mainline")
+
+    assert history.status_code == 200 and history.json() == EMPTY_HISTORY
+    assert mainline.status_code == 200 and mainline.json() is None
 
 
 def test_remote_view_never_borrows_the_local_mainline() -> None:

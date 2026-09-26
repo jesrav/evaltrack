@@ -50,6 +50,11 @@ that one, with its commit and time, and that history is the mainline: what relia
 score histories are measured over. You decide what "promoted" means (merged, deployed, released).
 See [Adapting the flow].
 
+The mainline lives on the configured `remote` and nowhere else. The dashboard and `evaltrack report`
+measure every run, local ones too, over the remote's `baseline`, and a `baseline` in the local
+repository is your own promotion, which nothing reads. Without a remote there is no history. A solo
+project gets one by pointing `remote` at a second local directory.
+
 ## Promote
 
 `evaltrack promote pr/123 --commit <sha>` moves `baseline` onto the run that `pr/123` already points
@@ -80,8 +85,8 @@ How a relative path resolves is in
 
 Declare them once in the `[tool.evaltrack]` table of `pyproject.toml`: `local` is where the pytest
 plugin saves, `remote` the shared one CI pushes to, holding the `baseline` and `pr/{n}` refs. Both
-are optional, and `evaltrack ui` mounts whichever exist. See
-[Configuration](./configuration.md#toolevaltrack-in-pyprojecttoml).
+are optional, and `evaltrack ui` mounts whichever exist, but only the remote's `baseline` gives
+history. See [Configuration](./configuration.md#toolevaltrack-in-pyprojecttoml).
 
 ## Azure Blob Storage
 

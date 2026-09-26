@@ -16,6 +16,25 @@ export default tseslint.config(
     },
   },
   {
+    // A component renders from the data it is handed, never from the server,
+    // so the static report can reuse it. App fetches and passes down.
+    files: ["src/components/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/api"],
+              message:
+                "Components render from props alone, so the static report can reuse them. Fetch in App and pass the result down.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Config files themselves are not part of the tsconfig project.
     files: ["*.js", "*.ts"],
     extends: [tseslint.configs.disableTypeChecked],

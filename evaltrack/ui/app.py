@@ -123,12 +123,11 @@ def create_app(
         s: RepositoryInfo(slug=s, url=m.url, role=m.role)
         for s, m in repositories.items()
     }
-    # The mainline lives on the remote. Without one, the sole mount is it. A
-    # local `baseline` beside a remote is a developer's own promotion, not the
-    # team's, so no view reads it.
+    # The mainline lives on the remote and nowhere else. A local `baseline` is
+    # a developer's own promotion, not the team's, so no view reads it.
     mainline: RunRepository | None = next(
         (m.repository for m in repositories.values() if m.role == "remote"), None
-    ) or (next(iter(mounts.values())) if len(mounts) == 1 else None)
+    )
 
     def resolve(slug: str) -> RunRepository:
         try:
@@ -156,7 +155,11 @@ def create_app(
     # One cache for both routers, so that a delete in one clears what the
     # other read.
     run_cache = RunCache()
-    app.include_router(build_runs_router(resolve, mainline, run_cache=run_cache))
+    app.include_router(
+        build_runs_router(
+            resolve, mainline, run_cache=run_cache, pr_url_template=pr_url_template
+        )
+    )
     app.include_router(build_refs_router(resolve, run_cache=run_cache))
     app.include_router(build_history_router(resolve, mainline))
 

@@ -105,7 +105,9 @@ evaltrack ui
 
 This serves the dashboard at `http://127.0.0.1:8765` and prints the link. Browse scores and
 pass-rates per case, and diff any two runs. Open a case to see each score against its bar and its
-history over the mainline.
+history over the mainline. **Report** saves the run on screen as a single HTML file that opens
+anywhere, to share with someone without the dashboard. `evaltrack report` writes the same file from
+a CI job, for an artifact or a release note. See [CLI › report](./cli.md#evaltrack-report).
 
 !!! note
 
@@ -116,7 +118,8 @@ history over the mainline.
 
 Declare your repositories in `pyproject.toml`. `local` is where the plugin saves runs. `remote` is a
 shared repository that your CI writes to (Azure Blob Storage or Amazon S3). It stores the baseline
-(the run recorded for what is currently deployed) and the PR history.
+(the run recorded for what is currently deployed) and the PR history, and it is the only place the
+reliability history is measured over. Working alone, point `remote` at a second local directory.
 
 ```toml
 [tool.evaltrack]

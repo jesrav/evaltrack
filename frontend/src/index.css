@@ -3225,3 +3225,31 @@ details summary {
   flex-direction: column;
   gap: 2px;
 }
+
+/* ---- the static report ----------------------------------------------------
+   One column and no sidebar: the page holds one run (or one comparison) and
+   nothing to navigate to. The bar carries the brand and when the report was
+   written, since a file passed around has no other provenance. */
+.report {
+  min-height: 100vh;
+}
+
+.report-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 36px;
+  border-bottom: 1px solid var(--line);
+  background: var(--sidebar-bg);
+}
+
+.report-bar .brand {
+  margin: 0;
+}
+
+.report-meta {
+  flex: 1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}

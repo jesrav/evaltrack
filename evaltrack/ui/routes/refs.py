@@ -1,18 +1,12 @@
 """Refs, their histories, and deleting one."""
 
-import logging
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from evaltrack.core.errors import (
-    BaselineRefProtectedError,
-    CorruptRecordError,
-    InvalidIdentifierError,
-    RefNotFoundError,
-)
+from evaltrack.core.errors import BaselineRefProtectedError, RefNotFoundError
 from evaltrack.core.refs import ReflogEntry
 from evaltrack.repositories import (
     RefDeletion,
@@ -24,8 +18,7 @@ from evaltrack.ui.models import RefListing, ReflogListing
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
 from evaltrack.ui.security import reject_cross_origin_write
-
-_logger = logging.getLogger(__name__)
+from evaltrack.ui.views import iter_ref_tips
 
 
 class _SummaryCache:
@@ -52,25 +45,15 @@ def build_refs_router(
     def list_refs(slug: str) -> list[RefListing]:  # pyright: ignore[reportUnusedFunction]
         repo = resolve(slug)
         summaries = _SummaryCache(repo)
-        refs: list[RefListing] = []
-        for name in sorted(repo.list_refs()):
-            error: str | None = None
-            try:
-                tip = repo.get_ref(name)
-            except (CorruptRecordError, InvalidIdentifierError) as exc:
-                # Still listed, so the delete that repairs it stays reachable.
-                _logger.warning("ref %s has an unreadable history: %s", name, exc)
-                tip = None
-                error = str(exc)
-            refs.append(
-                RefListing(
-                    name=name,
-                    tip=tip,
-                    tip_run=summaries.get(tip.run_id) if tip else None,
-                    error=error,
-                )
+        return [
+            RefListing(
+                name=name,
+                tip=tip,
+                tip_run=summaries.get(tip.run_id) if tip else None,
+                error=error,
             )
-        return refs
+            for name, tip, error in iter_ref_tips(repo)
+        ]
 
     @router.get("/refs/{name:path}")
     def get_ref(slug: str, name: str) -> ReflogEntry:  # pyright: ignore[reportUnusedFunction]

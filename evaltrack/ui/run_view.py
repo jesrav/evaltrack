@@ -80,9 +80,9 @@ def _defer(value: Any, *, limit: int, address: dict[str, Any]) -> Any:
     }
 
 
-def dump_run_view_json(run: RunRecord, *, limit: int = INLINE_VALUE_BYTES) -> bytes:
-    """The run as the dashboard opens it. Every value over `limit` bytes is
-    replaced by its envelope."""
+def build_run_view(run: RunRecord, *, limit: int | None = INLINE_VALUE_BYTES) -> Any:
+    """The run as plain data, the way the dashboard opens it. Every value over
+    `limit` bytes is replaced by its envelope. None keeps every value."""
     plain = dump_plain(run)
     for nodeid, test in plain["tests"].items():
         # A run saved before 0.3.0 can hold `raw_results`, the runner's own
@@ -90,6 +90,8 @@ def dump_run_view_json(run: RunRecord, *, limit: int = INLINE_VALUE_BYTES) -> by
         test.pop("raw_results", None)
         for case_id, case in test["cases"].items():
             address = {"run": run.id, "test": nodeid, "case": case_id}
+            if limit is None:
+                continue
             for field in _CASE_FIELDS:
                 case[field] = _defer(
                     case[field], limit=limit, address={**address, "field": field}
@@ -100,7 +102,12 @@ def dump_run_view_json(run: RunRecord, *, limit: int = INLINE_VALUE_BYTES) -> by
                     limit=limit,
                     address={**address, "field": "output", "attempt": index},
                 )
-    return dump_plain_json(plain)
+    return plain
+
+
+def dump_run_view_json(run: RunRecord, *, limit: int = INLINE_VALUE_BYTES) -> bytes:
+    """`build_run_view` as JSON."""
+    return dump_plain_json(build_run_view(run, limit=limit))
 
 
 def dump_case_json(case: CaseRecord) -> bytes:

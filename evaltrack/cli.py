@@ -28,21 +28,31 @@ from evaltrack.core.errors import (
     EvaltrackError,
     InvalidIdentifierError,
     RepositoryUnavailableError,
+    UnsupportedSchemaError,
 )
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
-from evaltrack.core.run_record import dump_run_json, parse_run_json
+from evaltrack.core.run_record import (
+    RunRecord,
+    dump_run_json,
+    ensure_run_id,
+    parse_run_json,
+)
 from evaltrack.repositories import (
     RunRepository,
     RunSummary,
     open_repository,
     promote,
 )
+from evaltrack.ui.report import collect_report_data, render_report
+from evaltrack.ui.run_view import INLINE_VALUE_BYTES
 
 # The dashboard is unauthenticated, so it binds loopback only.
 _UI_HOST = "127.0.0.1"
 
 # sysexits.h EX_SOFTWARE, clear of the command exit codes.
 _EXIT_INTERNAL_ERROR = 70
+
+DEFAULT_REPORT_PATH = "evaltrack-report.html"
 
 _ISSUES_URL = "https://github.com/jesrav/evaltrack/issues"
 
@@ -257,6 +267,58 @@ def _build_parser() -> argparse.ArgumentParser:
         export, required=True, url_help="Repository path or URL the run lives in."
     )
 
+    report = sub.add_parser(
+        "report",
+        help="Write a single-file HTML report of a recorded run.",
+        allow_abbrev=False,
+        description=(
+            "Write one HTML file that shows a recorded run the way the "
+            "dashboard does, with the run embedded, so it opens anywhere "
+            "with no server and no network. With --against it shows the "
+            "changes from that run to the reported one instead."
+        ),
+    )
+    report.set_defaults(func=_cmd_report)
+    subject = report.add_mutually_exclusive_group(required=True)
+    subject.add_argument(
+        "--run-id",
+        dest="run_id",
+        help="The run id (ULID) to report.",
+    )
+    subject.add_argument(
+        "--ref",
+        default=None,
+        help="Report the run this ref points at, for example pr/123 or baseline.",
+    )
+    report.add_argument(
+        "--against",
+        default=None,
+        metavar="RUN_ID_OR_REF",
+        help="Embed this run too and render a comparison from it to the "
+        "reported run. A run id names a run in the repository, anything "
+        "else a ref on the remote, so `--against baseline` compares against "
+        "the mainline. When it cannot be found, the report shows the run "
+        "alone and a warning says so.",
+    )
+    _add_repository_flags(
+        report,
+        required=False,
+        url_help="Repository path or URL. Defaults to the configured remote.",
+    )
+    report.add_argument(
+        "--full",
+        action="store_true",
+        default=False,
+        help="Embed every value whole. Without it, a value over 16 KB is left "
+        "out of the page and its preview and size stand in, so the file "
+        "stays small.",
+    )
+    report.add_argument(
+        "--output",
+        default=DEFAULT_REPORT_PATH,
+        help=f"The file to write, or - for stdout (default {DEFAULT_REPORT_PATH}).",
+    )
+
     ui = sub.add_parser(
         "ui",
         help="Serve the dashboard over the configured repositories.",
@@ -310,8 +372,12 @@ class _OpenedRepository:
     url: str
 
 
-def _open_resolved_repository(args: argparse.Namespace) -> _OpenedRepository:
-    """Open the repository the flags name, or the remote, echoed to stderr."""
+def _open_resolved_repository(
+    args: argparse.Namespace, *, config: EvaltrackConfig | None = None
+) -> _OpenedRepository:
+    """Open the repository the flags name, or the remote, echoed to stderr.
+    `config` is read here only when it is needed and not given, so a named
+    repository costs no read at all."""
     source: str | None = None
     if args.repository_url is not None:
         url = args.repository_url
@@ -324,8 +390,8 @@ def _open_resolved_repository(args: argparse.Namespace) -> _OpenedRepository:
                 "expands to an empty string, so check the value you passed."
             )
     else:
-        # Read once here, so a named repository costs no read at all.
-        config = load_config()
+        if config is None:
+            config = load_config()
         if args.local:
             url = resolve_local(config)
         elif args.remote:
@@ -464,6 +530,185 @@ def _cmd_export(args: argparse.Namespace) -> int:
         print(f"export: run {args.run_id!r} not found in {target.url}", file=sys.stderr)
         return 1
     print(dump_run_json(run).decode())
+    return 0
+
+
+@dataclass(frozen=True)
+class _NamedRun:
+    """A loaded run and the ref it was named by, when it was named by one."""
+
+    run: RunRecord
+    via: str | None
+
+
+class _RunNotFound(Exception):
+    """The repository does not hold the run a name picks. The message says
+    which name, and where it was looked for."""
+
+
+def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> _NamedRun:
+    """The run `name` picks: the tip of that ref, or the run with that id.
+
+    Raises:
+        _RunNotFound: when the repository does not hold it.
+    """
+    via: str | None = None
+    run_id = name
+    if as_ref:
+        tip = target.repository.get_ref(name)
+        if tip is None:
+            raise _RunNotFound(f"ref {name!r} not found in {target.url}")
+        via, run_id = name, tip.run_id
+    run = target.repository.load_run(run_id)
+    if run is None:
+        held_by = f" (the tip of ref {name!r})" if as_ref else ""
+        raise _RunNotFound(f"run {run_id!r} not found in {target.url}{held_by}")
+    return _NamedRun(run, via)
+
+
+def _names_a_run_id(value: str) -> bool:
+    try:
+        ensure_run_id(value)
+    except InvalidIdentifierError:
+        return False
+    return True
+
+
+@dataclass(frozen=True)
+class _Mainline:
+    """The configured remote, where the team's history lives. `opened` is None,
+    and `error` says why, when there is no remote or it could not be opened."""
+
+    opened: _OpenedRepository | None
+    error: str | None = None
+
+
+def _open_mainline(target: _OpenedRepository, config: EvaltrackConfig) -> _Mainline:
+    """The configured remote, whichever repository holds the run, since the
+    team's `baseline` lives there and nowhere else. A remote that is missing
+    or cannot be opened leaves the report without history, as an unreachable
+    one does, since the run itself is what the report is for."""
+    remote = resolve_remote(config)
+    if remote is None:
+        error = (
+            f"no remote configured, and the mainline lives there. Set ${REMOTE_ENV} "
+            "or [tool.evaltrack].remote to get history and `--against` refs"
+        )
+        print(f"warning: {error}", file=sys.stderr)
+        return _Mainline(None, error)
+    if remote.url == target.url:
+        return _Mainline(target)
+    print(f"reading the mainline from {remote.url}", file=sys.stderr)
+    try:
+        repository = open_repository(remote.url)
+    except (ValueError, ImportError) as exc:
+        error = f"could not open the remote {remote.url}: {_first_line(exc)}"
+        print(f"warning: {error}, so the report has no history", file=sys.stderr)
+        return _Mainline(None, error)
+    return _Mainline(_OpenedRepository(repository, remote.url))
+
+
+@dataclass(frozen=True)
+class _Comparison:
+    """The run to compare against, or None and the reason there is none. The
+    reason goes into the page too, since a reader of a CI artifact never sees
+    stderr."""
+
+    run: _NamedRun | None
+    error: str | None = None
+
+
+def _load_comparison(
+    target: _OpenedRepository, subject: _NamedRun, *, against: str, mainline: _Mainline
+) -> _Comparison:
+    """The run to compare `subject` against, or the reason there is no
+    comparison to make, with a warning printed. A project's first pull request
+    has no `baseline` yet, and a report of the run alone beats none in its
+    artifacts. A `baseline` an older or newer evaltrack cannot read is the
+    same case: the run itself is readable, and it is what the report is for.
+
+    A run id names a run in `target`. A ref names one on the remote, where the
+    team's refs live, so without a remote no ref resolves.
+    """
+    # A canonical run id can only be a run id. A ref cannot tell the two
+    # apart, so a ref named like one is unreachable here.
+    try:
+        if _names_a_run_id(against):
+            loaded = _load_named_run(target, against, as_ref=False)
+        elif mainline.opened is None:
+            raise _RunNotFound(f"ref {against!r} cannot be looked up: {mainline.error}")
+        else:
+            loaded = _load_named_run(mainline.opened, against, as_ref=True)
+    except (
+        _RunNotFound,
+        RepositoryUnavailableError,
+        UnsupportedSchemaError,
+        CorruptRecordError,
+    ) as exc:
+        error = str(exc)
+        print(
+            f"warning: {error}, so the report shows run {subject.run.id} alone",
+            file=sys.stderr,
+        )
+        return _Comparison(None, error)
+    if loaded.run.id == subject.run.id:
+        error = f"{against!r} is run {subject.run.id} itself"
+        print(
+            f"warning: {error}, so the report shows it alone rather than against "
+            "itself",
+            file=sys.stderr,
+        )
+        return _Comparison(None, error)
+    return _Comparison(loaded)
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    # Read up front, since the mainline needs it whichever repository is named.
+    config = load_config()
+    target = _open_resolved_repository(args, config=config)
+    try:
+        if args.run_id is not None:
+            subject = _load_named_run(target, args.run_id, as_ref=False)
+        else:
+            subject = _load_named_run(target, args.ref, as_ref=True)
+    except _RunNotFound as exc:
+        # Like a missing export, a defined outcome, so exit 1.
+        print(f"report: {exc}", file=sys.stderr)
+        return 1
+    mainline = _open_mainline(target, config)
+    comparison = _Comparison(None)
+    if args.against is not None:
+        comparison = _load_comparison(
+            target, subject, against=args.against, mainline=mainline
+        )
+    against = comparison.run
+    data = collect_report_data(
+        target.repository,
+        subject.run,
+        mainline=mainline.opened.repository if mainline.opened else None,
+        mainline_error=mainline.error,
+        via=subject.via,
+        against=against.run if against else None,
+        against_via=against.via if against else None,
+        against_error=comparison.error,
+        pr_url_template=config.pr_url_template,
+    )
+    if data.history_error is not None and mainline.opened is not None:
+        # The other two causes were announced when the mainline was opened.
+        print(
+            f"warning: could not read the mainline from {mainline.opened.url}, so "
+            f"the report has no history: {data.history_error}",
+            file=sys.stderr,
+        )
+    html = render_report(data, inline_limit=None if args.full else INLINE_VALUE_BYTES)
+    if args.output == "-":
+        sys.stdout.write(html)
+        return 0
+    Path(args.output).write_text(html, encoding="utf-8")
+    what = f"run {subject.run.id}"
+    if against is not None:
+        what += f" against {against.run.id}"
+    print(f"wrote report of {what} to {args.output}")
     return 0
 
 
