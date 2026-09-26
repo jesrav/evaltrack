@@ -3,6 +3,7 @@
 Registration is process-wide, so every test here works on its own copy of it.
 """
 
+import dataclasses
 import logging
 from typing import Any
 
@@ -15,6 +16,7 @@ from evaltrack.core.eval_round import RoundAttempt
 from evaltrack.core.user_values import UserValue
 
 HEAVY = "tests.core.test_converters.Heavy"
+RUN_WITH_STATE = "tests.core.test_converters.RunWithState"
 
 
 class Heavy:
@@ -80,6 +82,24 @@ def test_a_converter_that_raises_leaves_the_value_as_it_is(
     with caplog.at_level(logging.WARNING):
         assert _Holder(value=value).value is value
     assert "'heavy' converter raised" in caplog.text
+
+
+@dataclasses.dataclass
+class RunWithState:
+    """A result that keeps what a converter wants in a private field."""
+
+    output: str
+    _calls: list[str]
+
+
+def test_a_converter_gets_the_value_before_its_private_fields_are_dropped() -> None:
+    register(
+        "run",
+        native_types=(RUN_WITH_STATE,),
+        convert=lambda v: {"output": v.output, "calls": v._calls},
+    )
+    stored = _Holder(value=RunWithState(output="yes", _calls=["search"])).value
+    assert stored == {"output": "yes", "calls": ["search"]}
 
 
 def test_registering_again_under_the_same_name_replaces() -> None:
