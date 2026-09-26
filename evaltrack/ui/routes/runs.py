@@ -15,10 +15,10 @@ from evaltrack.core.run_record import (
     ensure_run_id,
 )
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
-from evaltrack.ui.deferred import dump_case_json, dump_run_view_json
 from evaltrack.ui.models import MainlineEntry
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
+from evaltrack.ui.run_view import dump_case_json, dump_run_view_json
 from evaltrack.ui.security import reject_cross_origin_write
 
 
