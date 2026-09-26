@@ -153,7 +153,7 @@ export const api = {
       `/api/repositories/${encodePath(slug)}/runs/${encodePath(id)}/mainline`,
     );
   },
-  /** URL of the full run JSON (including `raw_results`) as a file attachment.
+  /** URL of the whole stored run JSON as a file attachment.
    *  Used as an `<a download>` href. The server sets Content-Disposition. */
   runDownloadUrl(slug: string, id: string): string {
     return `/api/repositories/${encodePath(slug)}/runs/${encodePath(

@@ -31,7 +31,6 @@ All keys are optional.
 [tool.evaltrack]
 local  = "./.evaltrack"            # where the pytest plugin saves runs
 remote = "azure://account/evals"   # the shared source of truth (baseline, PRs)
-keep_raw_results = false           # true to also store the eval runner's own result objects
 # Where a PR ref links to. Must start with http:// or https:// and contain {pr}.
 # GitHub:
 pr_url_template = "https://github.com/OWNER/REPO/pull/{pr}"
@@ -39,18 +38,11 @@ pr_url_template = "https://github.com/OWNER/REPO/pull/{pr}"
 # pr_url_template = "https://dev.azure.com/ORG/PROJECT/_git/REPO/pullrequest/{pr}"
 ```
 
-| key                | default        | meaning                                                                                      |
-| ------------------ | -------------- | -------------------------------------------------------------------------------------------- |
-| `local`            | `./.evaltrack` | the plugin's save target and the dashboard's **Local** mount                                 |
-| `remote`           | unset          | the shared repository: default target for `push`/`promote`, the dashboard's **Remote** mount |
-| `keep_raw_results` | `false`        | keep the eval runner's own result objects on each run (see [Raw results](#raw-results))      |
-| `pr_url_template`  | unset          | `http(s)` URL template with a `{pr}` placeholder, used as a PR ref's link target             |
-
-### Raw results
-
-With `keep_raw_results = true`, a test's eval also stores the eval runner's own result objects, one
-per round, alongside the structured per-case data. You can then [export](./cli.md#evaltrack-export)
-them or feed them back into that runner's own tooling.
+| key               | default        | meaning                                                                                      |
+| ----------------- | -------------- | -------------------------------------------------------------------------------------------- |
+| `local`           | `./.evaltrack` | the plugin's save target and the dashboard's **Local** mount                                 |
+| `remote`          | unset          | the shared repository: default target for `push`/`promote`, the dashboard's **Remote** mount |
+| `pr_url_template` | unset          | `http(s)` URL template with a `{pr}` placeholder, used as a PR ref's link target             |
 
 ## Pytest options
 

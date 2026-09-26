@@ -6,7 +6,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, ValidationError
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    ValidationError,
+    model_validator,
+)
 
 # `local` is where this project's own runs go. `remote` is the shared repository.
 RepositoryRole = Literal["local", "remote"]
@@ -44,7 +50,6 @@ class EvaltrackConfig(BaseModel):
             pyproject.toml's directory.
         remote: The shared repository, a directory path or a repository URL.
             A relative path resolves as for `local`.
-        keep_raw_results: Store the eval runner's own result objects too.
         pr_url_template: Link target for a PR ref, with a `{pr}` placeholder.
     """
 
@@ -52,8 +57,21 @@ class EvaltrackConfig(BaseModel):
 
     local: str | None = None
     remote: str | None = None
-    keep_raw_results: bool = False
     pr_url_template: PrUrlTemplate | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_removed_keys(cls, data: object) -> object:
+        # A removed key gets its own message, since "extra inputs are not
+        # permitted" reads as a typo.
+        if isinstance(data, dict) and "keep_raw_results" in data:
+            raise ValueError(
+                "keep_raw_results was removed in evaltrack 0.3.0. A run no "
+                "longer stores the eval runner's own result objects. Remove "
+                "the key. If your eval runner records traces, use them for the "
+                "full data."
+            )
+        return data
 
 
 def names_a_url(location: str) -> bool:

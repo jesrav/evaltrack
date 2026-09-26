@@ -35,7 +35,6 @@ from evaltrack.core.score_bars import (
     apply_score_bars,
     raise_on_unmatched_score_bars,
 )
-from evaltrack.core.user_values import RawResult
 from evaltrack.failure import assert_cases_passed, raise_on_round_errors
 from evaltrack.translators import find_translator
 
@@ -183,7 +182,6 @@ class MarkedTest:
         self,
         eval_round: EvalRound,
         *,
-        raw_result: RawResult = None,
         continuing: bool = False,
     ) -> None:
         """Record one round, then raise on anything that crashed in it."""
@@ -200,7 +198,6 @@ class MarkedTest:
         self.recorder.add_round(
             self.nodeid,
             eval_round,
-            raw_result=raw_result,
             continuing=continuing,
             settings=self.settings,
         )
@@ -218,7 +215,7 @@ class MarkedTest:
             repeats=self.settings.repeats,
             flake_reruns=self.settings.flake_reruns,
         )
-        self._add(eval_round, raw_result=result, continuing=continuing)
+        self._add(eval_round, continuing=continuing)
         # After the record, so a round the gate refuses is still inspectable,
         # and after the crash report, which is the root cause when both apply.
         raise_unless_every_result_gates(eval_round, self.nodeid)

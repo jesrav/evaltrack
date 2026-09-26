@@ -175,8 +175,6 @@ class RecordedTest(BaseModel):
         marker: What the marker declared. None when the test recorded no eval.
         runner: Which eval runner produced the eval, at what version.
             None when the test recorded no eval.
-        raw_results: The runner's own result objects, one per round. Empty when
-            keep_raw_results is false.
         outcome: pytest's outcome for the test, which is the authoritative one.
             It can disagree with every case below it, since a test whose eval
             passed can still fail later in its body.
@@ -192,9 +190,6 @@ class RecordedTest(BaseModel):
     errors: list[RoundErrorRecord] = []
     marker: MarkerSettings | None = None
     runner: RunnerInfo | None = None
-    # Opaque on purpose, since a typed field makes a stored run unreadable once the
-    # runner's payload changes.
-    raw_results: list[UserValue] = []
     outcome: TestOutcome | None = None
     docstring: str | None = None
     test_file: str | None = None
@@ -276,18 +271,6 @@ def parse_run_json(data: bytes) -> RunRecord:
             f"{RUN_SCHEMA_VERSION}. Use the evaltrack that reads it."
         )
     return RunRecord.model_validate_json(data)
-
-
-def strip_raw_results(run: RunRecord) -> RunRecord:
-    """A copy with every test's `raw_results` cleared."""
-    return run.model_copy(
-        update={
-            "tests": {
-                name: test.model_copy(update={"raw_results": []})
-                for name, test in run.tests.items()
-            }
-        }
-    )
 
 
 def _repr_or_stand_in(value: object) -> str:

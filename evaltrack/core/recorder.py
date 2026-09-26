@@ -20,7 +20,6 @@ from evaltrack.core.run_record import (
     TestOutcome,
     dump_output_json,
 )
-from evaltrack.core.user_values import RawResult
 
 LARGE_OUTPUT_BYTES: int = 256 * 1024
 """The stored size above which an attempt's output is reported as large."""
@@ -48,7 +47,6 @@ class _TestAccumulator:
     entry here with no rounds."""
 
     rounds: list[EvalRound] = field(default_factory=list)
-    raw_results: list[RawResult] = field(default_factory=list)
     settings: MarkerSettings | None = None
     outcome: TestOutcome | None = None
     docstring: str | None = None
@@ -78,7 +76,6 @@ class EvalRecorder:
             assigned later.
         run_id: Defaults to a fresh ULID.
         created_at: Defaults to the current UTC time.
-        keep_raw_results: Keep each round's runner-native result for export.
         large_output_bytes: The stored size above which an attempt's output is
             listed in `large_outputs`.
     """
@@ -89,13 +86,11 @@ class EvalRecorder:
         *,
         run_id: str | None = None,
         created_at: datetime | None = None,
-        keep_raw_results: bool = False,
         large_output_bytes: int = LARGE_OUTPUT_BYTES,
     ) -> None:
         self.id: str = run_id or str(ULID())
         self.created_at: datetime = created_at or datetime.now(UTC)
         self.context: RunContext = context or RunContext()
-        self.keep_raw_results: bool = keep_raw_results
         self.large_output_bytes: int = large_output_bytes
         self.tests: dict[str, _TestAccumulator] = {}
         self.large_outputs: list[LargeOutput] = []
@@ -121,7 +116,6 @@ class EvalRecorder:
         nodeid: str,
         eval_round: EvalRound,
         *,
-        raw_result: RawResult = None,
         continuing: bool = False,
         settings: MarkerSettings | None = None,
     ) -> None:
@@ -139,8 +133,6 @@ class EvalRecorder:
         if not continuing and rec.rounds:
             raise _second_eval_error(nodeid)
         rec.rounds.append(eval_round)
-        if self.keep_raw_results:
-            rec.raw_results.append(raw_result)
         if rec.settings is None:
             rec.settings = settings or MarkerSettings()
         self._note_large_outputs(nodeid, eval_round)
@@ -202,7 +194,6 @@ class EvalRecorder:
             errors=[error for round_ in rec.rounds for error in round_.errors],
             marker=settings,
             runner=first.runner if first else None,
-            raw_results=rec.raw_results,
             outcome=rec.outcome,
             docstring=rec.docstring,
             test_file=rec.test_file,

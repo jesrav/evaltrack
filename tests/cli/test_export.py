@@ -24,9 +24,8 @@ def test_export_full_run_to_stdout(tmp_path: Path) -> None:
 
 
 def test_export_emits_stored_reports_as_recorded(tmp_path: Path) -> None:
-    """Export is the debugging path, so it must work on a payload the installed
-    pydantic-evals rejects. A parse step first would refuse a report an older
-    version wrote, and silently drop fields a newer one added."""
+    """Export prints a stored run as it was recorded. This includes the raw
+    reports of a run from before 0.3.0, which no field declares now."""
     url = str(tmp_path / "repo")
     rec = EvalRecorder()
     rec.add_round("test_x", make_round())

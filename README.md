@@ -142,7 +142,7 @@ evaltrack is pre-1.0, so breaking changes can happen and the changelog will say 
 keep stable: the names `import evaltrack` exports, `evaltrack.translators.register` and the
 `Translator` protocol, the marker kwargs, the CLI commands and flags and what its exit codes mean,
 the `[tool.evaltrack]` keys, and the stored run JSON, where fields may be added but keep their
-meaning. `raw_results` is the exception, since the runner decides its shape.
+meaning.
 
 Planned additions are in a rough [roadmap].
 

@@ -108,8 +108,8 @@ def build_runs_router(
 
     @router.get("/{run_id}/download")
     def download_run(slug: str, run_id: str) -> Response:  # pyright: ignore[reportUnusedFunction]
-        # The full run with `raw_results`, byte-identical to the stored run when
-        # this version recorded it.
+        # The whole run, byte-identical to the stored run when this version
+        # recorded it.
         run = load_run_or_404(slug, run_id)
         return Response(
             content=dump_run_json(run),

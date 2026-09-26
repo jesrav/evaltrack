@@ -136,7 +136,7 @@ def pytest_configure(config: pytest.Config) -> None:
     except ValueError as exc:
         raise pytest.UsageError(str(exc)) from exc
 
-    recorder = EvalRecorder(keep_raw_results=evaltrack_config.keep_raw_results)
+    recorder = EvalRecorder()
 
     # The default target is anchored to the project (nearest pyproject.toml),
     # not to the rootdir.

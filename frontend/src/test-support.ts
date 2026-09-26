@@ -138,7 +138,6 @@ export function buildRun(
           }
         : null,
       runner: { name: "pydantic-evals", version: "0.0.0" },
-      raw_results: [],
       outcome: t.outcome ?? null,
       docstring: null,
       test_file: t.module ?? null,

@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from evaltrack.core.run_record import RUN_SCHEMA_VERSION
+from evaltrack.core.run_record import RUN_SCHEMA_VERSION, dump_run_json, parse_run_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui import MountedRepository, create_app
 
@@ -163,21 +163,29 @@ def test_get_run_missing_404(client_factory: TestClient) -> None:
     assert r.status_code == 404
 
 
-def test_get_run_strips_raw_results(client_factory: TestClient) -> None:
-    summaries = client_factory.get("/api/repositories/main/runs").json()
-    target_id = summaries[0]["id"]
-    data = client_factory.get(f"/api/repositories/main/runs/{target_id}").json()
-    evaluated = [t for t in data["tests"].values() if t["marker"] is not None]
-    assert evaluated, "sanity: the fixture run carries evals"
-    assert all("raw_results" not in t for t in evaluated), (
-        "the view omits the heavy raw reports"
-    )
-    assert all(t["cases"] for t in evaluated), "the structured cases still stand"
+def _save_run_with_raw_results(repo: RunRepository) -> str:
+    """A run as one recorded before 0.3.0 was stored, with the runner's own
+    reports beside the cases."""
+    run = make_recorded_run()
+    stored = json.loads(dump_run_json(run))
+    stored["tests"]["test_x"]["raw_results"] = [{"cases": [{"output": "x" * 100}]}]
+    repo.save_run(parse_run_json(json.dumps(stored).encode()))
+    return run.id
+
+
+def test_get_run_leaves_out_the_raw_results_an_old_run_carries() -> None:
+    repo = RunRepository(MemoryStore())
+    run_id = _save_run_with_raw_results(repo)
+    with make_repo_client(repo) as client:
+        data = client.get(f"/api/repositories/main/runs/{run_id}").json()
+    test = data["tests"]["test_x"]
+    assert "raw_results" not in test, "the view omits the heavy raw reports"
+    assert test["cases"], "the structured cases still stand"
 
 
 def test_get_run_carries_the_crashed_attempt() -> None:
-    """The run view strips the raw reports. A crashed attempt must travel in the
-    structured cases, or the dashboard cannot show it at all."""
+    """A crashed attempt must travel in the structured cases, or the dashboard
+    cannot show it at all."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_crash_round())
     repo.save_run(run)
@@ -188,7 +196,7 @@ def test_get_run_carries_the_crashed_attempt() -> None:
     assert attempt["outcome"] == "errored"
 
 
-def test_download_run_includes_raw_results(client_factory: TestClient) -> None:
+def test_download_run_is_the_stored_run(client_factory: TestClient) -> None:
     summaries = client_factory.get("/api/repositories/main/runs").json()
     target_id = summaries[0]["id"]
     r = client_factory.get(f"/api/repositories/main/runs/{target_id}/download")
@@ -197,11 +205,7 @@ def test_download_run_includes_raw_results(client_factory: TestClient) -> None:
         r.headers["content-disposition"] == f'attachment; filename="{target_id}.json"'
     )
     assert r.headers["content-type"].startswith("application/json")
-    data = r.json()
-    evaluated = [t for t in data["tests"].values() if t["marker"] is not None]
-    assert any(t["raw_results"] for t in evaluated), (
-        "the download keeps the raw reports"
-    )
+    assert r.json()["id"] == target_id
 
 
 def test_download_run_missing_404(client_factory: TestClient) -> None:

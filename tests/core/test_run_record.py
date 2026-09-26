@@ -242,13 +242,13 @@ async def _extra_field_task(inputs: str) -> _SdkResponse:
 def test_dump_run_json_degrades_model_extra_fields() -> None:
     """Undumpable values in a model's extra fields must degrade like declared
     ones, or one provider-added field loses the run at session end. The user's
-    own object stays untouched, and the raw result degrades the same way."""
+    own object stays untouched."""
     nodeid = "tests/test_extra.py::test_extra"
     dataset = Dataset[str, Any, Any](name="d", cases=[Case(name="c", inputs="x")])
     report = asyncio.run(dataset.evaluate(_extra_field_task))
 
-    recorder = EvalRecorder(keep_raw_results=True)
-    recorder.add_round(nodeid, translate_report(report), raw_result=report)
+    recorder = EvalRecorder()
+    recorder.add_round(nodeid, translate_report(report))
     recorder.set_test_outcome(nodeid, "passed")
     data = dump_run_json(recorder.to_run_record())
 
@@ -259,7 +259,6 @@ def test_dump_run_json_degrades_model_extra_fields() -> None:
     }
     stored = json.loads(data)["tests"][nodeid]
     assert _read_stored_attempt(stored["cases"]["c"])["output"] == expected_degraded
-    assert stored["raw_results"][0]["cases"][0]["output"] == expected_degraded
     assert report.cases[0].output.raw_payload == _SURROGATE, (
         "the degrade must not touch the user's object"
     )
@@ -571,15 +570,14 @@ async def _binary_task(inputs: str) -> bytes:
 
 
 def test_dump_run_json_round_trips_a_binary_task_output() -> None:
-    """A task's raw-bytes output lands both in the structured attempts and in
-    the kept raw result. Both must degrade, the report object the user still
-    holds must not be touched, and the saved run must load back."""
+    """A task's raw-bytes output degrades in the stored attempt, and the saved
+    run loads back. The report object that the user holds stays untouched."""
     nodeid = "tests/test_binary.py::test_binary"
     dataset = Dataset[str, Any, Any](name="d", cases=[Case(name="c", inputs="x")])
     report = asyncio.run(dataset.evaluate(_binary_task))
 
-    recorder = EvalRecorder(keep_raw_results=True)
-    recorder.add_round(nodeid, translate_report(report), raw_result=report)
+    recorder = EvalRecorder()
+    recorder.add_round(nodeid, translate_report(report))
     recorder.set_test_outcome(nodeid, "passed")
     data = dump_run_json(recorder.to_run_record())
 
@@ -590,7 +588,6 @@ def test_dump_run_json_round_trips_a_binary_task_output() -> None:
     assert _read_stored_attempt(stored["cases"]["c"])["output"] == _make_fingerprint(
         _BINARY
     )
-    assert stored["raw_results"][0]["cases"][0]["output"] == _make_fingerprint(_BINARY)
     restored = parse_run_json(data)
     assert restored.tests[nodeid].cases["c"].attempts[0].output == _make_fingerprint(
         _BINARY
@@ -615,16 +612,16 @@ def test_dump_run_json_round_trips_a_non_finite_metric() -> None:
         "the scenario needs pydantic-evals to let a non-finite metric through"
     )
 
-    recorder = EvalRecorder(keep_raw_results=True)
-    recorder.add_round(nodeid, translate_report(report), raw_result=report)
+    recorder = EvalRecorder()
+    recorder.add_round(nodeid, translate_report(report))
     recorder.set_test_outcome(nodeid, "passed")
     data = dump_run_json(recorder.to_run_record())
 
-    stored = json.loads(data)["tests"][nodeid]["raw_results"][0]
-    assert stored["cases"][0]["metrics"] == {"tokens": "Infinity"}
+    stored = _read_stored_attempt(json.loads(data)["tests"][nodeid]["cases"]["c"])
+    assert stored["details"]["metrics"] == {"tokens": "Infinity"}
     restored = parse_run_json(data)
-    restored_test = restored.tests[nodeid]
-    assert restored_test.raw_results == [stored]
+    [attempt] = restored.tests[nodeid].cases["c"].attempts
+    assert attempt.details["metrics"] == {"tokens": "Infinity"}
 
 
 def _make_run_with_non_finite_user_values() -> RunRecord:
@@ -677,12 +674,9 @@ def test_non_finite_user_values_never_load_back_as_none() -> None:
     assert dump_run_json(loaded) == data, "the round trip must be byte-stable"
 
 
-def test_run_record_loads_a_stored_run_whose_raw_report_the_model_would_reject() -> (
-    None
-):
-    """A stored raw report can hold values and fields the installed
-    pydantic-evals rejects, because a different version wrote it. Stored runs are
-    immutable history, so loading must not depend on that version.
+def test_a_run_recorded_with_raw_results_still_loads_and_keeps_them() -> None:
+    """A run recorded before 0.3.0 can hold the runner's own reports, which no
+    field declares now. They must survive a load and a dump unchanged.
     """
     stored_report = {
         "name": "t",
@@ -713,8 +707,8 @@ def test_run_record_loads_a_stored_run_whose_raw_report_the_model_would_reject()
         },
     }
     run = parse_run_json(json.dumps(stored_run).encode())
-    test = run.tests["test_x.py::test_a"]
-    assert test.raw_results == [stored_report]
+    dumped = json.loads(dump_run_json(run))
+    assert dumped["tests"]["test_x.py::test_a"]["raw_results"] == [stored_report]
 
 
 def test_created_at_keeps_the_iso_string_wire_format() -> None:

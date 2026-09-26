@@ -178,8 +178,3 @@ UserValue = Annotated[Any, BeforeValidator(_record_user_value)]
 # Text evaltrack declares but does not author. Only the `repr()` stand-in can
 # reach a string.
 UserStr = Annotated[str, BeforeValidator(degrade_undumpable)]
-
-# One round's result, exactly as the eval runner returned it. evaltrack never
-# reads into it. Stored as a `UserValue`, so a loaded run hands back plain JSON
-# data rather than the runner's own types, and cannot be translated again.
-RawResult = Any
