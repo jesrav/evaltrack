@@ -22,6 +22,7 @@ from evaltrack.repositories import (
 )
 from evaltrack.ui.models import RefListing, ReflogListing
 from evaltrack.ui.routes import MAX_PAGE
+from evaltrack.ui.run_cache import RunCache
 from evaltrack.ui.security import reject_cross_origin_write
 
 _logger = logging.getLogger(__name__)
@@ -42,7 +43,9 @@ class _SummaryCache:
         return self._seen[run_id]
 
 
-def build_refs_router(resolve: Callable[[str], RunRepository]) -> APIRouter:
+def build_refs_router(
+    resolve: Callable[[str], RunRepository], *, run_cache: RunCache
+) -> APIRouter:
     router = APIRouter(prefix="/api/repositories/{slug}")
 
     @router.get("/refs")
@@ -101,7 +104,7 @@ def build_refs_router(resolve: Callable[[str], RunRepository]) -> APIRouter:
         reject_cross_origin_write(request)
         repo = resolve(slug)
         try:
-            return delete_ref_and_orphaned_runs(repo, name)
+            deletion = delete_ref_and_orphaned_runs(repo, name)
         except RefNotFoundError as exc:
             raise HTTPException(HTTPStatus.NOT_FOUND, f"ref not found: {name}") from exc
         except BaselineRefProtectedError as exc:
@@ -110,5 +113,7 @@ def build_refs_router(resolve: Callable[[str], RunRepository]) -> APIRouter:
                 f"the reserved {name!r} ref keeps the mainline history alive, "
                 "so the dashboard cannot delete it",
             ) from exc
+        run_cache.drop(slug, run_ids=deletion.deleted_runs)
+        return deletion
 
     return router

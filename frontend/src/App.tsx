@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError } from "./api";
-import { formatReflogLoadMessage, formatRunLoadMessage } from "./format";
+import { api, ApiError, type Progress } from "./api";
+import {
+  caseKeyOf,
+  collectDeferred,
+  deferredBytes,
+  resolveDeferred,
+} from "./deferred";
+import {
+  formatBytes,
+  formatReflogLoadMessage,
+  formatRunLoadMessage,
+} from "./format";
 import {
   Sidebar,
   repositoryTitle,
@@ -15,6 +25,7 @@ import { RunDiff } from "./components/RunDiff";
 import { ConfirmDialog, type ConfirmRequest } from "./components/ConfirmDialog";
 import { Drawer, type DrawerContent } from "./components/Drawer";
 import type {
+  CaseRecord,
   RunRecord,
   HistoryState,
   MainlineEntry,
@@ -73,6 +84,35 @@ export function runBody(
 ): RunRecord | null {
   if (!fetched || !sel) return null;
   return fetched.key === runKey(sel.repository, sel.runId) ? fetched.run : null;
+}
+
+/** `run` with one case replaced by `record`. Returns `run` itself when the test
+ *  or the case is not in it. */
+export function withCase(
+  run: RunRecord,
+  test: string,
+  caseId: string,
+  record: CaseRecord,
+): RunRecord {
+  const recorded = run.tests[test];
+  if (!recorded || !(caseId in recorded.cases)) return run;
+  return {
+    ...run,
+    tests: {
+      ...run.tests,
+      [test]: { ...recorded, cases: { ...recorded.cases, [caseId]: record } },
+    },
+  };
+}
+
+/** The loading message for a run. It shows the bytes that arrived, and the
+ *  total when the server sent one. */
+export function formatRunProgress(progress: Progress | null): string {
+  if (!progress || progress.loaded === 0) return "Loading run…";
+  const loaded = formatBytes(progress.loaded);
+  return progress.total
+    ? `Loading run… ${loaded} of ${formatBytes(progress.total)}`
+    : `Loading run… ${loaded}`;
 }
 
 /** Whether a slot is picked and its body still on the way, which is the one
@@ -405,6 +445,11 @@ export function App() {
   const [prUrlTemplate, setPrUrlTemplate] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerContent | null>(null);
   const closeDrawer = useCallback(() => setDrawer(null), []);
+  // The bytes of the open run that arrived so far, shown while it loads.
+  const [runProgress, setRunProgress] = useState<Progress | null>(null);
+  // Counts drawer opens. A fetch that ends after a newer open does not replace
+  // the newer pane.
+  const drawerOpens = useRef(0);
   // The pending destructive action, with what the dialog asks and what to run
   // if the answer is yes. Null when no dialog is open.
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
@@ -574,8 +619,11 @@ export function App() {
     }
     let cancelled = false;
     const key = runKey(selA.repository, selA.runId);
+    setRunProgress(null);
     api
-      .run(selA.repository, selA.runId)
+      .run(selA.repository, selA.runId, (progress) => {
+        if (!cancelled) setRunProgress(progress);
+      })
       .then((run) => {
         if (!cancelled) setFetchedA({ key, run });
       })
@@ -667,6 +715,64 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  // Opens a pane. If the pane holds deferred values, the whole case is fetched
+  // first, and the pane shows a loading message until it arrives. The fetched
+  // case also replaces the case in the run. The row then shows the whole value,
+  // and a second open fetches nothing.
+  const openDrawer = useCallback(
+    (content: DrawerContent) => {
+      const deferred = collectDeferred(content);
+      if (deferred.length === 0) {
+        setDrawer(content);
+        return;
+      }
+      const opened = ++drawerOpens.current;
+      setDrawer({
+        kind: "loading",
+        title: content.title,
+        size: deferredBytes(deferred),
+      });
+      const slugOf = (runId: string): string | null =>
+        selA?.runId === runId
+          ? selA.repository
+          : selB?.runId === runId
+            ? selB.repository
+            : null;
+      const wanted = new Map(deferred.map((env) => [caseKeyOf(env), env]));
+      Promise.all(
+        [...wanted.values()].map(async (env) => {
+          const slug = slugOf(env.run);
+          if (slug === null) throw new Error(`run ${env.run} is not open`);
+          const record = await api.runCase(slug, env.run, env.test, env.case);
+          return [caseKeyOf(env), env, record] as const;
+        }),
+      )
+        .then((fetched) => {
+          if (opened !== drawerOpens.current) return;
+          const cases = new Map(
+            fetched.map(([key, , record]) => [key, record]),
+          );
+          for (const [, env, record] of fetched) {
+            const patch = (f: RunFetch | null): RunFetch | null =>
+              f?.run && f.run.id === env.run
+                ? { ...f, run: withCase(f.run, env.test, env.case, record) }
+                : f;
+            setFetchedA(patch);
+            setFetchedB(patch);
+          }
+          setDrawer(resolveDeferred(content, cases));
+        })
+        .catch((e: unknown) => {
+          if (opened !== drawerOpens.current) return;
+          setDrawer(null);
+          setNotice(
+            `The values of this case did not load: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        });
+    },
+    [selA, selB],
+  );
 
   // Mirror the latest paginated state into refs so `handleLoadMore` reads
   // current offsets regardless of render timing.
@@ -1008,7 +1114,7 @@ export function App() {
             viaA={selA?.via}
             viaB={selB?.via}
             onSwap={swap}
-            onOpenDrawer={setDrawer}
+            onOpenDrawer={openDrawer}
           />
         )}
         {!error && runA && !runB && selA && (
@@ -1024,7 +1130,7 @@ export function App() {
             onCompareToBaseline={compareToBaseline}
             onDeleteRun={handleDeleteRun}
             onDeleteRef={handleDeleteRef}
-            onOpenDrawer={setDrawer}
+            onOpenDrawer={openDrawer}
             attemptSel={attemptSel}
             onSelectAttempt={selectAttempt}
           />
@@ -1032,7 +1138,7 @@ export function App() {
         {!error && awaiting && totalRuns > 0 && (
           <div className="empty-state run-loading">
             <span className="spinner" aria-hidden="true" />
-            Loading run…
+            {formatRunProgress(runProgress)}
           </div>
         )}
         {!error && !awaiting && !runA && totalRuns > 0 && (

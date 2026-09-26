@@ -225,6 +225,9 @@ export interface RunSummary extends RunCore {
   // are not failures. Summary only. The full run body carries `tests` instead.
   tests_total: number;
   tests_failed: number;
+  // The stored run's size in bytes. Absent or null in a sidecar written before
+  // it was recorded.
+  size_bytes?: number | null;
 }
 
 export interface MarkerSettings {

@@ -1,6 +1,7 @@
 // Thin fetch wrappers over the dashboard's HTTP API.
 
 import type {
+  CaseRecord,
   RunRecord,
   MainlineEntry,
   ProjectConfig,
@@ -48,7 +49,39 @@ async function readDetail(res: Response): Promise<string | null> {
   return null;
 }
 
-async function getJson<T>(url: string): Promise<T> {
+/** How much of a response body has arrived. `total` is the Content-Length,
+ *  null when the server sent none. */
+export interface Progress {
+  loaded: number;
+  total: number | null;
+}
+
+/** Parses the body as JSON, and calls `onProgress` for each chunk that
+ *  arrives. The parse at the end reports no progress. */
+export async function readJsonWithProgress<T>(
+  res: Response,
+  onProgress: (progress: Progress) => void,
+): Promise<T> {
+  const header = res.headers.get("content-length");
+  const total = header ? Number(header) || null : null;
+  if (!res.body) return (await res.json()) as T;
+  let loaded = 0;
+  const counted = res.body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        loaded += chunk.byteLength;
+        onProgress({ loaded, total });
+        controller.enqueue(chunk);
+      },
+    }),
+  );
+  return (await new Response(counted).json()) as T;
+}
+
+async function getJson<T>(
+  url: string,
+  onProgress?: (progress: Progress) => void,
+): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
     // Without a detail, the URL is the only clue a server or proxy fault leaves.
@@ -58,6 +91,7 @@ async function getJson<T>(url: string): Promise<T> {
       detail ?? `${res.status} ${res.statusText} for ${url}`,
     );
   }
+  if (onProgress) return readJsonWithProgress<T>(res, onProgress);
   return (await res.json()) as T;
 }
 
@@ -89,9 +123,29 @@ export const api = {
       )}/runs?limit=${limit}&offset=${offset}`,
     );
   },
-  run(slug: string, id: string): Promise<RunRecord> {
+  /** The run, with each large value replaced by a `$deferred` envelope (see
+   *  `deferred.ts`). The bytes that arrive go to `onProgress`. */
+  run(
+    slug: string,
+    id: string,
+    onProgress?: (progress: Progress) => void,
+  ): Promise<RunRecord> {
     return getJson(
       `/api/repositories/${encodePath(slug)}/runs/${encodePath(id)}`,
+      onProgress,
+    );
+  },
+  /** One case, whole. The test and the case go in query parameters, because a
+   *  nodeid contains `::` and `/`. */
+  runCase(
+    slug: string,
+    id: string,
+    test: string,
+    caseId: string,
+  ): Promise<CaseRecord> {
+    const q = new URLSearchParams({ test, case: caseId });
+    return getJson(
+      `/api/repositories/${encodePath(slug)}/runs/${encodePath(id)}/cases?${q}`,
     );
   },
   runMainline(slug: string, id: string): Promise<MainlineEntry | null> {

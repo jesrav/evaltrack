@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -1130,7 +1131,12 @@ function CaseTable({
   // Only show the Metadata column when some case carries `Case.metadata`, the
   // arbitrary per-case context the author attached. Empty otherwise.
   const showMetadata = cases.some(([, c]) => c.metadata != null);
-  const showExpected = showsExpectedColumn(cases.map(([, c]) => c));
+  // Memoized, because the check stringifies every case's output, and the table
+  // re-renders on every hover and click.
+  const showExpected = useMemo(
+    () => showsExpectedColumn(cases.map(([, c]) => c)),
+    [cases],
+  );
   return (
     <TableScroll>
       <table className="case-table">
@@ -1845,7 +1851,16 @@ function CaseValue({
    *  Secondary cells (e.g. metadata) pass a smaller value to look lighter. */
   maxChars?: number;
 }) {
-  if (value === null || value === undefined) {
+  // Memoized, because a large value is stringified whole to show its first
+  // characters, and the table re-renders on every hover and click.
+  const text = useMemo(
+    () =>
+      value === null || value === undefined
+        ? null
+        : truncate(formatDisplayText(value), maxChars),
+    [value, maxChars],
+  );
+  if (text === null) {
     return <span className="json-null">—</span>;
   }
   // The truncated value is itself the control. Activating it opens the full
@@ -1859,7 +1874,7 @@ function CaseValue({
       title="open in side panel"
       onClick={() => onOpenDrawer(content)}
     >
-      {truncate(formatDisplayText(value), maxChars)}
+      {text}
     </button>
   );
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { countAttemptsByOutcome } from "../attemptCounts";
 import { summariseErrors } from "../attemptErrors";
 import { formatDisplayText, getPrimaryView } from "../extract";
+import { formatBytes } from "../format";
 import { TextDiff } from "./TextDiff";
 import { JsonView, diffCanCompare, isContainer } from "./JsonView";
 import { JsonDiff } from "./JsonDiff";
@@ -33,6 +34,12 @@ import type {
 import { resultsOfKind } from "../results";
 
 export type DrawerContent =
+  /** A pane whose values are still loading. `size` is their total in bytes. */
+  | {
+      kind: "loading";
+      title: string;
+      size: number;
+    }
   | {
       kind: "diff";
       title: string;
@@ -134,7 +141,7 @@ export function Drawer({
     if (!content) return false;
     // The field-diff pair has no raw-vs-primary distinction, so it keeps a
     // single view.
-    if (content.kind === "pair") return false;
+    if (content.kind === "pair" || content.kind === "loading") return false;
     if (content.kind === "diff") {
       return offersRaw(content.a) || offersRaw(content.b);
     }
@@ -200,7 +207,12 @@ export function Drawer({
           </div>
         )}
         <div className="drawer-body">
-          {content.kind === "pair" ? (
+          {content.kind === "loading" ? (
+            <div className="empty-state run-loading">
+              <span className="spinner" aria-hidden="true" />
+              Loading {formatBytes(content.size)}…
+            </div>
+          ) : content.kind === "pair" ? (
             // Pair = field-aware diff of two structured values (e.g. two
             // EvaluatorResults). BASE/COMPARE labels live in the legend below.
             <PairPane

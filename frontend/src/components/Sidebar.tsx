@@ -1,5 +1,5 @@
 import type { ReflogEntry, Ref, RepositoryRole, RunSummary } from "../types";
-import { formatPlural } from "../format";
+import { formatBytes, formatPlural } from "../format";
 import { buildRunOutcomeChip } from "../runOutcome";
 import { shortenUrl } from "../shortenUrl";
 import { PrRef } from "./PrRef";
@@ -504,6 +504,14 @@ function RunButton({
         )}
         {" · "}
         {formatRelative(run.created_at)}
+        {run.size_bytes != null && (
+          <>
+            {" · "}
+            <span title="stored size of the run">
+              {formatBytes(run.size_bytes)}
+            </span>
+          </>
+        )}
       </div>
     </button>
   );
