@@ -509,3 +509,8 @@ def test_repositories_listed_local_first_then_remote() -> None:
             ("a-local", "local"),
             ("z-remote", "remote"),
         ]
+
+
+def test_list_runs_carries_the_stored_size(client_factory: TestClient) -> None:
+    data = client_factory.get("/api/repositories/main/runs").json()
+    assert all(s["size_bytes"] > 0 for s in data)

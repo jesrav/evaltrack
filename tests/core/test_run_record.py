@@ -908,3 +908,17 @@ def test_non_finite_floats_are_rejected() -> None:
         _make_run_with(task_duration=value)
     with pytest.raises(ValidationError, match="finite"):
         _make_run_with(score_bars={"acc": value})
+
+
+def test_dump_run_json_is_compact() -> None:
+    """Indentation was most of a large run's bytes."""
+    data = dump_run_json(_make_run_with())
+    assert b"\n" not in data
+
+
+def test_parse_run_json_reads_an_indented_run() -> None:
+    """Runs recorded before 0.3.0 are indented. Both forms are the same JSON, so
+    they parse to the same record without a schema bump."""
+    run = _make_run_with()
+    indented = json.dumps(json.loads(dump_run_json(run)), indent=2).encode()
+    assert parse_run_json(indented) == run

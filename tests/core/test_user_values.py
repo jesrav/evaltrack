@@ -5,10 +5,12 @@ and that the user's objects are never mutated. Whole-run behavior (one
 undumpable value not costing the dump) lives in `test_run_record.py`.
 """
 
+import asyncio
 import dataclasses
 import hashlib
 from typing import Any
 
+import pytest
 from pydantic import BaseModel, Field
 
 from evaltrack.core.user_values import UserStr, UserValue, degrade_undumpable
@@ -150,3 +152,51 @@ def test_the_annotations_degrade_at_validation() -> None:
     holder = Holder(value=_BINARY, reason=_SURROGATE)
     assert holder.value == _make_fingerprint(_BINARY)
     assert holder.reason == repr(_SURROGATE)
+
+
+# --- private fields ---
+
+
+@dataclasses.dataclass
+class _WithState:
+    answer: str
+    _state: dict[str, Any] = dataclasses.field(default_factory=dict)
+
+
+def test_a_dataclass_is_stored_without_its_private_fields() -> None:
+    value = _WithState(answer="yes", _state={"schemas": "x" * 1000})
+    assert degrade_undumpable(value) == {"answer": "yes"}
+
+
+def test_a_nested_dataclass_loses_its_private_fields_too() -> None:
+    value = {"run": _WithState(answer="yes", _state={"big": 1})}
+    assert degrade_undumpable(value) == {"run": {"answer": "yes"}}
+
+
+def test_a_dataclass_without_private_fields_is_kept() -> None:
+    @dataclasses.dataclass
+    class _Plain:
+        answer: str
+
+    value = _Plain(answer="yes")
+    assert degrade_undumpable(value) is value
+
+
+def test_a_pydantic_ai_agent_run_is_stored_as_its_output() -> None:
+    """The case that motivated the rule. An `AgentRunResult` keeps the agent's
+    state, with every tool's JSON schema, in private fields."""
+    pydantic_ai = pytest.importorskip("pydantic_ai")
+    from pydantic_ai.models.test import TestModel
+
+    def add(a: int, b: int) -> int:
+        return a + b
+
+    agent = pydantic_ai.Agent(
+        TestModel(call_tools="all", custom_output_text="5"), tools=[add]
+    )
+    result = asyncio.run(agent.run("2 plus 3"))
+
+    class _Holder(BaseModel):
+        value: UserValue
+
+    assert _Holder(value=result).value == {"output": "5"}

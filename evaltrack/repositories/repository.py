@@ -87,6 +87,8 @@ class RunSummary(BaseModel):
         labels: The run's labels.
         tests_total: How many tests the run recorded.
         tests_failed: How many tests failed or errored.
+        size_bytes: The stored run's size. None for a run saved before the size
+            was recorded, and for a summary rebuilt from the run itself.
     """
 
     # Stored as a sidecar, so it takes the same rule as every other stored
@@ -100,9 +102,10 @@ class RunSummary(BaseModel):
     labels: dict[str, str] = {}
     tests_total: int
     tests_failed: int
+    size_bytes: int | None = None
 
     @classmethod
-    def from_run(cls, run: RunRecord) -> "RunSummary":
+    def from_run(cls, run: RunRecord, *, size_bytes: int | None = None) -> "RunSummary":
         return cls(
             id=run.id,
             created_at=run.created_at,
@@ -113,6 +116,7 @@ class RunSummary(BaseModel):
             tests_failed=sum(
                 1 for test in run.tests.values() if test.outcome in FAILING_OUTCOMES
             ),
+            size_bytes=size_bytes,
         )
 
 
@@ -191,10 +195,11 @@ class RunRepository:
         Raises:
             RepositoryUnavailableError: when the storage cannot serve the write.
         """
-        self._store.write(dump_run_json(run), _build_run_path(run.id))
+        data = dump_run_json(run)
+        self._store.write(data, _build_run_path(run.id))
         # After the run, so a crash between the two leaves a run with no
         # sidecar, which a listing heals.
-        self._write_summary(RunSummary.from_run(run))
+        self._write_summary(RunSummary.from_run(run, size_bytes=len(data)))
 
     def load_run(self, run_id: str) -> RunRecord | None:
         """Load one run in full, or `None` if absent.

@@ -18,8 +18,27 @@ from evaltrack.core.run_record import (
     RecordedTest,
     RunRecord,
     TestOutcome,
+    dump_output_json,
 )
 from evaltrack.core.user_values import RawResult
+
+LARGE_OUTPUT_BYTES: int = 256 * 1024
+"""The stored size above which an attempt's output is reported as large."""
+
+
+@dataclass(frozen=True)
+class LargeOutput:
+    """One attempt whose stored output is larger than the recorder's limit.
+
+    Attributes:
+        nodeid: The test that recorded it.
+        case_id: The case the attempt belongs to.
+        size: The output's stored size in bytes.
+    """
+
+    nodeid: str
+    case_id: str
+    size: int
 
 
 @dataclass
@@ -60,6 +79,8 @@ class EvalRecorder:
         run_id: Defaults to a fresh ULID.
         created_at: Defaults to the current UTC time.
         keep_raw_results: Keep each round's runner-native result for export.
+        large_output_bytes: The stored size above which an attempt's output is
+            listed in `large_outputs`.
     """
 
     def __init__(
@@ -69,12 +90,15 @@ class EvalRecorder:
         run_id: str | None = None,
         created_at: datetime | None = None,
         keep_raw_results: bool = False,
+        large_output_bytes: int = LARGE_OUTPUT_BYTES,
     ) -> None:
         self.id: str = run_id or str(ULID())
         self.created_at: datetime = created_at or datetime.now(UTC)
         self.context: RunContext = context or RunContext()
         self.keep_raw_results: bool = keep_raw_results
+        self.large_output_bytes: int = large_output_bytes
         self.tests: dict[str, _TestAccumulator] = {}
+        self.large_outputs: list[LargeOutput] = []
 
     def _get_recorded_test(self, nodeid: str) -> _TestAccumulator:
         return self.tests.setdefault(nodeid, _TestAccumulator())
@@ -119,6 +143,16 @@ class EvalRecorder:
             rec.raw_results.append(raw_result)
         if rec.settings is None:
             rec.settings = settings or MarkerSettings()
+        self._note_large_outputs(nodeid, eval_round)
+
+    def _note_large_outputs(self, nodeid: str, eval_round: EvalRound) -> None:
+        """Measured per attempt, so that the report can name the case."""
+        for attempt in eval_round.attempts:
+            if attempt.output is None:
+                continue
+            size = len(dump_output_json(attempt))
+            if size > self.large_output_bytes:
+                self.large_outputs.append(LargeOutput(nodeid, attempt.case_id, size))
 
     def set_test_outcome(self, nodeid: str, outcome: TestOutcome) -> None:
         """Record a test's pytest outcome, the authoritative pass/fail for the test."""

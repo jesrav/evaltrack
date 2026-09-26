@@ -5,6 +5,7 @@ import itertools
 import warnings
 
 import pytest
+from pydantic import BaseModel, Field
 from pydantic_evals import Case, Dataset
 
 from evaltrack.core.errors import EvalDefinitionError
@@ -644,3 +645,44 @@ def test_an_xfailed_test_is_not_counted_as_a_failure() -> None:
     assert rec.has_failures is False
     rec.set_test_outcome("u", "failed")
     assert rec.has_failures is True
+
+
+# --- large outputs ---
+
+
+def test_an_output_over_the_limit_is_listed_with_its_test_and_case() -> None:
+    rec = EvalRecorder(large_output_bytes=100)
+    rec.add_round(
+        "test_x.py::test_a",
+        make_round(
+            attempts=[
+                make_attempt(case_id="small", output="x"),
+                make_attempt(case_id="big", output="x" * 200),
+            ]
+        ),
+    )
+    [large] = rec.large_outputs
+    assert (large.nodeid, large.case_id) == ("test_x.py::test_a", "big")
+    assert large.size > 200, "the size is the stored JSON's, quotes included"
+
+
+def test_the_stored_size_is_measured_not_the_python_object() -> None:
+    """A model with an excluded field is measured as the run stores it, without
+    that field."""
+
+    class _Bulky(BaseModel):
+        shown: str
+        hidden: str = Field(exclude=True)
+
+    rec = EvalRecorder(large_output_bytes=100)
+    rec.add_round(
+        "t",
+        make_round(attempts=[make_attempt(output=_Bulky(shown="s", hidden="h" * 500))]),
+    )
+    assert rec.large_outputs == []
+
+
+def test_no_output_is_listed_under_the_default_limit_for_an_ordinary_answer() -> None:
+    rec = EvalRecorder()
+    rec.add_round("t", make_round(attempts=[make_attempt(output="an answer " * 100)]))
+    assert rec.large_outputs == []

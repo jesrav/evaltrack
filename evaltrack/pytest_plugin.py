@@ -30,7 +30,7 @@ from pydantic_core import PydanticCustomError
 from evaltrack.config import load_config, resolve_local
 from evaltrack.context import detect
 from evaltrack.core.errors import RepositoryUnavailableError
-from evaltrack.core.recorder import EvalRecorder
+from evaltrack.core.recorder import EvalRecorder, LargeOutput
 from evaltrack.core.run_context import RunContext
 from evaltrack.core.run_record import MarkerSettings, dump_run_json
 from evaltrack.marked_test import MarkedTest, bind_marked_test
@@ -503,20 +503,63 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:  # n
             session.exitstatus = pytest.ExitCode.INTERNAL_ERROR
 
 
+_LARGE_OUTPUT_HINT = (
+    "A large output makes the run slow to open. Return only what the "
+    "evaluators need from the task, or register a converter for the type of "
+    "the output. See https://github.com/jesrav/evaltrack/blob/main/docs/"
+    "outputs.md#large-outputs"
+)
+
+
+def _format_size(size: int) -> str:
+    return f"{size / 1024:.0f} KB" if size < 1024 * 1024 else f"{size / 1024**2:.1f} MB"
+
+
+def describe_large_outputs(
+    large_outputs: list[LargeOutput], *, limit: int
+) -> list[str]:
+    """One line per test, which names the case with the largest output."""
+    by_test: dict[str, list[LargeOutput]] = {}
+    for large in large_outputs:
+        by_test.setdefault(large.nodeid, []).append(large)
+    lines = [
+        f"{len(large_outputs)} attempt(s) recorded an output larger than "
+        f"{_format_size(limit)}:"
+    ]
+    for nodeid, in_test in by_test.items():
+        largest = max(in_test, key=lambda large: large.size)
+        others = len(in_test) - 1
+        more = f" (and {others} more in this test)" if others else ""
+        lines.append(
+            f"    {nodeid}, case {largest.case_id!r}: {_format_size(largest.size)}{more}"
+        )
+    lines.append(_LARGE_OUTPUT_HINT)
+    return lines
+
+
 # pluggy passes hook arguments positionally, so they cannot be keyword-only.
 def pytest_terminal_summary(  # noqa: PLR0917
     terminalreporter: pytest.TerminalReporter,
     exitstatus: int,  # noqa: ARG001
     config: pytest.Config,
 ) -> None:
-    """Show the dashboard hint in its own section near the failure list."""
-    run_id = config.stash[_state_key].failed_run_id
-    if run_id is None:
+    """Show the dashboard hint and the large outputs in their own section near the
+    failure list."""
+    state = config.stash[_state_key]
+    run_id = state.failed_run_id
+    large_outputs = state.recorder.large_outputs
+    if run_id is None and not large_outputs:
         return
     terminalreporter.write_sep("=", "evaltrack", cyan=True, bold=True)
-    terminalreporter.write_line(
-        f"Run {run_id} had failures. Inspect it in the dashboard:"
-    )
-    terminalreporter.write_line(
-        f"    evaltrack ui --run-id {run_id}", cyan=True, bold=True
-    )
+    if run_id is not None:
+        terminalreporter.write_line(
+            f"Run {run_id} had failures. Inspect it in the dashboard:"
+        )
+        terminalreporter.write_line(
+            f"    evaltrack ui --run-id {run_id}", cyan=True, bold=True
+        )
+    if large_outputs:
+        for line in describe_large_outputs(
+            large_outputs, limit=state.recorder.large_output_bytes
+        ):
+            terminalreporter.write_line(line, yellow=True)
