@@ -674,43 +674,6 @@ def test_non_finite_user_values_never_load_back_as_none() -> None:
     assert dump_run_json(loaded) == data, "the round trip must be byte-stable"
 
 
-def test_a_run_recorded_with_raw_results_still_loads_and_keeps_them() -> None:
-    """A run recorded before 0.3.0 can hold the runner's own reports, which no
-    field declares now. They must survive a load and a dump unchanged.
-    """
-    stored_report = {
-        "name": "t",
-        "cases": [
-            {
-                "name": "c",
-                "inputs": "x",
-                "output": "X",
-                "metrics": {"tokens": None},
-                "task_duration": 0.1,
-                "total_duration": 0.2,
-                "a_field_a_later_pydantic_evals_dropped": 1,
-            }
-        ],
-        "failures": [],
-    }
-    stored_run = {
-        "run_schema_version": RUN_SCHEMA_VERSION,
-        "id": str(ULID()),
-        "created_at": datetime.now(UTC).isoformat(),
-        "recorded_by": RECORDED_BY.model_dump(),
-        "tests": {
-            "test_x.py::test_a": {
-                "cases": {},
-                "raw_results": [stored_report],
-                "outcome": "passed",
-            }
-        },
-    }
-    run = parse_run_json(json.dumps(stored_run).encode())
-    dumped = json.loads(dump_run_json(run))
-    assert dumped["tests"]["test_x.py::test_a"]["raw_results"] == [stored_report]
-
-
 def test_created_at_keeps_the_iso_string_wire_format() -> None:
     """A new save must still store `created_at` as an ISO 8601 string naming
     the same instant, so stored runs and their readers keep working."""

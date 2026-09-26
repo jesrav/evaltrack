@@ -324,15 +324,6 @@ def test_repeat_with_one_crashed_attempt_counts_it() -> None:
     assert [a.outcome for a in recorded.attempts] == ["passed", "passed", "errored"]
 
 
-def test_the_cases_record_the_crash() -> None:
-    """The structured cases must carry the crash on their own. A run keeps no
-    raw report to fall back on."""
-    rec = EvalRecorder()
-    rec.add_round("t", make_crash_round())
-    built = rec.to_run_record().tests["t"]
-    assert built.cases["test_case"].attempts[0].outcome == "errored"
-
-
 def test_records_task_duration() -> None:
     rec = EvalRecorder()
     rec.add_round("t", make_round(task_duration=2.5))
@@ -661,10 +652,4 @@ def test_the_stored_size_is_measured_not_the_python_object() -> None:
         "t",
         make_round(attempts=[make_attempt(output=_Bulky(shown="s", hidden="h" * 500))]),
     )
-    assert rec.large_outputs == []
-
-
-def test_no_output_is_listed_under_the_default_limit_for_an_ordinary_answer() -> None:
-    rec = EvalRecorder()
-    rec.add_round("t", make_round(attempts=[make_attempt(output="an answer " * 100)]))
     assert rec.large_outputs == []

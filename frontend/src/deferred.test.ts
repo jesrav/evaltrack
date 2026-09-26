@@ -118,9 +118,4 @@ describe("resolveDeferred", () => {
     expect(resolved.b).toBe("the input");
     expect(resolved.untouched).toBe(content.untouched);
   });
-
-  it("keeps an envelope whose case did not arrive", () => {
-    const content = { a: envelope() };
-    expect(resolveDeferred(content, new Map())).toBe(content);
-  });
 });

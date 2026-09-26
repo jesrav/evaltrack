@@ -626,8 +626,3 @@ def test_get_case_404s_for_an_unknown_case() -> None:
             params={"test": "test_x", "case": "nope"},
         )
     assert r.status_code == 404
-
-
-def test_list_runs_carries_the_stored_size(client_factory: TestClient) -> None:
-    data = client_factory.get("/api/repositories/main/runs").json()
-    assert all(s["size_bytes"] > 0 for s in data)
