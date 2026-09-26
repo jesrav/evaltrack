@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError } from "./api";
-import { formatReflogLoadMessage, formatRunLoadMessage } from "./format";
+import { api, ApiError, type Progress } from "./api";
+import { createDrawerOpener } from "./drawerOpener";
+import {
+  formatBytes,
+  formatReflogLoadMessage,
+  formatRunLoadMessage,
+} from "./format";
 import {
   Sidebar,
   repositoryTitle,
@@ -73,6 +78,16 @@ export function runBody(
 ): RunRecord | null {
   if (!fetched || !sel) return null;
   return fetched.key === runKey(sel.repository, sel.runId) ? fetched.run : null;
+}
+
+/** The loading message for a run. It shows the bytes that arrived, and the
+ *  total when the server sent one. */
+export function formatRunProgress(progress: Progress | null): string {
+  if (!progress || progress.loaded === 0) return "Loading run…";
+  const loaded = formatBytes(progress.loaded);
+  return progress.total
+    ? `Loading run… ${loaded} of ${formatBytes(progress.total)}`
+    : `Loading run… ${loaded}`;
 }
 
 /** Whether a slot is picked and its body still on the way, which is the one
@@ -404,7 +419,8 @@ export function App() {
   // plain text rather than links.
   const [prUrlTemplate, setPrUrlTemplate] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerContent | null>(null);
-  const closeDrawer = useCallback(() => setDrawer(null), []);
+  // The bytes of the open run that arrived so far, shown while it loads.
+  const [runProgress, setRunProgress] = useState<Progress | null>(null);
   // The pending destructive action, with what the dialog asks and what to run
   // if the answer is yes. Null when no dialog is open.
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
@@ -417,6 +433,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
+  const [drawerOpener] = useState(() =>
+    createDrawerOpener({ show: setDrawer, onError: setNotice }),
+  );
+  const closeDrawer = useCallback(() => drawerOpener.close(), [drawerOpener]);
   // Which attempt is selected per case, keyed by the case's title. Shared so
   // selecting an attempt in the inspector updates the run-view row. Unset cases
   // fall back to the deciding attempt. Ephemeral, not deep-linked.
@@ -574,8 +594,11 @@ export function App() {
     }
     let cancelled = false;
     const key = runKey(selA.repository, selA.runId);
+    setRunProgress(null);
     api
-      .run(selA.repository, selA.runId)
+      .run(selA.repository, selA.runId, (progress) => {
+        if (!cancelled) setRunProgress(progress);
+      })
       .then((run) => {
         if (!cancelled) setFetchedA({ key, run });
       })
@@ -667,6 +690,25 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  // A pane fetches a case from the repository its run was opened from.
+  const openDrawer = useCallback(
+    (content: DrawerContent) =>
+      void drawerOpener.open(content, (env) => {
+        const sel = [selA, selB].find((s) => s?.runId === env.run);
+        if (!sel)
+          return Promise.reject(new Error(`run ${env.run} is not open`));
+        return api.runCase(sel.repository, env.run, env.test, env.case);
+      }),
+    [drawerOpener, selA, selB],
+  );
+  // The fetched cases of a run are kept while the run is open.
+  useEffect(() => {
+    const open = [selA?.runId, selB?.runId].filter(
+      (id): id is string => id !== undefined,
+    );
+    drawerOpener.keepRuns(new Set(open));
+  }, [selA, selB, drawerOpener]);
 
   // Mirror the latest paginated state into refs so `handleLoadMore` reads
   // current offsets regardless of render timing.
@@ -1008,7 +1050,7 @@ export function App() {
             viaA={selA?.via}
             viaB={selB?.via}
             onSwap={swap}
-            onOpenDrawer={setDrawer}
+            onOpenDrawer={openDrawer}
           />
         )}
         {!error && runA && !runB && selA && (
@@ -1024,7 +1066,7 @@ export function App() {
             onCompareToBaseline={compareToBaseline}
             onDeleteRun={handleDeleteRun}
             onDeleteRef={handleDeleteRef}
-            onOpenDrawer={setDrawer}
+            onOpenDrawer={openDrawer}
             attemptSel={attemptSel}
             onSelectAttempt={selectAttempt}
           />
@@ -1032,7 +1074,7 @@ export function App() {
         {!error && awaiting && totalRuns > 0 && (
           <div className="empty-state run-loading">
             <span className="spinner" aria-hidden="true" />
-            Loading run…
+            {formatRunProgress(runProgress)}
           </div>
         )}
         {!error && !awaiting && !runA && totalRuns > 0 && (

@@ -3,16 +3,17 @@ the project config, and how paging and multi-mount routing behave."""
 
 import json
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from evaltrack.core.run_record import RUN_SCHEMA_VERSION
+from evaltrack.core.run_record import RUN_SCHEMA_VERSION, dump_run_json, parse_run_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui import MountedRepository, create_app
 
-from ..factories import make_crash_round, make_round
+from ..factories import make_attempt, make_crash_round, make_round
 from ..fakes import MemoryStore
 from .conftest import (
     make_client,
@@ -162,21 +163,29 @@ def test_get_run_missing_404(client_factory: TestClient) -> None:
     assert r.status_code == 404
 
 
-def test_get_run_strips_raw_results(client_factory: TestClient) -> None:
-    summaries = client_factory.get("/api/repositories/main/runs").json()
-    target_id = summaries[0]["id"]
-    data = client_factory.get(f"/api/repositories/main/runs/{target_id}").json()
-    evaluated = [t for t in data["tests"].values() if t["marker"] is not None]
-    assert evaluated, "sanity: the fixture run carries evals"
-    assert all(t["raw_results"] == [] for t in evaluated), (
-        "the view omits the heavy raw reports"
-    )
-    assert all(t["cases"] for t in evaluated), "the structured cases still stand"
+def _save_run_with_raw_results(repo: RunRepository) -> str:
+    """A run as one recorded before 0.3.0 was stored, with the runner's own
+    reports beside the cases."""
+    run = make_recorded_run()
+    stored = json.loads(dump_run_json(run))
+    stored["tests"]["test_x"]["raw_results"] = [{"cases": [{"output": "x" * 100}]}]
+    repo.save_run(parse_run_json(json.dumps(stored).encode()))
+    return run.id
+
+
+def test_get_run_leaves_out_the_raw_results_an_old_run_carries() -> None:
+    repo = RunRepository(MemoryStore())
+    run_id = _save_run_with_raw_results(repo)
+    with make_repo_client(repo) as client:
+        data = client.get(f"/api/repositories/main/runs/{run_id}").json()
+    test = data["tests"]["test_x"]
+    assert "raw_results" not in test, "the view omits the heavy raw reports"
+    assert test["cases"], "the structured cases still stand"
 
 
 def test_get_run_carries_the_crashed_attempt() -> None:
-    """The run view strips the raw reports. A crashed attempt must travel in the
-    structured cases, or the dashboard cannot show it at all."""
+    """A crashed attempt must travel in the structured cases, or the dashboard
+    cannot show it at all."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_crash_round())
     repo.save_run(run)
@@ -187,7 +196,7 @@ def test_get_run_carries_the_crashed_attempt() -> None:
     assert attempt["outcome"] == "errored"
 
 
-def test_download_run_includes_raw_results(client_factory: TestClient) -> None:
+def test_download_run_is_the_stored_run(client_factory: TestClient) -> None:
     summaries = client_factory.get("/api/repositories/main/runs").json()
     target_id = summaries[0]["id"]
     r = client_factory.get(f"/api/repositories/main/runs/{target_id}/download")
@@ -196,11 +205,7 @@ def test_download_run_includes_raw_results(client_factory: TestClient) -> None:
         r.headers["content-disposition"] == f'attachment; filename="{target_id}.json"'
     )
     assert r.headers["content-type"].startswith("application/json")
-    data = r.json()
-    evaluated = [t for t in data["tests"].values() if t["marker"] is not None]
-    assert any(t["raw_results"] for t in evaluated), (
-        "the download keeps the raw reports"
-    )
+    assert r.json()["id"] == target_id
 
 
 def test_download_run_missing_404(client_factory: TestClient) -> None:
@@ -509,3 +514,115 @@ def test_repositories_listed_local_first_then_remote() -> None:
             ("a-local", "local"),
             ("z-remote", "remote"),
         ]
+
+
+# --- the run view defers large values ---
+
+
+def _save_run_with_output(repo: RunRepository, output: object) -> str:
+    run = make_recorded_run(make_round(attempts=[make_attempt(output=output)]))
+    repo.save_run(run)
+    return run.id
+
+
+def _get_case(data: Any) -> Any:
+    return data["tests"]["test_x"]["cases"]["test_case"]
+
+
+def test_get_run_keeps_a_small_output_inline() -> None:
+    repo = RunRepository(MemoryStore())
+    run_id = _save_run_with_output(repo, {"answer": "short"})
+    with make_repo_client(repo) as client:
+        data = client.get(f"/api/repositories/main/runs/{run_id}").json()
+    assert _get_case(data)["attempts"][0]["output"] == {"answer": "short"}
+
+
+def test_get_run_defers_a_large_output_with_its_address() -> None:
+    """A large value travels as an envelope the dashboard can show a preview of,
+    compare by hash, and fetch whole from the address it carries."""
+    repo = RunRepository(MemoryStore())
+    output = {"output": "the answer", "_state": "x" * 20_000}
+    run_id = _save_run_with_output(repo, output)
+    with make_repo_client(repo) as client:
+        data = client.get(f"/api/repositories/main/runs/{run_id}").json()
+    envelope = _get_case(data)["attempts"][0]["output"]["$deferred"]
+    assert envelope["preview"] == "the answer", "the preview is the unwrapped answer"
+    assert envelope["size"] > 20_000
+    assert len(envelope["sha256"]) == 64
+    assert {k: envelope[k] for k in ("run", "test", "case", "field", "attempt")} == {
+        "run": run_id,
+        "test": "test_x",
+        "case": "test_case",
+        "field": "output",
+        "attempt": 0,
+    }
+
+
+def test_get_run_defers_a_large_input_too() -> None:
+    repo = RunRepository(MemoryStore())
+    run = make_recorded_run(make_round(attempts=[make_attempt(inputs="q" * 20_000)]))
+    repo.save_run(run)
+    with make_repo_client(repo) as client:
+        data = client.get(f"/api/repositories/main/runs/{run.id}").json()
+    envelope = _get_case(data)["inputs"]["$deferred"]
+    assert envelope["field"] == "inputs" and "attempt" not in envelope
+    assert envelope["preview"] == "q" * 200
+
+
+def test_equal_large_values_in_two_runs_share_a_hash() -> None:
+    """The diff view compares two runs by the hash, so equal values must hash
+    equal and different ones must not."""
+    repo = RunRepository(MemoryStore())
+    same = "same " * 5_000
+    first = _save_run_with_output(repo, same)
+    second = _save_run_with_output(repo, same)
+    third = _save_run_with_output(repo, same + "!")
+    with make_repo_client(repo) as client:
+        hashes = [
+            _get_case(client.get(f"/api/repositories/main/runs/{run_id}").json())[
+                "attempts"
+            ][0]["output"]["$deferred"]["sha256"]
+            for run_id in (first, second, third)
+        ]
+    assert hashes[0] == hashes[1] != hashes[2]
+
+
+def _read_output_hash(client: TestClient, run_id: str) -> str:
+    data = client.get(f"/api/repositories/main/runs/{run_id}").json()
+    return _get_case(data)["attempts"][0]["output"]["$deferred"]["sha256"]
+
+
+def test_the_hash_ignores_what_a_small_value_would_not_compare() -> None:
+    """A small value compares by its answer with keys sorted, so a large one must
+    too. Otherwise the same answer shows as changed only because it is large."""
+    repo = RunRepository(MemoryStore())
+    answer = {"text": "the answer", "sources": ["a", "b"]}
+    reordered = {"sources": ["a", "b"], "text": "the answer"}
+    first = _save_run_with_output(repo, {"answer": answer, "_trace": "x" * 20_000})
+    second = _save_run_with_output(repo, {"answer": reordered, "_trace": "y" * 30_000})
+    with make_repo_client(repo) as client:
+        assert _read_output_hash(client, first) == _read_output_hash(client, second)
+
+
+def test_get_case_returns_the_case_whole() -> None:
+    repo = RunRepository(MemoryStore())
+    output = {"output": "the answer", "_state": "x" * 20_000}
+    run_id = _save_run_with_output(repo, output)
+    with make_repo_client(repo) as client:
+        r = client.get(
+            f"/api/repositories/main/runs/{run_id}/cases",
+            params={"test": "test_x", "case": "test_case"},
+        )
+    assert r.status_code == 200
+    assert r.json()["attempts"][0]["output"] == output
+
+
+def test_get_case_404s_for_an_unknown_case() -> None:
+    repo = RunRepository(MemoryStore())
+    run_id = _save_run_with_output(repo, "x")
+    with make_repo_client(repo) as client:
+        r = client.get(
+            f"/api/repositories/main/runs/{run_id}/cases",
+            params={"test": "test_x", "case": "nope"},
+        )
+    assert r.status_code == 404

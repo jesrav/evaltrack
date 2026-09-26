@@ -45,10 +45,8 @@ against them.
 
 ## evaltrack export
 
-Prints a recorded run as JSON. Use it to inspect a run, archive one outside the repository, or feed
-the eval runner's own result objects back into that runner's tooling when the run was recorded with
-`keep_raw_results = true`. See [Raw results](./configuration.md#raw-results). The same data is
-available in Python — see [Reading runs from Python].
+Prints a recorded run as JSON. Use it to inspect a run or archive one outside the repository. The
+same data is available in Python. See [Reading runs from Python].
 
 **Exit codes:** `0` when the run was exported. `1` when the named repository does not hold the run,
 and the error names that repository. `2` when no repository is named. No other command exits

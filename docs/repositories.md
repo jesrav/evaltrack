@@ -182,15 +182,11 @@ for nodeid, test in run.tests.items():  # (2)!
     for case_id, case in test.cases.items():
         attempt = case.attempts[0]
         print(case_id, case.outcome, attempt.outcome, attempt.task_duration)
-
-raw_results = run.tests["tests/test_x.py::test_x"].raw_results  # (3)!
 ```
 
 1. A `RunRecord`, or `None` if absent.
 2. Structured per-case data: outcome, attempts, latency, errors. A test that never evaluated (it
    errored or skipped) has no case.
-3. The eval runner's own result objects, one per round, when `keep_raw_results` is on. Plain JSON
-   data, not the runner's own types. See [Raw results](./configuration.md#raw-results).
 
 ---
 

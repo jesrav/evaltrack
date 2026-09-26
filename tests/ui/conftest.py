@@ -36,7 +36,7 @@ def make_recorded_run(
     The bars are resolved onto the results first, the way a recorded run carries
     them.
     """
-    rec = EvalRecorder(RunContext(commit=commit), keep_raw_results=True)
+    rec = EvalRecorder(RunContext(commit=commit))
     eval_settings = MarkerSettings(**settings)
     rec.add_round(
         test,

@@ -7,7 +7,15 @@ fails.
 Two values still fail it, and neither is a realistic eval output. A value
 nested deeper than Python's stack allows fails the walk, and fails the JSON
 round trip anyway. A `frozenset` used as a dict key fails the dump, because
-the degrade leaves an unknown type alone and JSON has no key for it."""
+the degrade leaves an unknown type alone and JSON has no key for it.
+
+A dataclass is stored without its private fields, the fields whose name starts
+with `_`. pydantic leaves out the private attributes of a model in the same
+way. Such fields usually hold the internal state of a library, which can be
+large.
+
+A `UserValue` of a type with a registered converter is stored as the converter
+returns it."""
 
 import dataclasses
 import hashlib
@@ -15,6 +23,8 @@ from collections.abc import Iterable
 from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator
+
+from evaltrack.core.converters import convert_user_value
 
 
 def degrade_undumpable(value: Any) -> Any:
@@ -106,13 +116,16 @@ def _degrade_attrs(
     attrs: Iterable[tuple[str, Any]],
     on_path: frozenset[int],
     in_key: bool,
+    dropped: bool = False,
 ) -> Any:
-    """Walk an object's named values. Returns the object itself when none degraded.
-    Otherwise returns a plain dict of them, or `repr()` under a key, so its type
-    cannot re-validate degraded data or run construction logic on it."""
+    """Walk an object's named values. Returns the object itself when none degraded
+    and `dropped` is false. Otherwise returns a plain dict of them, or `repr()`
+    under a key, so its type cannot re-validate degraded data or run
+    construction logic on it. `dropped` is true when `attrs` leaves out some of
+    the object's values."""
     on_path = on_path | {id(value)}
     out: dict[str, Any] = {}
-    changed = False
+    changed = dropped
     for name, old in attrs:
         new = _degrade(old, on_path=on_path, in_key=in_key)
         changed = changed or new is not old
@@ -140,23 +153,28 @@ def _degrade_model(value: BaseModel, *, on_path: frozenset[int], in_key: bool) -
 
 
 def _degrade_dataclass(value: Any, *, on_path: frozenset[int], in_key: bool) -> Any:
-    attrs = [
-        (f.name, getattr(value, f.name))
-        for f in dataclasses.fields(value)
-        if hasattr(value, f.name)
-    ]
-    return _degrade_attrs(value, attrs=attrs, on_path=on_path, in_key=in_key)
+    fields = dataclasses.fields(value)
+    public = [f for f in fields if not f.name.startswith("_")]
+    attrs = [(f.name, getattr(value, f.name)) for f in public if hasattr(value, f.name)]
+    return _degrade_attrs(
+        value,
+        attrs=attrs,
+        on_path=on_path,
+        in_key=in_key,
+        dropped=len(public) < len(fields),
+    )
 
 
-# The user's data wholesale, stored as produced except that undumpable values
-# degrade at validation.
-UserValue = Annotated[Any, BeforeValidator(degrade_undumpable)]
+def _record_user_value(value: Any) -> Any:
+    # Converted first, so that a converter gets the object and not its degraded
+    # form.
+    return degrade_undumpable(convert_user_value(value))
+
+
+# The user's data wholesale, stored as produced, except that a registered type
+# is converted and undumpable values degrade at validation.
+UserValue = Annotated[Any, BeforeValidator(_record_user_value)]
 
 # Text evaltrack declares but does not author. Only the `repr()` stand-in can
 # reach a string.
 UserStr = Annotated[str, BeforeValidator(degrade_undumpable)]
-
-# One round's result, exactly as the eval runner returned it. evaltrack never
-# reads into it. Stored as a `UserValue`, so a loaded run hands back plain JSON
-# data rather than the runner's own types, and cannot be translated again.
-RawResult = Any

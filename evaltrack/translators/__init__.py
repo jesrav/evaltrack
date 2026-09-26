@@ -8,13 +8,14 @@ is evaltrack's own, called on each round's result.
 """
 
 import importlib
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
 from typing import Any
 
 from evaltrack.core.errors import TranslatorNotFoundError
 from evaltrack.core.eval_round import EvalRound as EvalRound
+from evaltrack.core.type_paths import qualified_names
 from evaltrack.translators.protocol import Translator as Translator
 
 
@@ -92,13 +93,6 @@ def register(
     _registry[name] = _Entry(native_types=native_types, load=cache(load))
 
 
-def _qualified_names(value: Any) -> Iterator[str]:
-    """The value's own type first, then the types it inherits from, so a subclass
-    of a registered type still finds a translator."""
-    for cls in type(value).__mro__:
-        yield f"{cls.__module__}.{cls.__qualname__}"
-
-
 def find_translator(result: Any) -> Translator:
     """The translator that handles `result`, by its own type first and its base classes
     after.
@@ -106,7 +100,7 @@ def find_translator(result: Any) -> Translator:
     Raises:
         TranslatorNotFoundError: when nothing registered handles the type.
     """
-    for qualified in _qualified_names(result):
+    for qualified in qualified_names(result):
         for entry in _registry.values():
             if qualified in entry.native_types:
                 return entry.load()

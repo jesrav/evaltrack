@@ -72,6 +72,7 @@ nav:
       - Flakiness & reliability: flakiness.md
       - Eval runners: eval-runners.md
       - Translators: translators.md
+      - Stored outputs: outputs.md
       - Repositories and storage: repositories.md
       - CI/CD: ci-cd.md
       - Examples: examples.md

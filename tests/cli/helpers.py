@@ -114,9 +114,9 @@ def save_old_run(repository_url: str, days_ago: int = 60) -> str:
     return run.id
 
 
-def seed_run_in_repo(url: str, *, keep_raw_results: bool = True) -> str:
+def seed_run_in_repo(url: str) -> str:
     """Record a run and save it into the repository at `url`. Return its id."""
-    rec = EvalRecorder(keep_raw_results=keep_raw_results)
+    rec = EvalRecorder()
     rec.add_round("test_x", make_round())
     run = rec.to_run_record()
     open_repository(url).save_run(run)

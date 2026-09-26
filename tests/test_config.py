@@ -109,7 +109,9 @@ def test_load_config_rejects_and_names_the_file(
 
 
 @pytest.mark.parametrize(
-    "key", ["keep_raw_results", "remte"], ids=["wrong-typed-key", "unknown-key"]
+    "key",
+    ["pr_url_template", "keep_raw_results", "remte"],
+    ids=["invalid-value", "removed-key", "unknown-key"],
 )
 def test_load_config_rejection_does_not_echo_the_value(
     key: str, tmp_path: Path
@@ -125,6 +127,14 @@ def test_load_config_rejection_does_not_echo_the_value(
     message = str(excinfo.value)
     assert "SUPERSECRETSIG" not in message
     assert key in message, "the redacted error must still name the rejected key"
+
+
+def test_the_removed_keep_raw_results_says_it_was_removed(tmp_path: Path) -> None:
+    """An unknown-key error looks like a typo, so a removed key gets its own
+    message."""
+    _write_pyproject(tmp_path, "[tool.evaltrack]\nkeep_raw_results = false\n")
+    with pytest.raises(ValueError, match="removed in evaltrack 0.3.0"):
+        load_config(tmp_path)
 
 
 def test_load_config_reads_from_a_nested_directory(tmp_path: Path) -> None:
