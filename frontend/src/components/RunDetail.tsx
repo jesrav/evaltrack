@@ -100,7 +100,9 @@ export function RunDetail({
 }: Props) {
   const [filter, setFilter] = useState<CaseFilter>(NO_CASE_FILTER);
   const filtered = isCaseFilterActive(filter);
-  const modules = shownModules(run, filter);
+  // Memoized, so that each test's cases keep their identity between renders and
+  // the case table's own memos hold.
+  const modules = useMemo(() => shownModules(run, filter), [run, filter]);
   const counts = countCases(run, filter);
   const ready = history?.status === "ready" ? history.data : undefined;
   const reliabilityMap = ready?.reliability;
@@ -909,7 +911,7 @@ function RunHeader({
           className="page-action"
           href={api.runDownloadUrl(slug, run.id)}
           download={`${run.id}.json`}
-          title="Download this run as JSON (includes the eval runner's own result objects)"
+          title="Download the whole stored run as JSON"
         >
           ↓ Download
         </a>

@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, type Progress } from "./api";
-import {
-  caseKeyOf,
-  collectDeferred,
-  deferredBytes,
-  resolveDeferred,
-} from "./deferred";
+import { createDrawerOpener } from "./drawerOpener";
 import {
   formatBytes,
   formatReflogLoadMessage,
@@ -25,7 +20,6 @@ import { RunDiff } from "./components/RunDiff";
 import { ConfirmDialog, type ConfirmRequest } from "./components/ConfirmDialog";
 import { Drawer, type DrawerContent } from "./components/Drawer";
 import type {
-  CaseRecord,
   RunRecord,
   HistoryState,
   MainlineEntry,
@@ -84,25 +78,6 @@ export function runBody(
 ): RunRecord | null {
   if (!fetched || !sel) return null;
   return fetched.key === runKey(sel.repository, sel.runId) ? fetched.run : null;
-}
-
-/** `run` with one case replaced by `record`. Returns `run` itself when the test
- *  or the case is not in it. */
-export function withCase(
-  run: RunRecord,
-  test: string,
-  caseId: string,
-  record: CaseRecord,
-): RunRecord {
-  const recorded = run.tests[test];
-  if (!recorded || !(caseId in recorded.cases)) return run;
-  return {
-    ...run,
-    tests: {
-      ...run.tests,
-      [test]: { ...recorded, cases: { ...recorded.cases, [caseId]: record } },
-    },
-  };
 }
 
 /** The loading message for a run. It shows the bytes that arrived, and the
@@ -444,12 +419,8 @@ export function App() {
   // plain text rather than links.
   const [prUrlTemplate, setPrUrlTemplate] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerContent | null>(null);
-  const closeDrawer = useCallback(() => setDrawer(null), []);
   // The bytes of the open run that arrived so far, shown while it loads.
   const [runProgress, setRunProgress] = useState<Progress | null>(null);
-  // Counts drawer opens. A fetch that ends after a newer open does not replace
-  // the newer pane.
-  const drawerOpens = useRef(0);
   // The pending destructive action, with what the dialog asks and what to run
   // if the answer is yes. Null when no dialog is open.
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
@@ -462,6 +433,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
+  const [drawerOpener] = useState(() =>
+    createDrawerOpener({ show: setDrawer, onError: setNotice }),
+  );
+  const closeDrawer = useCallback(() => drawerOpener.close(), [drawerOpener]);
   // Which attempt is selected per case, keyed by the case's title. Shared so
   // selecting an attempt in the inspector updates the run-view row. Unset cases
   // fall back to the deciding attempt. Ephemeral, not deep-linked.
@@ -716,63 +691,24 @@ export function App() {
     };
   }, []);
 
-  // Opens a pane. If the pane holds deferred values, the whole case is fetched
-  // first, and the pane shows a loading message until it arrives. The fetched
-  // case also replaces the case in the run. The row then shows the whole value,
-  // and a second open fetches nothing.
+  // A pane fetches a case from the repository its run was opened from.
   const openDrawer = useCallback(
-    (content: DrawerContent) => {
-      const deferred = collectDeferred(content);
-      if (deferred.length === 0) {
-        setDrawer(content);
-        return;
-      }
-      const opened = ++drawerOpens.current;
-      setDrawer({
-        kind: "loading",
-        title: content.title,
-        size: deferredBytes(deferred),
-      });
-      const slugOf = (runId: string): string | null =>
-        selA?.runId === runId
-          ? selA.repository
-          : selB?.runId === runId
-            ? selB.repository
-            : null;
-      const wanted = new Map(deferred.map((env) => [caseKeyOf(env), env]));
-      Promise.all(
-        [...wanted.values()].map(async (env) => {
-          const slug = slugOf(env.run);
-          if (slug === null) throw new Error(`run ${env.run} is not open`);
-          const record = await api.runCase(slug, env.run, env.test, env.case);
-          return [caseKeyOf(env), env, record] as const;
-        }),
-      )
-        .then((fetched) => {
-          if (opened !== drawerOpens.current) return;
-          const cases = new Map(
-            fetched.map(([key, , record]) => [key, record]),
-          );
-          for (const [, env, record] of fetched) {
-            const patch = (f: RunFetch | null): RunFetch | null =>
-              f?.run && f.run.id === env.run
-                ? { ...f, run: withCase(f.run, env.test, env.case, record) }
-                : f;
-            setFetchedA(patch);
-            setFetchedB(patch);
-          }
-          setDrawer(resolveDeferred(content, cases));
-        })
-        .catch((e: unknown) => {
-          if (opened !== drawerOpens.current) return;
-          setDrawer(null);
-          setNotice(
-            `The values of this case did not load: ${e instanceof Error ? e.message : String(e)}`,
-          );
-        });
-    },
-    [selA, selB],
+    (content: DrawerContent) =>
+      void drawerOpener.open(content, (env) => {
+        const sel = [selA, selB].find((s) => s?.runId === env.run);
+        if (!sel)
+          return Promise.reject(new Error(`run ${env.run} is not open`));
+        return api.runCase(sel.repository, env.run, env.test, env.case);
+      }),
+    [drawerOpener, selA, selB],
   );
+  // The fetched cases of a run are kept while the run is open.
+  useEffect(() => {
+    const open = [selA?.runId, selB?.runId].filter(
+      (id): id is string => id !== undefined,
+    );
+    drawerOpener.keepRuns(new Set(open));
+  }, [selA, selB, drawerOpener]);
 
   // Mirror the latest paginated state into refs so `handleLoadMore` reads
   // current offsets regardless of render timing.
