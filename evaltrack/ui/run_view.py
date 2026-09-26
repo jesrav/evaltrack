@@ -1,13 +1,16 @@
-"""The run view that the dashboard opens.
+"""What the dashboard receives for a run, and for a single case.
 
-The view is the stored run with each large `inputs`, `expected_output`,
-`metadata` and attempt `output` replaced by an envelope, `{"$deferred": {...}}`.
-The envelope holds a preview, the size, a hash, and the address of the whole
-value. The hash lets the dashboard compare two runs without the values. It
-covers the part of the value that the dashboard compares for a small value, so
-that a large value and a small one count as changed for the same reasons. The
-`raw_results` that a run recorded before 0.3.0 can hold are left out. Everything
-else is as stored.
+A run can hold values of hundreds of kilobytes, and a browser that receives
+them all at once freezes. So the run view replaces each large input, expected
+output, metadata and attempt output with an envelope, `{"$deferred": {...}}`,
+and the dashboard fetches the whole case when a pane needs it.
+
+An envelope holds a preview for the table cell, the size, a hash, and the
+address of the value. The hash covers the part of a value that the dashboard
+compares for a small value, so two runs diff the same way whatever the size.
+
+The runner's reports that a run recorded before 0.3.0 can hold are left out.
+Everything else is as stored.
 """
 
 import hashlib
