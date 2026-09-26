@@ -43,6 +43,7 @@ from evaltrack.repositories import (
     promote,
 )
 from evaltrack.ui.report import collect_report_data, render_report
+from evaltrack.ui.run_view import INLINE_VALUE_BYTES
 
 # The dashboard is unauthenticated, so it binds loopback only.
 _UI_HOST = "127.0.0.1"
@@ -302,6 +303,14 @@ def _build_parser() -> argparse.ArgumentParser:
         report,
         required=False,
         url_help="Repository path or URL. Defaults to the configured remote.",
+    )
+    report.add_argument(
+        "--full",
+        action="store_true",
+        default=False,
+        help="Embed every value whole. Without it, a value over 16 KB is left "
+        "out of the page and its preview and size stand in, so the file "
+        "stays small.",
     )
     report.add_argument(
         "--output",
@@ -669,7 +678,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
             f"the report has no history: {data.history_error}",
             file=sys.stderr,
         )
-    html = render_report(data)
+    html = render_report(data, inline_limit=None if args.full else INLINE_VALUE_BYTES)
     if args.output == "-":
         sys.stdout.write(html)
         return 0

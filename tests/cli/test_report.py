@@ -9,8 +9,10 @@ import pytest
 import evaltrack.ui.report as report_module
 from evaltrack.cli import main
 from evaltrack.core.errors import RepositoryUnavailableError
+from evaltrack.core.recorder import EvalRecorder
 from evaltrack.repositories import open_repository
 
+from ..factories import make_attempt, make_round
 from ..fakes import RaisingStore, mount_fake_azure
 from .helpers import (
     configure_local,
@@ -514,3 +516,55 @@ def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
     data = embedded_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None
+
+
+def seed_run_with_a_large_output(url: str) -> tuple[str, str]:
+    """A run whose one output is well over the 16 KB the page keeps inline.
+    Returns the run id and the output."""
+    big = "z" * 40_000
+    rec = EvalRecorder()
+    rec.add_round("test_x", make_round(attempts=[make_attempt(output=big)]))
+    run = rec.to_run_record()
+    open_repository(url).save_run(run)
+    return run.id, big
+
+
+def recorded_output(html: str) -> object:
+    run = embedded_json(html)["run"]
+    assert isinstance(run, dict)
+    return run["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
+
+
+def test_report_leaves_a_large_value_out_unless_asked_for_it_whole(
+    tmp_path: Path,
+) -> None:
+    url = str(tmp_path / "repo")
+    run_id, big = seed_run_with_a_large_output(url)
+    small, full = tmp_path / "small.html", tmp_path / "full.html"
+
+    assert (
+        run_cli(
+            ["report", "--run-id", run_id, "--repository", url, "--output", str(small)]
+        ).code
+        == 0
+    )
+    assert (
+        run_cli(
+            [
+                "report",
+                "--run-id",
+                run_id,
+                "--repository",
+                url,
+                "--full",
+                "--output",
+                str(full),
+            ]
+        ).code
+        == 0
+    )
+
+    left_out = recorded_output(small.read_text(encoding="utf-8"))
+    assert isinstance(left_out, dict) and "$deferred" in left_out
+    assert recorded_output(full.read_text(encoding="utf-8")) == big
+    assert small.stat().st_size < full.stat().st_size - 30_000

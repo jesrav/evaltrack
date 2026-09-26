@@ -13,7 +13,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 - `evaltrack report`, which writes a recorded run, or a run against the baseline, as one HTML file
   with the run embedded. It shows the run as the dashboard does and opens anywhere with no server
-  and no network, for CI artifacts and release notes. See
+  and no network, for CI artifacts and release notes. A value over 16 KB is left out of the page
+  unless `--full` is passed, so a report of a large run stays small. See
   [CLI › report](https://evaltrack.jesravnbol.dk/latest/cli/#evaltrack-report).
 - **Report** in the dashboard, on a run and on a comparison, which saves the same page for the run
   on screen, to share with someone without the dashboard.

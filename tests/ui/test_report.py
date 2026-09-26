@@ -288,3 +288,32 @@ def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
         test = run_json["tests"]["test_x"]
         assert "raw_results" not in test
         assert test["cases"], "the structured cases still stand"
+
+
+def test_a_large_value_is_left_out_with_its_preview(template: Path) -> None:
+    """A report of a large run has to stay a file worth sending, so the page
+    gets what the dashboard gets on a first load: the preview and the size."""
+    big = "y" * 500
+    run = make_recorded_run(
+        make_round(attempts=[make_attempt(output=big)]), commit="c0"
+    )
+
+    embedded = embedded_json(render_report(make_data(run=run), inline_limit=100))
+
+    output = recorded_output(embedded)
+    assert isinstance(output, dict) and set(output) == {"$deferred"}
+    envelope = output["$deferred"]
+    assert envelope["preview"] == big[:200]
+    assert envelope["size"] > 100
+    assert (envelope["test"], envelope["field"]) == ("test_x", "output")
+
+
+def test_every_value_is_embedded_on_request(template: Path) -> None:
+    big = "y" * 500
+    run = make_recorded_run(
+        make_round(attempts=[make_attempt(output=big)]), commit="c0"
+    )
+
+    embedded = embedded_json(render_report(make_data(run=run), inline_limit=None))
+
+    assert recorded_output(embedded) == big

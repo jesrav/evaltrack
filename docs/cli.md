@@ -68,9 +68,10 @@ A run id names a run in the repository. Anything else names a ref on the remote,
 reported run itself, the page shows the one run and a warning says why. Without `--against` the page
 shows the one run, with its history over the remote's [`baseline`][baseline].
 
-The page holds every input and output that the run recorded, whole. Share it as you would share the
-run. A report of a large run is a large file, since the page cannot fetch a value later as the
-dashboard does.
+The page holds the inputs and outputs that the run recorded. Share it as you would share the run. A
+value over 16 KB is left out, and its first 200 characters and its size stand in, so a report of a
+large run stays a file worth sending. Open the run in the dashboard to see such a value, or pass
+`--full` to embed every value whole.
 
 `--output` defaults to `evaltrack-report.html`. `-` writes the page to stdout. Like `push` and
 `promote`, the command reads the remote unless a repository flag names another. The history is

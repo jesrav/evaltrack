@@ -12,7 +12,7 @@ from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.app import MountedRepository, create_app
 
-from ..factories import make_round
+from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore
 from .conftest import (
     make_client,
@@ -206,3 +206,24 @@ def test_report_of_a_local_run_survives_an_unreachable_remote() -> None:
     assert data["history"] == {"reliability": {}, "score_history": {}}
     error = data["history_error"]
     assert isinstance(error, str) and "expired login" in error
+
+
+def test_the_dashboard_report_leaves_a_large_value_out() -> None:
+    """The same page the CLI writes by default, since a reader who wants the
+    value whole has the dashboard open already."""
+    repo = RunRepository(MemoryStore())
+    big = "z" * 40_000
+    run = make_recorded_run(
+        make_round(attempts=[make_attempt(output=big)]), commit="c0"
+    )
+    repo.save_run(run)
+
+    with make_repo_client(repo) as client:
+        r = client.get(f"/api/repositories/main/runs/{run.id}/report")
+
+    assert r.status_code == 200
+    embedded = embedded_json(r.text)["run"]
+    assert isinstance(embedded, dict)
+    output = embedded["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
+    assert isinstance(output, dict) and "$deferred" in output
+    assert len(r.text) < 20_000

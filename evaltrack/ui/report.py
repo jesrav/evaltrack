@@ -12,6 +12,7 @@ from evaltrack.core.refs import BASELINE_REF
 from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import MainlineEntry, ReportData, RunHistory
+from evaltrack.ui.run_view import INLINE_VALUE_BYTES, build_run_view
 from evaltrack.ui.views import mainline_entry_in, refs_pointing_at, run_history_over
 
 # Beside the dashboard bundle, so one frontend build ships both.
@@ -113,21 +114,23 @@ def _load_template(path: Path) -> tuple[str, str]:
     return head, tail
 
 
-def _dump_report_json(data: ReportData) -> str:
-    """The report as compact JSON, written the way a stored run is."""
+def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
+    """The report as compact JSON. Each run is embedded as the dashboard opens
+    it, with every value over `inline_limit` bytes replaced by its preview and
+    size, so a report of a large run stays a file worth sending."""
     plain = dump_plain(data)
-    for run in (plain["run"], plain["against"]):
-        if run is None:
-            continue
-        for test in run["tests"].values():
-            # A run saved before 0.3.0 holds the runner's own reports too,
-            # which the page never renders.
-            test.pop("raw_results", None)
+    plain["run"] = build_run_view(data.run, limit=inline_limit)
+    if data.against is not None:
+        plain["against"] = build_run_view(data.against, limit=inline_limit)
     return dump_plain_json(plain).decode()
 
 
-def render_report(data: ReportData) -> str:
-    """The report page for `data`, as one self-contained HTML document.
+def render_report(
+    data: ReportData, *, inline_limit: int | None = INLINE_VALUE_BYTES
+) -> str:
+    """The report page for `data`, as one self-contained HTML document. A value
+    over `inline_limit` bytes is left out, as the dashboard leaves it out of a
+    first load, and None embeds every value whole.
 
     Raises:
         FileNotFoundError: when the page template is not built.
@@ -135,7 +138,7 @@ def render_report(data: ReportData) -> str:
             template this version writes into.
     """
     head, tail = _load_template(TEMPLATE_PATH)
-    payload = escape_json_for_html(_dump_report_json(data))
+    payload = escape_json_for_html(_dump_report_json(data, inline_limit=inline_limit))
     return (
         f'{head}<script type="application/json" id="evaltrack-data">{payload}'
         f"</script>{tail}"
