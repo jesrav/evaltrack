@@ -481,6 +481,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stored outputs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../repositories/" class="md-nav__link">
         
   
@@ -788,6 +815,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Removed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -955,6 +1004,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Removed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1028,6 +1099,41 @@
 <li><code>RunRepository</code>, <code>RunSummary</code> and <code>ReflogEntry</code> are exported from the package root. They are what
   <code>open_repository()</code>, <code>list_runs()</code> and <code>get_ref()</code> hand back, so a reader can now name every type
   on the repository read path.</li>
+<li>At the end of a pytest session, evaltrack reports each attempt whose stored output is larger than
+  256 KB. The report names the test and the case, and says what to do. See
+  <a href="https://evaltrack.jesravnbol.dk/latest/outputs/#large-outputs">Stored outputs › Large outputs</a>.</li>
+<li><code>evaltrack.converters.register</code> registers a converter, which changes how evaltrack stores the
+  values of one type, for example to keep the tool calls of an agent run. See
+  <a href="https://evaltrack.jesravnbol.dk/latest/outputs/#converters">Stored outputs › Converters</a>.</li>
+<li>The dashboard stays responsive on a large run. It sends each value over 16 KB to the browser as a
+  preview with its size and a hash, and sends the whole value when a pane needs it. This applies to
+  inputs, expected outputs, metadata and attempt outputs. Two runs still diff. A large value is
+  compared by a hash of the same part that is compared for a small value. The server still reads the
+  whole stored run. It keeps the last few runs that it read, so the panes of an open run do not read
+  the run again.</li>
+<li>While a run loads, the dashboard shows how much of it has arrived. The run list shows the stored
+  size of each run, which the summary sidecar now records.</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Breaking:</strong> evaltrack stores a dataclass without its private fields, the fields whose name
+  starts with <code>_</code>. A library often keeps its internal state in such fields, for example the message
+  history of an agent framework. When a task returned such an object, a run grew to hundreds of
+  megabytes. See
+  <a href="https://evaltrack.jesravnbol.dk/latest/outputs/#private-fields">Stored outputs › Private fields</a>.</li>
+<li>evaltrack writes a run as compact JSON, not indented. The saving is largest for deeply nested
+  values. The run that prompted this change went from 221 MB to 79 MB. A run of mostly long text
+  saves much less. evaltrack still reads indented runs, so the run schema version does not change.
+  <code>evaltrack export</code> prints the compact form.</li>
+</ul>
+<h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Breaking:</strong> the <code>keep_raw_results</code> setting. Remove it from <code>[tool.evaltrack]</code>, or evaltrack
+  stops with an error that says so. A run no longer stores the eval runner's own result objects, and
+  a recorded test has no <code>raw_results</code> field. These objects grew with every output, and a loaded run
+  cannot give them back to the runner. If your eval runner records traces, use them for the full
+  data. Runs recorded with raw results still load, and the download and <code>export</code> include them. The
+  dashboard does not show them.</li>
 </ul>
 <h2 id="020-2026-09-15"><a href="https://github.com/jesrav/evaltrack/releases/tag/v0.2.0">0.2.0</a> - 2026-09-15<a class="headerlink" href="#020-2026-09-15" title="Permanent link">&para;</a></h2>
 <h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">&para;</a></h3>

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://evaltrack.jesravnbol.dk/latest/repositories/">
       
       
-        <link rel="prev" href="../translators/">
+        <link rel="prev" href="../outputs/">
       
       
         <link rel="next" href="../ci-cd/">
@@ -464,6 +464,33 @@
     
   
   Translators
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stored outputs
 
     
   </span>
@@ -1397,15 +1424,11 @@ On S3 a plain upload of the repaired file is enough.</p>
     <span class="k">for</span> <span class="n">case_id</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">test</span><span class="o">.</span><span class="n">cases</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="n">attempt</span> <span class="o">=</span> <span class="n">case</span><span class="o">.</span><span class="n">attempts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">case_id</span><span class="p">,</span> <span class="n">case</span><span class="o">.</span><span class="n">outcome</span><span class="p">,</span> <span class="n">attempt</span><span class="o">.</span><span class="n">outcome</span><span class="p">,</span> <span class="n">attempt</span><span class="o">.</span><span class="n">task_duration</span><span class="p">)</span>
-
-<span class="n">raw_results</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">tests</span><span class="p">[</span><span class="s2">"tests/test_x.py::test_x"</span><span class="p">]</span><span class="o">.</span><span class="n">raw_results</span>  <span class="c1"># (3)!</span>
 </code></pre></div>
 <ol>
 <li>A <code>RunRecord</code>, or <code>None</code> if absent.</li>
 <li>Structured per-case data: outcome, attempts, latency, errors. A test that never evaluated (it
    errored or skipped) has no case.</li>
-<li>The eval runner's own result objects, one per round, when <code>keep_raw_results</code> is on. Plain JSON
-   data, not the runner's own types. See <a href=".././configuration/#raw-results">Raw results</a>.</li>
 </ol>
 <hr />
 <p><strong>Related:</strong> <a href=".././ci-cd/">CI/CD</a> · <a href=".././cli/">CLI</a></p>
@@ -1446,7 +1469,7 @@ On S3 a plain upload of the repaired file is enough.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../translators/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Translators">
+          <a href="../outputs/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Stored outputs">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1456,7 +1479,7 @@ On S3 a plain upload of the repaired file is enough.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Translators
+                Stored outputs
               </div>
             </div>
           </a>

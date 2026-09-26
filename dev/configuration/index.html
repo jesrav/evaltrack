@@ -481,6 +481,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stored outputs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../repositories/" class="md-nav__link">
         
   
@@ -725,23 +752,6 @@
       </span>
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="[tool.evaltrack] in pyproject.toml">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#raw-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Raw results
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -998,23 +1008,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="[tool.evaltrack] in pyproject.toml">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#raw-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Raw results
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1159,7 +1152,6 @@ All keys are optional.</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.evaltrack]</span>
 <span class="n">local</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"./.evaltrack"</span><span class="w">            </span><span class="c1"># where the pytest plugin saves runs</span>
 <span class="n">remote</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"azure://account/evals"</span><span class="w">   </span><span class="c1"># the shared source of truth (baseline, PRs)</span>
-<span class="n">keep_raw_results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="w">           </span><span class="c1"># true to also store the eval runner's own result objects</span>
 <span class="c1"># Where a PR ref links to. Must start with http:// or https:// and contain {pr}.</span>
 <span class="c1"># GitHub:</span>
 <span class="n">pr_url_template</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://github.com/OWNER/REPO/pull/{pr}"</span>
@@ -1186,21 +1178,12 @@ All keys are optional.</p>
 <td>the shared repository: default target for <code>push</code>/<code>promote</code>, the dashboard's <strong>Remote</strong> mount</td>
 </tr>
 <tr>
-<td><code>keep_raw_results</code></td>
-<td><code>false</code></td>
-<td>keep the eval runner's own result objects on each run (see <a href="#raw-results">Raw results</a>)</td>
-</tr>
-<tr>
 <td><code>pr_url_template</code></td>
 <td>unset</td>
 <td><code>http(s)</code> URL template with a <code>{pr}</code> placeholder, used as a PR ref's link target</td>
 </tr>
 </tbody>
 </table>
-<h3 id="raw-results">Raw results<a class="headerlink" href="#raw-results" title="Permanent link">&para;</a></h3>
-<p>With <code>keep_raw_results = true</code>, a test's eval also stores the eval runner's own result objects, one
-per round, alongside the structured per-case data. You can then <a href=".././cli/#evaltrack-export">export</a>
-them or feed them back into that runner's own tooling.</p>
 <h2 id="pytest-options">Pytest options<a class="headerlink" href="#pytest-options" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

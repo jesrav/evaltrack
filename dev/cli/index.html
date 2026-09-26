@@ -481,6 +481,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stored outputs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../repositories/" class="md-nav__link">
         
   
@@ -1070,10 +1097,8 @@ pr/482    01KZ5HPEFPMGTMCXB288BVGECV  2026-08-04T04:49:47Z  #482 Rework the summ
 <p>Both listings are for reading. The fields and their order can change in any release. Don't script
 against them.</p>
 <h2 id="evaltrack-export">evaltrack export<a class="headerlink" href="#evaltrack-export" title="Permanent link">&para;</a></h2>
-<p>Prints a recorded run as JSON. Use it to inspect a run, archive one outside the repository, or feed
-the eval runner's own result objects back into that runner's tooling when the run was recorded with
-<code>keep_raw_results = true</code>. See <a href=".././configuration/#raw-results">Raw results</a>. The same data is
-available in Python — see <a href=".././repositories/#reading-runs-from-python">Reading runs from Python</a>.</p>
+<p>Prints a recorded run as JSON. Use it to inspect a run or archive one outside the repository. The
+same data is available in Python. See <a href=".././repositories/#reading-runs-from-python">Reading runs from Python</a>.</p>
 <p><strong>Exit codes:</strong> <code>0</code> when the run was exported. <code>1</code> when the named repository does not hold the run,
 and the error names that repository. <code>2</code> when no repository is named. No other command exits
 <a href="#exit-codes"><code>1</code></a>, so a script can act on the missing run alone.</p>

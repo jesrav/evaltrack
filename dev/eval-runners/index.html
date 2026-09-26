@@ -591,6 +591,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stored outputs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../repositories/" class="md-nav__link">
         
   
@@ -1073,6 +1100,8 @@ uses <code>LLMJudge</code> as both a guardrail and a graded score.</p>
 <span class="w">    </span><span class="s2">"ignore:There is no current event loop:DeprecationWarning"</span><span class="p">,</span>
 <span class="p">]</span>
 </code></pre></div>
+<p>A task can return any object, for example the result of an agent framework, so that the evaluators
+can check more than the answer. <a href=".././outputs/">Stored outputs</a> says what evaltrack stores of it.</p>
 <h3 id="deepeval">DeepEval<a class="headerlink" href="#deepeval" title="Permanent link">&para;</a></h3>
 <p>DeepEval's <code>evaluate()</code> scores a batch of test cases and returns the scores. It fails nothing, so
 evaltrack gates them. DeepEval also ships <code>assert_test()</code>, which gates by raising inside the test.

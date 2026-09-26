@@ -481,6 +481,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stored outputs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../repositories/" class="md-nav__link">
         
   
@@ -1263,6 +1290,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#evaltrack.converters.register" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;register
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1924,6 +1962,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaltrack.converters.register" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;register
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -3130,18 +3179,6 @@ a round that failed is still readable once a later one has run.</p>
               <div class="doc-md-description">
                 <p>Which eval runner produced the eval, at what version.
 None when the test recorded no eval.</p>
-              </div>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td><code><span title="evaltrack.RecordedTest.raw_results">raw_results</span></code></td>
-            <td>
-                  <code><span title="list">list</span>[<span title="evaltrack.core.user_values.UserValue">UserValue</span>]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The runner's own result objects, one per round. Empty when
-keep_raw_results is false.</p>
               </div>
             </td>
           </tr>
@@ -4392,6 +4429,18 @@ exactly the names <code>move_ref</code> rejects.</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="evaltrack.RunSummary.size_bytes">size_bytes</span></code></td>
+            <td>
+                  <code><span title="int">int</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The stored run's size. None for a run saved before the size
+was recorded, and for a summary rebuilt from the run itself.</p>
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -5017,6 +5066,125 @@ claims one of them.</p>
 
 
   </div>
+
+    </div>
+
+</div><p>A converter changes how evaltrack stores the values of one type. See
+<a href="../../outputs/#converters">Stored outputs</a>.</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="evaltrack.converters.register" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">register</span>
+
+
+<a href="#evaltrack.converters.register" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">register</span><span class="p">(</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">native_types</span><span class="p">:</span> <span class="n"><span title="tuple">tuple</span></span><span class="p">[</span><span class="n"><span title="str">str</span></span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">convert</span><span class="p">:</span> <span class="n"><span title="collections.abc.Callable">Callable</span></span><span class="p">[[</span><span class="n"><span title="typing.Any">Any</span></span><span class="p">],</span> <span class="n"><span title="typing.Any">Any</span></span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Register a converter for the given types. A later <code>register</code> under the same
+name replaces the earlier one.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The registry key.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>native_types</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span>[<span title="str">str</span>, ...]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Dotted paths of the types to convert, compared as text.
+A subclass of a registered type is converted too.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>convert</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Callable">Callable</span>[[<span title="typing.Any">Any</span>], <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Takes the value and returns what to store. It runs after the
+evaluators, so they still see the value as the task returned it.
+When it raises, the value is stored as it is, and a warning is
+logged.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>when <code>native_types</code> is empty, or when another name already
+claims one of them.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
 
     </div>
 
