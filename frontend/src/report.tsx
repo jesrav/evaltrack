@@ -9,6 +9,7 @@ import { collectDeferred, deferredBytes } from "./deferred";
 import { formatBytes, formatPlural } from "./format";
 import {
   ReportDataError,
+  countCasesWithValuesLeftOut,
   readEmbeddedReport,
   type ReportData,
 } from "./reportData";
@@ -37,10 +38,8 @@ function Report({ data }: { data: ReportData }) {
     );
     setDrawer(content);
   }, []);
-  // The cases with a value left out, so the bar can say the page is not whole.
-  const leftOut =
-    collectDeferred(data.run).length +
-    (data.against ? collectDeferred(data.against).length : 0);
+  // So the bar can say the page is not whole.
+  const leftOut = countCasesWithValuesLeftOut(data);
   const [attemptSel, setAttemptSel] = useState<Record<string, number>>({});
   const selectAttempt = useCallback((key: string, index: number) => {
     setAttemptSel((m) => ({ ...m, [key]: index }));
@@ -107,6 +106,14 @@ function Report({ data }: { data: ReportData }) {
             <span className="notice-text">
               This report has no reliability history: the mainline could not be
               read when it was written ({data.history_error}).
+            </span>
+          </div>
+        )}
+        {!sides && data.against_error && (
+          <div className="notice-banner" role="alert">
+            <span className="notice-text">
+              This report was asked for as a comparison and shows the run alone:{" "}
+              {data.against_error}.
             </span>
           </div>
         )}

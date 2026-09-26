@@ -179,7 +179,9 @@ export const api = {
       q.set("against_slug", opts.against.slug);
       if (opts.against.via) q.set("against_via", opts.against.via);
     }
-    const query = q.size > 0 ? `?${q.toString()}` : "";
+    // Read the text rather than `size`, which browsers before 2023 lack.
+    const text = q.toString();
+    const query = text ? `?${text}` : "";
     return `/api/repositories/${encodePath(slug)}/runs/${encodePath(
       id,
     )}/report${query}`;

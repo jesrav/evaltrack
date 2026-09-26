@@ -31,6 +31,7 @@ def collect_report_data(
     via: str | None = None,
     against: RunRecord | None = None,
     against_via: str | None = None,
+    against_error: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
     """The report's data for `run`, held by `repository`, with its history and
@@ -38,6 +39,8 @@ def collect_report_data(
     run is a developer's own and the team's mainline lives elsewhere.
     `mainline_error` says why there is no mainline when the caller could not
     open the one it wanted, and the page carries it as `history_error`.
+    `against_error` does the same for a comparison that was asked for and
+    could not be made.
 
     The cross-run history is read only without `against`, since a
     comparison does not show it and it costs a run body per mainline entry.
@@ -66,6 +69,7 @@ def collect_report_data(
         via=via,
         against=against,
         against_via=against_via,
+        against_error=against_error,
         refs=refs_pointing_at(repository, run.id),
         history=history,
         mainline=mainline_entry,

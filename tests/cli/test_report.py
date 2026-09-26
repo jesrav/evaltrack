@@ -10,6 +10,7 @@ import evaltrack.ui.report as report_module
 from evaltrack.cli import main
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.recorder import EvalRecorder
+from evaltrack.core.run_record import RUN_SCHEMA_VERSION
 from evaltrack.repositories import open_repository
 
 from ..factories import make_attempt, make_round
@@ -253,6 +254,8 @@ def test_report_missing_comparison_reports_the_run_alone_with_a_warning(
     assert "warning" in result.err and "baseline" in result.err
     data = embedded_json(output.read_text(encoding="utf-8"))
     assert data["against"] is None
+    error = data["against_error"]
+    assert isinstance(error, str) and "baseline" in error, "the page says why too"
     assert "against" not in result.out, "the summary line claims no comparison"
 
 
@@ -283,7 +286,48 @@ def test_report_against_the_run_itself_reports_it_alone(
 
     assert result.code == 0
     assert "itself" in result.err
-    assert embedded_json(output.read_text(encoding="utf-8"))["against"] is None
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    assert data["against"] is None
+    error = data["against_error"]
+    assert isinstance(error, str) and "itself" in error
+
+
+def test_report_against_a_run_in_another_stored_format_reports_the_run_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """During a rolling upgrade a newer evaltrack promotes `baseline`, and an
+    older one reports a pull request against it. The run itself is readable,
+    and it is what the report is for."""
+    url = str(tmp_path / "repo")
+    monkeypatch.setenv("EVALTRACK_REMOTE", url)
+    promoted = seed_run_in_repo(url)
+    open_repository(url).move_ref("baseline", promoted)
+    stored_path = tmp_path / "repo" / "runs" / f"{promoted}.json"
+    stored = json.loads(stored_path.read_text(encoding="utf-8"))
+    stored["run_schema_version"] = RUN_SCHEMA_VERSION + 1
+    stored_path.write_text(json.dumps(stored), encoding="utf-8")
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--run-id",
+            run_id,
+            "--against",
+            "baseline",
+            "--repository",
+            url,
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 0, "a baseline this evaltrack cannot read is not a failure"
+    assert "warning" in result.err and "evaltrack that reads it" in result.err
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    assert data["against"] is None
+    assert isinstance(data["against_error"], str)
 
 
 def test_report_defaults_to_the_configured_remote(

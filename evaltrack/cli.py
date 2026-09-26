@@ -28,6 +28,7 @@ from evaltrack.core.errors import (
     EvaltrackError,
     InvalidIdentifierError,
     RepositoryUnavailableError,
+    UnsupportedSchemaError,
 )
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
 from evaltrack.core.run_record import (
@@ -607,12 +608,24 @@ def _open_mainline(target: _OpenedRepository, config: EvaltrackConfig) -> _Mainl
     return _Mainline(_OpenedRepository(repository, remote.url))
 
 
+@dataclass(frozen=True)
+class _Comparison:
+    """The run to compare against, or None and the reason there is none. The
+    reason goes into the page too, since a reader of a CI artifact never sees
+    stderr."""
+
+    run: _NamedRun | None
+    error: str | None = None
+
+
 def _load_comparison(
     target: _OpenedRepository, subject: _NamedRun, *, against: str, mainline: _Mainline
-) -> _NamedRun | None:
-    """The run to compare `subject` against, or None, with a warning printed,
-    when there is no comparison to make. A project's first pull request has no
-    `baseline` yet, and a report of the run alone beats none in its artifacts.
+) -> _Comparison:
+    """The run to compare `subject` against, or the reason there is no
+    comparison to make, with a warning printed. A project's first pull request
+    has no `baseline` yet, and a report of the run alone beats none in its
+    artifacts. A `baseline` an older or newer evaltrack cannot read is the
+    same case: the run itself is readable, and it is what the report is for.
 
     A run id names a run in `target`. A ref names one on the remote, where the
     team's refs live, so without a remote no ref resolves.
@@ -626,20 +639,27 @@ def _load_comparison(
             raise _RunNotFound(f"ref {against!r} cannot be looked up: {mainline.error}")
         else:
             loaded = _load_named_run(mainline.opened, against, as_ref=True)
-    except (_RunNotFound, RepositoryUnavailableError) as exc:
+    except (
+        _RunNotFound,
+        RepositoryUnavailableError,
+        UnsupportedSchemaError,
+        CorruptRecordError,
+    ) as exc:
+        error = str(exc)
         print(
-            f"warning: {exc}, so the report shows run {subject.run.id} alone",
+            f"warning: {error}, so the report shows run {subject.run.id} alone",
             file=sys.stderr,
         )
-        return None
+        return _Comparison(None, error)
     if loaded.run.id == subject.run.id:
+        error = f"{against!r} is run {subject.run.id} itself"
         print(
-            f"warning: {against!r} is run {subject.run.id} itself, so the report "
-            "shows it alone rather than against itself",
+            f"warning: {error}, so the report shows it alone rather than against "
+            "itself",
             file=sys.stderr,
         )
-        return None
-    return loaded
+        return _Comparison(None, error)
+    return _Comparison(loaded)
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
@@ -656,11 +676,12 @@ def _cmd_report(args: argparse.Namespace) -> int:
         print(f"report: {exc}", file=sys.stderr)
         return 1
     mainline = _open_mainline(target, config)
-    against: _NamedRun | None = None
+    comparison = _Comparison(None)
     if args.against is not None:
-        against = _load_comparison(
+        comparison = _load_comparison(
             target, subject, against=args.against, mainline=mainline
         )
+    against = comparison.run
     data = collect_report_data(
         target.repository,
         subject.run,
@@ -669,6 +690,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
         via=subject.via,
         against=against.run if against else None,
         against_via=against.via if against else None,
+        against_error=comparison.error,
         pr_url_template=config.pr_url_template,
     )
     if data.history_error is not None and mainline.opened is not None:

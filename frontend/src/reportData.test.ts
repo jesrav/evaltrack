@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-import { ReportDataError, parseReportData } from "./reportData";
+import {
+  ReportDataError,
+  countCasesWithValuesLeftOut,
+  parseReportData,
+} from "./reportData";
 import { buildCaseResult, buildRun } from "./test-support";
 
 const run = buildRun("01J9Z3QW2KJ5H8VN4TQY7B6MDC", {
@@ -42,6 +46,7 @@ describe("parseReportData", () => {
     expect(data.refs).toEqual([]);
     expect(data.pr_url_template).toBeNull();
     expect(data.history_error).toBeNull();
+    expect(data.against_error).toBeNull();
     expect(data.history).toEqual({ reliability: {}, score_history: {} });
   });
 
@@ -77,4 +82,56 @@ it("keeps the reason the history is missing", () => {
 
   expect(data.history_error).toBe("no route to host");
   expect(data.history).toEqual({ reliability: {}, score_history: {} });
+});
+
+it("keeps the reason a comparison is missing", () => {
+  const data = parseReportData(
+    JSON.stringify({ run, against_error: "ref 'baseline' not found" }),
+  );
+
+  expect(data.against).toBeNull();
+  expect(data.against_error).toBe("ref 'baseline' not found");
+});
+
+describe("countCasesWithValuesLeftOut", () => {
+  const envelope = (runId: string, field: string) => ({
+    $deferred: {
+      preview: "…",
+      size: 20000,
+      sha256: "0",
+      run: runId,
+      test: "test_x",
+      case: "c1",
+      field,
+    },
+  });
+  const withLeftOut = (runId: string) =>
+    buildRun(runId, {
+      test_x: {
+        outcome: "passed",
+        cases: {
+          c1: buildCaseResult({
+            inputs: envelope(runId, "inputs"),
+            expected_output: envelope(runId, "expected_output"),
+          }),
+        },
+      },
+    });
+
+  it("counts a case once, however many values and sides it is missing on", () => {
+    const data = parseReportData(
+      JSON.stringify({
+        run: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDA"),
+        against: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDB"),
+      }),
+    );
+
+    expect(countCasesWithValuesLeftOut(data)).toBe(1);
+  });
+
+  it("is zero for a run with every value in the page", () => {
+    expect(
+      countCasesWithValuesLeftOut(parseReportData(JSON.stringify({ run }))),
+    ).toBe(0);
+  });
 });

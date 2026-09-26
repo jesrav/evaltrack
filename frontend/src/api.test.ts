@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { readJsonWithProgress, type Progress } from "./api";
+import { api, readJsonWithProgress, type Progress } from "./api";
 
 function chunkedResponse(
   chunks: string[],
@@ -40,5 +40,40 @@ describe("readJsonWithProgress", () => {
     );
     expect(data).toBe(42);
     expect(seen).toEqual([{ loaded: 2, total: null }]);
+  });
+});
+
+describe("runReportUrl", () => {
+  it("names the labels and the comparison in the query", () => {
+    const url = api.runReportUrl("local", "01B", {
+      via: "pr/7",
+      against: { slug: "remote", id: "01A", via: "baseline" },
+    });
+
+    expect(url).toBe(
+      "/api/repositories/local/runs/01B/report?via=pr%2F7&against=01A&against_slug=remote&against_via=baseline",
+    );
+  });
+
+  it("carries no query for a run alone", () => {
+    expect(api.runReportUrl("local", "01B")).toBe(
+      "/api/repositories/local/runs/01B/report",
+    );
+  });
+
+  it("keeps the query in a browser without URLSearchParams.size", () => {
+    // Safari before 17 and Chromium before 113 have no `size`, and a page in
+    // one of them downloaded a report of the wrong run.
+    const proto = URLSearchParams.prototype as { size?: number };
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "size");
+    Reflect.deleteProperty(proto, "size");
+    try {
+      const url = api.runReportUrl("local", "01B", {
+        against: { slug: "remote", id: "01A" },
+      });
+      expect(url).toContain("?against=01A&against_slug=remote");
+    } finally {
+      if (descriptor) Object.defineProperty(proto, "size", descriptor);
+    }
   });
 });

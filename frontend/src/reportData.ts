@@ -1,6 +1,7 @@
 // The static report's data source. The report page carries its run inside the
 // document, in a JSON script element the CLI filled, instead of fetching it.
 
+import { collectDeferred } from "./deferred";
 import type { MainlineEntry, Ref, RunHistory, RunRecord } from "./types";
 
 /** Id of the element the CLI writes the report's data into. */
@@ -15,6 +16,8 @@ export interface ReportData {
   via: string | null;
   against: RunRecord | null;
   against_via: string | null;
+  /** Why a comparison that was asked for is not in the page. */
+  against_error: string | null;
   refs: Ref[];
   history: RunHistory;
   mainline: MainlineEntry | null;
@@ -80,6 +83,8 @@ export function parseReportData(text: string | null | undefined): ReportData {
     via: data.via ?? null,
     against: data.against ?? null,
     against_via: data.against_via ?? null,
+    against_error:
+      typeof data.against_error === "string" ? data.against_error : null,
     refs: Array.isArray(data.refs) ? data.refs : [],
     history: isRecord(data.history)
       ? data.history
@@ -100,4 +105,18 @@ export function parseReportData(text: string | null | undefined): ReportData {
 export function readEmbeddedReport(doc: Document): ReportData {
   const el = doc.getElementById(REPORT_DATA_ID);
   return parseReportData(el?.textContent);
+}
+
+/** How many cases have a value the report left out, across both runs. A case
+ *  counts once however many of its values are missing, and once for both
+ *  sides of a comparison, since the page shows it as one row. */
+export function countCasesWithValuesLeftOut(data: ReportData): number {
+  const cases = new Set<string>();
+  for (const run of [data.run, data.against]) {
+    if (!run) continue;
+    for (const env of collectDeferred(run)) {
+      cases.add(`${env.test}\u0000${env.case}`);
+    }
+  }
+  return cases.size;
 }

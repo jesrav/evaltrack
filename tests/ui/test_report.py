@@ -317,3 +317,14 @@ def test_every_value_is_embedded_on_request(template: Path) -> None:
     embedded = embedded_json(render_report(make_data(run=run), inline_limit=None))
 
     assert recorded_output(embedded) == big
+
+
+def test_the_page_carries_why_a_comparison_is_missing(template: Path) -> None:
+    """A reader of a CI artifact never sees stderr, so the reason a report
+    asked for as a comparison shows one run has to be in the page."""
+    embedded = embedded_json(
+        render_report(make_data(against_error="ref 'baseline' not found in /r"))
+    )
+
+    assert embedded["against"] is None
+    assert embedded["against_error"] == "ref 'baseline' not found in /r"
