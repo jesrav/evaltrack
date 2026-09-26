@@ -24,7 +24,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator
 
-from evaltrack.core.converters import convert_registered
+from evaltrack.core.converters import convert_user_value
 
 
 def degrade_undumpable(value: Any) -> Any:
@@ -168,7 +168,7 @@ def _degrade_dataclass(value: Any, *, on_path: frozenset[int], in_key: bool) -> 
 def _record_user_value(value: Any) -> Any:
     # Converted first, so that a converter gets the object and not its degraded
     # form.
-    return degrade_undumpable(convert_registered(value))
+    return degrade_undumpable(convert_user_value(value))
 
 
 # The user's data wholesale, stored as produced, except that a registered type

@@ -1,4 +1,4 @@
-"""How a value of a registered type is stored.
+"""Register converters, which change how evaltrack stores the values of one type.
 
 A task can return an object that holds much more than a reader of the run
 needs, for example the result of an agent framework. A converter turns such an
@@ -34,9 +34,8 @@ def register(
     native_types: tuple[str, ...],
     convert: Callable[[Any], Any],
 ) -> None:
-    """Record every value of the given types as `convert` returns it.
-
-    A later `register` under the same name replaces the earlier one.
+    """Register a converter for the given types. A later `register` under the same
+    name replaces the earlier one.
 
     Args:
         name: The registry key.
@@ -71,9 +70,10 @@ def register(
     _registry[name] = _Entry(native_types=native_types, convert=convert)
 
 
-def convert_registered(value: Any) -> Any:
-    """`value` as its registered converter returns it, or `value` itself when no
-    converter claims its type, or when the converter raises."""
+def convert_user_value(value: Any) -> Any:
+    """Convert a user value with the converter registered for its type. Returns
+    `value` itself when no converter claims its type, or when the converter
+    raises."""
     if not _registry:
         return value
     for qualified in qualified_names(value):

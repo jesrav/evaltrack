@@ -1,4 +1,4 @@
-"""Change how evaltrack stores the values of one type.
+"""Register converters, which change how evaltrack stores the values of one type.
 
 Register from a `conftest.py`. See `evaltrack.converters.register`.
 """

@@ -19,8 +19,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 - At the end of a pytest session, evaltrack reports each attempt whose stored output is larger than
   256 KB. The report names the test and the case, and says what to do. See
   [Stored outputs › Large outputs](https://evaltrack.jesravnbol.dk/latest/outputs/#large-outputs).
-- `evaltrack.converters.register` changes how evaltrack stores the values of one type, for example
-  to keep the tool calls of an agent run. See
+- `evaltrack.converters.register` registers a converter, which changes how evaltrack stores the
+  values of one type, for example to keep the tool calls of an agent run. See
   [Stored outputs › Converters](https://evaltrack.jesravnbol.dk/latest/outputs/#converters).
 - The dashboard stays responsive on a large run. It sends each value over 16 KB to the browser as a
   preview with its size and a hash, and sends the whole value when a pane needs it. This applies to

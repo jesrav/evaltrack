@@ -33,8 +33,10 @@ evaltrack.converters.register(
 ```
 
 `native_types` are dotted paths, compared as text, so the registration imports nothing. A subclass
-of a registered type is converted too. The converter applies to a whole stored value, such as an
-attempt's output. It does not look inside a value for a registered type.
+of a registered type is converted too. A converter applies to each value evaltrack stores from an
+eval: the output of each attempt, the inputs, expected output and metadata of each case, and the
+details a runner records. It applies to a whole value, and does not look inside a value for a
+registered type.
 
 If a converter raises, evaltrack stores the value as it is and logs a warning. A converter never
 fails an eval.
