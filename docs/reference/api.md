@@ -21,3 +21,8 @@ you to use that runner with evaltrack. See [Translators](../translators.md).
 ::: evaltrack.translators.register
 
 ::: evaltrack.translators.protocol.Translator
+
+A converter changes how evaltrack stores the values of one type. See
+[Stored outputs](../outputs.md#converters).
+
+::: evaltrack.converters.register

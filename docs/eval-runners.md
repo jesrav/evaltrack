@@ -72,6 +72,9 @@ filterwarnings = [
 ]
 ```
 
+A task can return any object, for example the result of an agent framework, so that the evaluators
+can check more than the answer. [Stored outputs](./outputs.md) says what evaltrack stores of it.
+
 ### DeepEval
 
 DeepEval's `evaluate()` scores a batch of test cases and returns the scores. It fails nothing, so
