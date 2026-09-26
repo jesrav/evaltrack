@@ -150,3 +150,31 @@ def test_the_annotations_degrade_at_validation() -> None:
     holder = Holder(value=_BINARY, reason=_SURROGATE)
     assert holder.value == _make_fingerprint(_BINARY)
     assert holder.reason == repr(_SURROGATE)
+
+
+# --- private fields ---
+
+
+@dataclasses.dataclass
+class _WithState:
+    answer: str
+    _state: dict[str, Any] = dataclasses.field(default_factory=dict)
+
+
+def test_a_dataclass_is_stored_without_its_private_fields() -> None:
+    value = _WithState(answer="yes", _state={"schemas": "x" * 1000})
+    assert degrade_undumpable(value) == {"answer": "yes"}
+
+
+def test_a_nested_dataclass_loses_its_private_fields_too() -> None:
+    value = {"run": _WithState(answer="yes", _state={"big": 1})}
+    assert degrade_undumpable(value) == {"run": {"answer": "yes"}}
+
+
+def test_a_dataclass_without_private_fields_is_kept() -> None:
+    @dataclasses.dataclass
+    class _Plain:
+        answer: str
+
+    value = _Plain(answer="yes")
+    assert degrade_undumpable(value) is value

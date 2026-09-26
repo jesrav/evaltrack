@@ -11,7 +11,7 @@ keep the outcome the gate reached. A result keeps the bar that applied to it.
 """
 
 import importlib.metadata
-from typing import Annotated, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
 from pydantic import (
     AfterValidator,
@@ -25,7 +25,7 @@ from pydantic_core import to_json
 from ulid import ULID
 
 from evaltrack.core.errors import InvalidIdentifierError, UnsupportedSchemaError
-from evaltrack.core.eval_round import AttemptErrorRecord, RoundErrorRecord
+from evaltrack.core.eval_round import AttemptErrorRecord, RoundAttempt, RoundErrorRecord
 from evaltrack.core.results import (
     EvaluatorResult,
     RunnerInfo,
@@ -175,8 +175,6 @@ class RecordedTest(BaseModel):
         marker: What the marker declared. None when the test recorded no eval.
         runner: Which eval runner produced the eval, at what version.
             None when the test recorded no eval.
-        raw_results: The runner's own result objects, one per round. Empty when
-            keep_raw_results is false.
         outcome: pytest's outcome for the test, which is the authoritative one.
             It can disagree with every case below it, since a test whose eval
             passed can still fail later in its body.
@@ -192,9 +190,6 @@ class RecordedTest(BaseModel):
     errors: list[RoundErrorRecord] = []
     marker: MarkerSettings | None = None
     runner: RunnerInfo | None = None
-    # Opaque on purpose, since a typed field makes a stored run unreadable once the
-    # runner's payload changes.
-    raw_results: list[UserValue] = []
     outcome: TestOutcome | None = None
     docstring: str | None = None
     test_file: str | None = None
@@ -278,18 +273,6 @@ def parse_run_json(data: bytes) -> RunRecord:
     return RunRecord.model_validate_json(data)
 
 
-def strip_raw_results(run: RunRecord) -> RunRecord:
-    """A copy with every test's `raw_results` cleared."""
-    return run.model_copy(
-        update={
-            "tests": {
-                name: test.model_copy(update={"raw_results": []})
-                for name, test in run.tests.items()
-            }
-        }
-    )
-
-
 def _repr_or_stand_in(value: object) -> str:
     # The dump's last resort. A `__repr__` that raises must not lose the run.
     try:
@@ -298,22 +281,44 @@ def _repr_or_stand_in(value: object) -> str:
         return f"<unrepresentable {type(value).__name__}>"
 
 
+def dump_plain(model: BaseModel, *, include: set[str] | None = None) -> Any:
+    """The model as plain dicts. This is the first half of `dump_run_json`.
+
+    The dump makes plain dicts first, so that the degrade in `dump_plain_json`
+    also reaches into a user's own model, which validation cannot see into.
+    Cut cycles before this point. The dump copies containers, and the back-edge
+    of a copy points at the original, so a walk over the copy sees no cycle.
+
+    `warnings=False`, because pydantic warns when a user value does not match
+    its declared type, and under `-W error` that warning alone loses the run.
+    """
+    return model.model_dump(
+        mode="python", include=include, fallback=_repr_or_stand_in, warnings=False
+    )
+
+
+def dump_plain_json(plain: Any) -> bytes:
+    """Compact JSON of a `dump_plain` result, or of a part of one. This is the
+    second half of `dump_run_json`."""
+    # Compact, not indented. Indentation was most of a large run's bytes, and a
+    # reader parses either.
+    return to_json(
+        degrade_undumpable(plain),
+        inf_nan_mode="strings",
+        fallback=_repr_or_stand_in,
+    )
+
+
 def dump_run_json(run: RunRecord) -> bytes:
-    """Serialize a run to JSON, degrading unserializable user values to `repr()`.
+    """Serialize a run to compact JSON, degrading unserializable user values to
+    `repr()`.
 
     Always dump runs through this function. A run this produces can always be
     loaded again.
     """
-    # Dumped to plain dicts first, so the degrade also reaches the inside of a
-    # user's own model, which validation cannot see into. Cycles must be cut
-    # before this point. The dump copies containers, and a copy's back-edge
-    # points at the original, so a walk over the copy sees no cycle.
-    # `warnings=False`, because pydantic warns when a user value does not match
-    # its declared type, and under `-W error` that warning alone loses the run.
-    plain = run.model_dump(mode="python", fallback=_repr_or_stand_in, warnings=False)
-    return to_json(
-        degrade_undumpable(plain),
-        indent=2,
-        inf_nan_mode="strings",
-        fallback=_repr_or_stand_in,
-    )
+    return dump_plain_json(dump_plain(run))
+
+
+def dump_output_json(attempt: RoundAttempt) -> bytes:
+    """One attempt's output, serialized as `dump_run_json` stores it in a run."""
+    return dump_plain_json(dump_plain(attempt, include={"output"})["output"])

@@ -10,39 +10,48 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RunReferencedError
 from evaltrack.core.run_record import (
+    CaseRecord,
     RunRecord,
     dump_run_json,
     ensure_run_id,
-    strip_raw_results,
 )
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
 from evaltrack.ui.models import MainlineEntry
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.routes import MAX_PAGE
+from evaltrack.ui.run_cache import RunCache
+from evaltrack.ui.run_view import dump_case_json, dump_run_view_json
 from evaltrack.ui.security import reject_cross_origin_write
 from evaltrack.ui.views import find_mainline_entry
 
 _logger = logging.getLogger(__name__)
 
 
-def _load_run_or_404(repo: RunRepository, run_id: str) -> RunRecord:
-    """`load_run` that raises 404 for a missing run."""
-    run = repo.load_run(run_id)
-    if run is None:
-        raise HTTPException(HTTPStatus.NOT_FOUND, f"run not found: {run_id}")
-    return run
+def _load_case_or_404(run: RunRecord, *, test: str, case: str) -> CaseRecord:
+    recorded = run.tests.get(test)
+    record = recorded.cases.get(case) if recorded is not None else None
+    if record is None:
+        raise HTTPException(HTTPStatus.NOT_FOUND, f"case not found: {test} {case!r}")
+    return record
 
 
 def build_runs_router(
     resolve: Callable[[str], RunRepository],
     mainline: RunRepository | None,
     *,
+    run_cache: RunCache,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> APIRouter:
     """`mainline` is the repository the promote history lives in, None when no
     mount supplies one. `pr_url_template` goes into the report, so its PR
     numbers link as the dashboard's do."""
     router = APIRouter(prefix="/api/repositories/{slug}/runs")
+
+    def load_run_or_404(slug: str, run_id: str) -> RunRecord:
+        run = run_cache.load(slug, repo=resolve(slug), run_id=run_id)
+        if run is None:
+            raise HTTPException(HTTPStatus.NOT_FOUND, f"run not found: {run_id}")
+        return run
 
     @router.get("")
     def list_runs(  # pyright: ignore[reportUnusedFunction]
@@ -62,9 +71,22 @@ def build_runs_router(
         return out
 
     @router.get("/{run_id}")
-    def get_run(slug: str, run_id: str) -> RunRecord:  # pyright: ignore[reportUnusedFunction]
-        repo = resolve(slug)
-        return strip_raw_results(_load_run_or_404(repo, run_id))
+    def get_run(slug: str, run_id: str) -> Response:  # pyright: ignore[reportUnusedFunction]
+        # Returned as bytes. A returned model makes FastAPI serialize the run a
+        # second time.
+        return Response(
+            content=dump_run_view_json(load_run_or_404(slug, run_id)),
+            media_type="application/json",
+        )
+
+    @router.get("/{run_id}/cases")
+    def get_case(  # pyright: ignore[reportUnusedFunction]
+        slug: str, run_id: str, *, test: str, case: str
+    ) -> Response:
+        """One case, whole. The test and the case are query parameters, because
+        a nodeid contains `::` and `/`."""
+        record = _load_case_or_404(load_run_or_404(slug, run_id), test=test, case=case)
+        return Response(content=dump_case_json(record), media_type="application/json")
 
     @router.get("/{run_id}/mainline")
     def get_run_mainline(  # pyright: ignore[reportUnusedFunction]
@@ -82,10 +104,9 @@ def build_runs_router(
 
     @router.get("/{run_id}/download")
     def download_run(slug: str, run_id: str) -> Response:  # pyright: ignore[reportUnusedFunction]
-        # The full run with `raw_results`, byte-identical to the stored run when
-        # this version recorded it.
-        repo = resolve(slug)
-        run = _load_run_or_404(repo, run_id)
+        # The whole run, byte-identical to the stored run when this version
+        # recorded it.
+        run = load_run_or_404(slug, run_id)
         return Response(
             content=dump_run_json(run),
             media_type="application/json",
@@ -106,15 +127,14 @@ def build_runs_router(
         dashboard. `against` names a run to compare from, in `against_slug`
         or, without one, in `slug`. `via` and `against_via` label the runs
         with the refs the page reached them by."""
-        repo = resolve(slug)
-        run = _load_run_or_404(repo, run_id)
+        run = load_run_or_404(slug, run_id)
         against_run: RunRecord | None = None
         if against is not None:
-            against_run = _load_run_or_404(
-                resolve(against_slug if against_slug is not None else slug), against
+            against_run = load_run_or_404(
+                against_slug if against_slug is not None else slug, against
             )
         data = collect_report_data(
-            repo,
+            resolve(slug),
             run,
             mainline=mainline,
             via=via,
@@ -159,6 +179,7 @@ def build_runs_router(
                 HTTPStatus.CONFLICT,
                 {"message": str(exc), "refs": exc.refs},
             ) from exc
+        run_cache.drop(slug, run_ids=[run_id])
         if deleted is None:
             raise HTTPException(HTTPStatus.NOT_FOUND, f"run not found: {run_id}")
         # Only the id. A summary needs a run-body read for data the delete makes

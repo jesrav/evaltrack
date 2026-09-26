@@ -34,6 +34,7 @@ from evaltrack.ui.routes.meta import build_meta_router
 from evaltrack.ui.routes.refs import build_refs_router
 from evaltrack.ui.routes.runs import build_runs_router
 from evaltrack.ui.routes.static import build_static_router
+from evaltrack.ui.run_cache import RunCache
 from evaltrack.ui.security import (
     LOOPBACK_ALLOWED_HOSTS,
     SECURITY_HEADERS,
@@ -151,10 +152,15 @@ def create_app(
 
     app.include_router(build_static_router())
     app.include_router(build_meta_router(project_config, infos))
+    # One cache for both routers, so that a delete in one clears what the
+    # other read.
+    run_cache = RunCache()
     app.include_router(
-        build_runs_router(resolve, mainline, pr_url_template=pr_url_template)
+        build_runs_router(
+            resolve, mainline, run_cache=run_cache, pr_url_template=pr_url_template
+        )
     )
-    app.include_router(build_refs_router(resolve))
+    app.include_router(build_refs_router(resolve, run_cache=run_cache))
     app.include_router(build_history_router(resolve, mainline))
 
     # Absent in development (Vite run separately) and in tests.

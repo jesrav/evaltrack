@@ -12,6 +12,7 @@
 // The drawer view always renders the original value. Nothing here is lossy.
 
 import { readBinaryEnvelope, formatBinaryLabel } from "./binaryEnvelope";
+import { readDeferredEnvelope } from "./deferred";
 
 const RESULT_KEYS = new Set(["output", "result", "answer", "content"]);
 const MAX_UNWRAP_DEPTH = 4;
@@ -44,8 +45,12 @@ export function formatFallbackString(value: unknown): string {
   return String(value);
 }
 
-/** Stable string rendering used by canonical equality (diff comparison). */
+/** Stable string rendering used by canonical equality (diff comparison). A
+ *  deferred value is compared by its hash. It never equals an inline value,
+ *  because the server defers only values over its size limit. */
 export function formatCanonicalText(value: unknown): string {
+  const deferred = readDeferredEnvelope(value);
+  if (deferred) return `$deferred:${deferred.sha256}`;
   const primary = getPrimaryView(value);
   if (primary === null || primary === undefined) return String(primary);
   if (typeof primary === "string") return primary;
@@ -62,6 +67,9 @@ export function formatCanonicalText(value: unknown): string {
  *  binary fingerprint renders as its label, because the envelope carries no
  *  content and its JSON says less than "binary · size · hash". */
 export function formatDisplayText(value: unknown, pretty = false): string {
+  // The preview of a deferred value already starts at its primary view.
+  const deferred = readDeferredEnvelope(value);
+  if (deferred) return deferred.preview;
   const primary = getPrimaryView(value);
   const env = readBinaryEnvelope(primary);
   if (env) return formatBinaryLabel(env);

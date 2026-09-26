@@ -9,7 +9,7 @@ from pathlib import Path
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.refs import BASELINE_REF
-from evaltrack.core.run_record import RunRecord, strip_raw_results
+from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import MainlineEntry, ReportData, RunHistory
 from evaltrack.ui.views import mainline_entry_in, refs_pointing_at, run_history_over
@@ -38,8 +38,7 @@ def collect_report_data(
     `mainline_error` says why there is no mainline when the caller could not
     open the one it wanted, and the page carries it as `history_error`.
 
-    The runner's own result objects are dropped, as the page never renders
-    them. The cross-run history is read only without `against`, since a
+    The cross-run history is read only without `against`, since a
     comparison does not show it and it costs a run body per mainline entry.
     A mainline that cannot be reached leaves the report without history and
     says so, as the dashboard drops the column, since the run itself is
@@ -62,9 +61,9 @@ def collect_report_data(
         except RepositoryUnavailableError as exc:
             history, mainline_entry, history_error = RunHistory(), None, str(exc)
     return ReportData(
-        run=strip_raw_results(run),
+        run=run,
         via=via,
-        against=strip_raw_results(against) if against is not None else None,
+        against=against,
         against_via=against_via,
         refs=refs_pointing_at(repository, run.id),
         history=history,
@@ -114,6 +113,19 @@ def _load_template(path: Path) -> tuple[str, str]:
     return head, tail
 
 
+def _dump_report_json(data: ReportData) -> str:
+    """The report as compact JSON, written the way a stored run is."""
+    plain = dump_plain(data)
+    for run in (plain["run"], plain["against"]):
+        if run is None:
+            continue
+        for test in run["tests"].values():
+            # A run saved before 0.3.0 holds the runner's own reports too,
+            # which the page never renders.
+            test.pop("raw_results", None)
+    return dump_plain_json(plain).decode()
+
+
 def render_report(data: ReportData) -> str:
     """The report page for `data`, as one self-contained HTML document.
 
@@ -123,7 +135,7 @@ def render_report(data: ReportData) -> str:
             template this version writes into.
     """
     head, tail = _load_template(TEMPLATE_PATH)
-    payload = escape_json_for_html(data.model_dump_json())
+    payload = escape_json_for_html(_dump_report_json(data))
     return (
         f'{head}<script type="application/json" id="evaltrack-data">{payload}'
         f"</script>{tail}"

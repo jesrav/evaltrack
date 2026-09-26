@@ -5,6 +5,7 @@ import itertools
 import warnings
 
 import pytest
+from pydantic import BaseModel, Field
 from pydantic_evals import Case, Dataset
 
 from evaltrack.core.errors import EvalDefinitionError
@@ -323,38 +324,11 @@ def test_repeat_with_one_crashed_attempt_counts_it() -> None:
     assert [a.outcome for a in recorded.attempts] == ["passed", "passed", "errored"]
 
 
-def test_keep_raw_results_false_still_records_the_crash() -> None:
-    """The structured cases must carry the crash on their own. With
-    `keep_raw_results = false` there is no raw report to fall back on."""
-    rec = EvalRecorder(keep_raw_results=False)
-    rec.add_round("t", make_crash_round())
-    built = rec.to_run_record().tests["t"]
-    assert built.raw_results == []
-    assert built.cases["test_case"].attempts[0].outcome == "errored"
-
-
 def test_records_task_duration() -> None:
     rec = EvalRecorder()
     rec.add_round("t", make_round(task_duration=2.5))
     test = rec.to_run_record().tests["t"]
     assert test.cases["test_case"].attempts[0].task_duration == 2.5
-
-
-def test_keep_raw_results_false_by_default() -> None:
-    rec = EvalRecorder()
-    rec.add_round("t", make_round())
-    test = rec.to_run_record().tests["t"]
-    assert test.raw_results == []
-    assert "test_case" in test.cases, (
-        "dropping the raw report keeps the structured per-case data"
-    )
-
-
-def test_keep_raw_results_true_keeps_it() -> None:
-    rec = EvalRecorder(keep_raw_results=True)
-    rec.add_round("t", make_round())
-    test = rec.to_run_record().tests["t"]
-    assert test.raw_results != []
 
 
 # rerun rounds: appended attempts
@@ -644,3 +618,38 @@ def test_an_xfailed_test_is_not_counted_as_a_failure() -> None:
     assert rec.has_failures is False
     rec.set_test_outcome("u", "failed")
     assert rec.has_failures is True
+
+
+# --- large outputs ---
+
+
+def test_an_output_over_the_limit_is_listed_with_its_test_and_case() -> None:
+    rec = EvalRecorder(large_output_bytes=100)
+    rec.add_round(
+        "test_x.py::test_a",
+        make_round(
+            attempts=[
+                make_attempt(case_id="small", output="x"),
+                make_attempt(case_id="big", output="x" * 200),
+            ]
+        ),
+    )
+    [large] = rec.large_outputs
+    assert (large.nodeid, large.case_id) == ("test_x.py::test_a", "big")
+    assert large.size > 200, "the size is the stored JSON's, quotes included"
+
+
+def test_the_stored_size_is_measured_not_the_python_object() -> None:
+    """A model with an excluded field is measured as the run stores it, without
+    that field."""
+
+    class _Bulky(BaseModel):
+        shown: str
+        hidden: str = Field(exclude=True)
+
+    rec = EvalRecorder(large_output_bytes=100)
+    rec.add_round(
+        "t",
+        make_round(attempts=[make_attempt(output=_Bulky(shown="s", hidden="h" * 500))]),
+    )
+    assert rec.large_outputs == []

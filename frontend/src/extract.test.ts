@@ -59,3 +59,34 @@ describe("formatDisplayText / truncate", () => {
     expect(truncate("abcdef", 4)).toBe("abc…");
   });
 });
+
+describe("deferred values", () => {
+  const envelope = {
+    $deferred: {
+      preview: "the answer, whole",
+      size: 700_000,
+      sha256: "ab".repeat(32),
+      run: "01RUN",
+      test: "t",
+      case: "c",
+      field: "output",
+      attempt: 0,
+    },
+  };
+
+  it("shows the server's preview", () => {
+    expect(formatDisplayText(envelope)).toBe("the answer, whole");
+  });
+
+  it("compares by hash, and never equals an inline value", () => {
+    const same = { ...envelope };
+    const other = {
+      $deferred: { ...envelope.$deferred, sha256: "cd".repeat(32) },
+    };
+    expect(formatCanonicalText(envelope)).toBe(formatCanonicalText(same));
+    expect(formatCanonicalText(envelope)).not.toBe(formatCanonicalText(other));
+    expect(formatCanonicalText(envelope)).not.toBe(
+      formatCanonicalText("the answer, whole"),
+    );
+  });
+});

@@ -10,6 +10,7 @@ import pytest
 
 import evaltrack.ui.report as report_module
 from evaltrack.core.errors import RepositoryUnavailableError
+from evaltrack.core.run_record import dump_run_json, parse_run_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import ReportData
 from evaltrack.ui.report import collect_report_data, render_report
@@ -144,18 +145,15 @@ def test_a_template_without_a_slot_is_refused(
         render_report(make_data())
 
 
-def test_collected_data_drops_raw_results_and_finds_the_mainline() -> None:
-    """The page renders from `cases`, so the runner's own result objects only
-    add weight. The mainline entry is the promote that carried the run."""
+def test_collected_data_finds_the_mainline() -> None:
+    """The mainline entry is the promote that carried the run."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_round(), commit="c0")
     repo.save_run(run)
     repo.move_ref("baseline", run.id, commit="main-0", pr=3, title="Land it")
-    assert run.tests["test_x"].raw_results, "the fixture records raw results"
 
     data = collect_report_data(repo, run, mainline=repo, via="baseline")
 
-    assert data.run.tests["test_x"].raw_results == []
     assert data.mainline is not None
     assert (data.mainline.commit, data.mainline.pr) == ("main-0", 3)
     assert data.via == "baseline"
@@ -270,3 +268,23 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     assert data.history.reliability == {}
     assert data.mainline is None
     assert data.history_error == "the azure extra is not installed"
+
+
+def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
+    template: Path,
+) -> None:
+    """A run saved before 0.3.0 holds the runner's own reports beside the
+    cases. The page never renders them, and they can be most of the run."""
+    run = make_recorded_run(make_round(), commit="c0")
+    stored = json.loads(dump_run_json(run))
+    stored["tests"]["test_x"]["raw_results"] = [{"cases": [{"output": "x" * 100}]}]
+    old_run = parse_run_json(json.dumps(stored).encode())
+
+    embedded = embedded_json(render_report(make_data(run=old_run, against=old_run)))
+
+    for key in ("run", "against"):
+        run_json = embedded[key]
+        assert isinstance(run_json, dict)
+        test = run_json["tests"]["test_x"]
+        assert "raw_results" not in test
+        assert test["cases"], "the structured cases still stand"

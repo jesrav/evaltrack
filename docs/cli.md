@@ -45,10 +45,8 @@ against them.
 
 ## evaltrack export
 
-Prints a recorded run as JSON. Use it to inspect a run, archive one outside the repository, or feed
-the eval runner's own result objects back into that runner's tooling when the run was recorded with
-`keep_raw_results = true`. See [Raw results](./configuration.md#raw-results). The same data is
-available in Python — see [Reading runs from Python].
+Prints a recorded run as JSON. Use it to inspect a run or archive one outside the repository. The
+same data is available in Python. See [Reading runs from Python].
 
 **Exit codes:** `0` when the run was exported. `1` when the named repository does not hold the run,
 and the error names that repository. `2` when no repository is named. Only `report` shares
@@ -70,8 +68,9 @@ A run id names a run in the repository. Anything else names a ref on the remote,
 reported run itself, the page shows the one run and a warning says why. Without `--against` the page
 shows the one run, with its history over the remote's [`baseline`][baseline].
 
-The page holds every input and output that the run recorded. Share it as you would share the run.
-The raw results of the eval runner are not in the page. `export` has them.
+The page holds every input and output that the run recorded, whole. Share it as you would share the
+run. A report of a large run is a large file, since the page cannot fetch a value later as the
+dashboard does.
 
 `--output` defaults to `evaltrack-report.html`. `-` writes the page to stdout. Like `push` and
 `promote`, the command reads the remote unless a repository flag names another. The history is

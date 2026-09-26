@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { scoreClearsBar } from "../checks";
+import { readDeferredEnvelope } from "../deferred";
 import { formatDisplayText, getPrimaryView, truncate } from "../extract";
+import { formatBytes } from "../format";
 import {
   diffRuns,
   hasDiffChanges,
@@ -690,12 +692,17 @@ function DiffCell({
   // metadata. For structured values, name what changed (e.g. "is_question:
   // true → false") instead of a char count. Keep the char delta for plain
   // strings.
+  // A deferred value is not loaded, so the label shows its size.
+  const da = readDeferredEnvelope(a);
+  const db = readDeferredEnvelope(b);
   const pa = getPrimaryView(a);
   const pb = getPrimaryView(b);
   const label =
-    isContainer(pa) || isContainer(pb)
-      ? truncate(summarizeChange(pa, pb), 48)
-      : `changed · ${formatDisplayText(a).length} → ${formatDisplayText(b).length} chars`;
+    da || db
+      ? `changed · ${formatBytes(da?.size ?? formatDisplayText(a).length)} → ${formatBytes(db?.size ?? formatDisplayText(b).length)}`
+      : isContainer(pa) || isContainer(pb)
+        ? truncate(summarizeChange(pa, pb), 48)
+        : `changed · ${formatDisplayText(a).length} → ${formatDisplayText(b).length} chars`;
   return (
     <div className="cell-value">
       <button

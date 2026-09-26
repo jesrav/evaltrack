@@ -65,7 +65,6 @@ def test_report_is_an_html_attachment_holding_the_run() -> None:
     data = embedded_json(r.text)
     embedded = data["run"]
     assert isinstance(embedded, dict) and embedded["id"] == run.id
-    assert embedded["tests"]["test_x"]["raw_results"] == []
     assert data["via"] == "pr/3"
     assert data["against"] is None
     refs = data["refs"]

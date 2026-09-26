@@ -1,7 +1,6 @@
 // Mirrors of the JSON the /api/ endpoints return. Kept narrow on purpose. Add a
 // field here only when the UI renders it. The stored run keeps every field
 // either way, so a missing one here only means the UI does not render it.
-// `raw_results` is the one runner-native payload, deliberately left opaque.
 
 // ---- cases ---------------------------------------------------------------
 
@@ -225,6 +224,9 @@ export interface RunSummary extends RunCore {
   // are not failures. Summary only. The full run body carries `tests` instead.
   tests_total: number;
   tests_failed: number;
+  // The stored run's size in bytes. Absent or null in a sidecar written before
+  // it was recorded.
+  size_bytes?: number | null;
 }
 
 export interface MarkerSettings {
@@ -259,9 +261,6 @@ export interface RecordedTest {
   /** Which eval runner produced this test's eval. Null when the test never
    *  evaluated. */
   runner: RunnerInfo | null;
-  // The runner's own result objects, one per round, passed through opaquely
-  // for export and download only. The UI renders from `cases`, never these.
-  raw_results: unknown[];
   outcome: TestOutcome | null;
   /** The test function's docstring, kept as test-level context (intent, setup
    *  assumptions). Null when the test has no docstring. */
