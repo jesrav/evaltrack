@@ -8,9 +8,6 @@ and the dashboard fetches the whole case when a pane needs it.
 An envelope holds a preview for the table cell, the size, a hash, and the
 address of the value. The hash covers the part of a value that the dashboard
 compares for a small value, so two runs diff the same way whatever the size.
-
-The runner's reports that a run recorded before 0.3.0 can hold are left out.
-Everything else is as stored.
 """
 
 import hashlib
@@ -88,6 +85,8 @@ def dump_run_view_json(run: RunRecord, *, limit: int = INLINE_VALUE_BYTES) -> by
     replaced by its envelope."""
     plain = dump_plain(run)
     for nodeid, test in plain["tests"].items():
+        # A run saved before 0.3.0 can hold `raw_results`, the runner's own
+        # reports. They are large, and the dashboard does not show them.
         test.pop("raw_results", None)
         for case_id, case in test["cases"].items():
             address = {"run": run.id, "test": nodeid, "case": case_id}

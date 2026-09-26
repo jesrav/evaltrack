@@ -11,6 +11,8 @@ Source layout (main modules):
     src/
       App.tsx             top-level layout, fetches + state
       api.ts              fetch wrappers over /api/*
+      deferred.ts         reading the envelopes that stand in for large values
+      drawerOpener.ts     opening a pane that needs values the run left out
       diff.ts             pure two-run diff computation
       types.ts            TS mirror of the pydantic models
       components/         Sidebar, RunDetail, RunDiff, and smaller widgets

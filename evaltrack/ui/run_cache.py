@@ -1,9 +1,13 @@
-"""The runs that the dashboard read last, kept parsed. A run and its panes then
-cost one read of the stored run.
+"""Keeps the last few runs the dashboard read, so that a run is not read from
+storage again for each of its panes.
 
-A run is not changed after it is saved under its id, so a cached run stays
-correct until the dashboard deletes it. A run deleted outside the dashboard can
-still show until it leaves the cache or `evaltrack ui` restarts.
+Opening a run, and then its panes, asks the server for the same run several
+times. On a remote repository each read downloads the whole stored run, which
+can be large. So the server keeps the last few runs it read, ready to use.
+
+A run does not change after it is saved, so a kept run stays correct until the
+dashboard deletes it. A run deleted outside the dashboard, for example with the
+CLI, can still show until it leaves the cache or `evaltrack ui` restarts.
 """
 
 import threading
@@ -20,8 +24,8 @@ small."""
 
 
 class RunCache:
-    """Parsed runs, keyed by repository slug and run id. The least recently used
-    run is dropped first."""
+    """The last few runs the dashboard read, by repository and run id. When it is
+    full, the run used least recently is dropped."""
 
     def __init__(self, *, size: int = DEFAULT_SIZE) -> None:
         self._size = size

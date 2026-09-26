@@ -1,7 +1,9 @@
-// Opening a pane whose values the run view deferred. The whole case is fetched
-// first, and the pane shows a loading message until it arrives. Fetched cases
-// are kept here, not written into the runs, so both sides of a diff keep the
-// same envelopes and compare by the same hashes.
+// Opening a pane whose values the run view left out. The pane shows a loading
+// message while the whole cases are fetched. A case is fetched once and kept
+// while its run is open. A fetch only shows its pane if nothing opened or
+// closed the drawer in the meantime. Fetched cases are kept here, not written
+// into the runs, so both sides of a diff keep the same envelopes and compare
+// by the same hashes.
 
 import type { DrawerContent } from "./components/Drawer";
 import {
@@ -36,8 +38,7 @@ export function createDrawerOpener({
   onError,
 }: DrawerOpenerDeps): DrawerOpener {
   const cases = new Map<string, { run: string; record: CaseRecord }>();
-  // Every open and close adds one. A fetch shows its pane only when nothing
-  // changed the drawer after the fetch started.
+  // Every open and close adds one.
   let changes = 0;
 
   const resolve = (content: DrawerContent): DrawerContent =>
