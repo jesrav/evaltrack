@@ -4,7 +4,7 @@ the run landed on the mainline. No web framework here, so the report can be
 generated without the `[ui]` extra."""
 
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from typing import NamedTuple
 
@@ -103,30 +103,6 @@ def _load_mainline_history(
     ]
 
 
-def run_history_over(
-    mainline: RunRepository,
-    reflog: list[ReflogEntry],
-    *,
-    viewed: RunRecord | None,
-    window: int = DEFAULT_WINDOW,
-) -> RunHistory:
-    """The reliability and score history over the runs `reflog`, `mainline`'s
-    oldest-first `baseline` history, promotes, with `viewed` drawn over them
-    when it is not itself one of them. Empty when there is no history."""
-    history = _load_mainline_history(mainline, reflog, window=window)
-    if history and viewed is not None and all(h.run.id != viewed.id for h in history):
-        history = [
-            HistoryRun(viewed, viewed.commit, viewed.created_at, off_mainline=True),
-            *history,
-        ]
-    if not history:
-        return RunHistory()
-    return RunHistory(
-        reliability=report_all_case_reliability_over(history, window=window),
-        score_history=report_all_score_history_over(history, window=window),
-    )
-
-
 def load_run_history(
     mainline: RunRepository | None,
     *,
@@ -143,17 +119,31 @@ def load_run_history(
     if mainline is None:
         return RunHistory()
     reflog = list(mainline.get_reflog(BASELINE_REF))
-    return run_history_over(mainline, reflog, viewed=viewed, window=window)
+    history = _load_mainline_history(mainline, reflog, window=window)
+    if history and viewed is not None and all(h.run.id != viewed.id for h in history):
+        history = [
+            HistoryRun(viewed, viewed.commit, viewed.created_at, off_mainline=True),
+            *history,
+        ]
+    if not history:
+        return RunHistory()
+    return RunHistory(
+        reliability=report_all_case_reliability_over(history, window=window),
+        score_history=report_all_score_history_over(history, window=window),
+    )
 
 
-def mainline_entry_in(
-    reflog: Iterable[ReflogEntry], run_id: str
-) -> MainlineEntry | None:
-    """Where the run landed on the mainline, from the newest entry of the
-    oldest-first `baseline` `reflog` pointing at it. None for a run never
-    promoted."""
+def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry | None:
+    """Where the run landed on the mainline, from the newest entry of
+    `mainline`'s `baseline` reflog pointing at it. None for a run never
+    promoted.
+
+    Raises:
+        CorruptRecordError: when the reflog does not parse.
+    """
     match: ReflogEntry | None = None
-    for entry in reflog:
+    # Oldest first, so the last match is the newest.
+    for entry in mainline.get_reflog(BASELINE_REF):
         if entry.run_id == run_id:
             match = entry
     if match is None:
@@ -164,15 +154,6 @@ def mainline_entry_in(
         title=match.title,
         moved_at=match.moved_at,
     )
-
-
-def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry | None:
-    """`mainline_entry_in` over `mainline`'s own `baseline` reflog.
-
-    Raises:
-        CorruptRecordError: when the reflog does not parse.
-    """
-    return mainline_entry_in(mainline.get_reflog(BASELINE_REF), run_id)
 
 
 def refs_pointing_at(repo: RunRepository, run_id: str) -> list[Ref]:

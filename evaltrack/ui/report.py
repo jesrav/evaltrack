@@ -8,12 +8,15 @@ from pathlib import Path
 
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
-from evaltrack.core.refs import BASELINE_REF
 from evaltrack.core.run_record import dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import MainlineEntry, NamedRun, ReportData, RunHistory
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES, build_run_view
-from evaltrack.ui.views import mainline_entry_in, refs_pointing_at, run_history_over
+from evaltrack.ui.views import (
+    find_mainline_entry,
+    load_run_history,
+    refs_pointing_at,
+)
 
 # Beside the dashboard bundle, so one frontend build ships both.
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
@@ -54,12 +57,9 @@ def collect_report_data(
     history_error = mainline_error
     if mainline is not None:
         try:
-            # One read serves both, since the history is a window of the same
-            # reflog the entry is found in.
-            reflog = list(mainline.get_reflog(BASELINE_REF))
             if against is None:
-                history = run_history_over(mainline, reflog, viewed=run.run)
-            mainline_entry = mainline_entry_in(reflog, run.run.id)
+                history = load_run_history(mainline, viewed=run.run)
+            mainline_entry = find_mainline_entry(mainline, run.run.id)
         except RepositoryUnavailableError as exc:
             history, mainline_entry, history_error = RunHistory(), None, str(exc)
     return ReportData(
