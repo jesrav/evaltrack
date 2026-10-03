@@ -394,7 +394,7 @@ def test_report_without_a_remote_has_no_history_and_resolves_no_ref(
 ) -> None:
     """The mainline is the remote and nothing else. A `baseline` in the named
     repository is a developer's own promotion, so the page does not draw over
-    it, and `--against baseline` has nowhere to look."""
+    it, and `--against-ref baseline` has nowhere to look."""
     url = str(tmp_path / "repo")
     configure_local(tmp_path, url)
     monkeypatch.chdir(tmp_path)
@@ -409,7 +409,7 @@ def test_report_without_a_remote_has_no_history_and_resolves_no_ref(
     )
 
     assert result.code == 0, "no remote is not a failure of the report"
-    assert "no remote configured" in result.err
+    assert result.err.count("no remote configured") == 1, "the cause is told once"
     data = embedded_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None

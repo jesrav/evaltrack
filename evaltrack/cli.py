@@ -582,21 +582,20 @@ def _open_mainline(target: _OpenedRepository, config: EvaltrackConfig) -> _Mainl
     one does, since the run itself is what the report is for."""
     remote = resolve_remote(config)
     if remote is None:
-        error = (
+        return _Mainline(
+            None,
             f"no remote configured, and the mainline lives there. Set ${REMOTE_ENV} "
-            "or [tool.evaltrack].remote to get history and `--against-ref`"
+            "or [tool.evaltrack].remote",
         )
-        print(f"warning: {error}", file=sys.stderr)
-        return _Mainline(None, error)
     if remote.url == target.url:
         return _Mainline(target)
     print(f"reading the mainline from {remote.url}", file=sys.stderr)
     try:
         repository = open_repository(remote.url)
     except (ValueError, ImportError) as exc:
-        error = f"could not open the remote {remote.url}: {_first_line(exc)}"
-        print(f"warning: {error}, so the report has no history", file=sys.stderr)
-        return _Mainline(None, error)
+        return _Mainline(
+            None, f"could not open the remote {remote.url}: {_first_line(exc)}"
+        )
     return _Mainline(_OpenedRepository(repository, remote.url))
 
 
@@ -619,10 +618,10 @@ def _load_comparison(
     mainline: _Mainline,
 ) -> _Comparison:
     """The run to compare `subject` against, or the reason there is no
-    comparison to make, with a warning printed. A project's first pull request
-    has no `baseline` yet, and a report of the run alone beats none in its
-    artifacts. A `baseline` an older or newer evaltrack cannot read is the
-    same case: the run itself is readable, and it is what the report is for.
+    comparison to make. A project's first pull request has no `baseline` yet,
+    and a report of the run alone beats none in its artifacts. A `baseline`
+    an older or newer evaltrack cannot read is the same case: the run itself
+    is readable, and it is what the report is for.
 
     A run id names a run in `target`. A ref names one on the remote, where the
     team's refs live, so without a remote no ref resolves.
@@ -631,7 +630,9 @@ def _load_comparison(
         if not as_ref:
             loaded = _load_named_run(target, against, as_ref=False)
         elif mainline.opened is None:
-            raise _RunNotFound(f"ref {against!r} cannot be looked up: {mainline.error}")
+            raise _RunNotFound(
+                f"ref {against!r} cannot be looked up without the remote"
+            )
         else:
             loaded = _load_named_run(mainline.opened, against, as_ref=True)
     except (
@@ -640,20 +641,9 @@ def _load_comparison(
         UnsupportedSchemaError,
         CorruptRecordError,
     ) as exc:
-        error = str(exc)
-        print(
-            f"warning: {error}, so the report shows run {subject.run.id} alone",
-            file=sys.stderr,
-        )
-        return _Comparison(None, error)
+        return _Comparison(None, str(exc))
     if loaded.run.id == subject.run.id:
-        error = f"{against!r} is run {subject.run.id} itself"
-        print(
-            f"warning: {error}, so the report shows it alone rather than against "
-            "itself",
-            file=sys.stderr,
-        )
-        return _Comparison(None, error)
+        return _Comparison(None, f"{against!r} is run {subject.run.id} itself")
     return _Comparison(loaded)
 
 
@@ -691,11 +681,17 @@ def _cmd_report(args: argparse.Namespace) -> int:
         against_error=comparison.error,
         pr_url_template=config.pr_url_template,
     )
-    if data.history_error is not None and mainline.opened is not None:
-        # The other two causes were announced when the mainline was opened.
+    # Everything the page lacks is announced here, each cause once. The page
+    # carries the same reasons, for a reader who never sees stderr.
+    if data.history_error is not None:
         print(
-            f"warning: could not read the mainline from {mainline.opened.url}, so "
-            f"the report has no history: {data.history_error}",
+            f"warning: the report has no history: {data.history_error}",
+            file=sys.stderr,
+        )
+    if comparison.error is not None:
+        print(
+            f"warning: {comparison.error}, so the report shows run "
+            f"{subject.run.id} alone",
             file=sys.stderr,
         )
     html = render_report(data, inline_limit=None if args.full else INLINE_VALUE_BYTES)
