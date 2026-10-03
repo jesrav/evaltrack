@@ -59,14 +59,15 @@ the dashboard does. It opens from disk with no server, so you can attach it to a
 release. Name the run with `--run-id`, or with `--ref` to take the run that a ref points at.
 
 ```bash
-evaltrack report --ref pr/482 --against baseline --output evaltrack-report.html
+evaltrack report --ref pr/482 --against-ref baseline --output evaltrack-report.html
 ```
 
-`--against` embeds a second run and opens the page on the changes from that run to the reported one.
-A run id names a run in the repository. Anything else names a ref on the remote, so
-`--against baseline` compares against the mainline. If the target is not found, or it is the
-reported run itself, the page shows the one run, and the page and a warning both say why. Without
-`--against` the page shows the one run, with its history over the remote's [`baseline`][baseline].
+`--against-ref` embeds the run that a ref on the remote points at, and opens the page on the changes
+from that run to the reported one. `--against-ref baseline` compares against the mainline.
+`--against-run-id` does the same with a run in the repository. If the comparison run is not found,
+or it is the reported run itself, the page shows the one run, and the page and a warning both say
+why. Without either flag the page shows the one run, with its history over the remote's
+[`baseline`][baseline].
 
 The page holds the inputs and outputs that the run recorded. Share it as you would share the run. A
 value over 16 KB is left out, and its first 200 characters and its size stand in, so a report of a

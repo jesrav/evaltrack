@@ -33,7 +33,6 @@ from evaltrack.core.errors import (
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
 from evaltrack.core.run_record import (
     dump_run_json,
-    ensure_run_id,
     parse_run_json,
 )
 from evaltrack.repositories import (
@@ -274,8 +273,9 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Write one HTML file that shows a recorded run the way the "
             "dashboard does, with the run embedded, so it opens anywhere "
-            "with no server and no network. With --against it shows the "
-            "changes from that run to the reported one instead."
+            "with no server and no network. With --against-ref or "
+            "--against-run-id it shows the changes from that run to the "
+            "reported one instead."
         ),
     )
     report.set_defaults(func=_cmd_report)
@@ -290,15 +290,23 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Report the run this ref points at, for example pr/123 or baseline.",
     )
-    report.add_argument(
-        "--against",
+    # When the comparison run cannot be found, the report shows the run alone
+    # and a warning says so.
+    against = report.add_mutually_exclusive_group()
+    against.add_argument(
+        "--against-ref",
         default=None,
-        metavar="RUN_ID_OR_REF",
-        help="Embed this run too and render a comparison from it to the "
-        "reported run. A run id names a run in the repository, anything "
-        "else a ref on the remote, so `--against baseline` compares against "
-        "the mainline. When it cannot be found, the report shows the run "
-        "alone and a warning says so.",
+        metavar="REF",
+        help="Embed the run this ref on the remote points at too, and render "
+        "a comparison from it to the reported run. `--against-ref baseline` "
+        "compares against the mainline.",
+    )
+    against.add_argument(
+        "--against-run-id",
+        default=None,
+        metavar="RUN_ID",
+        help="Embed this run from the repository too, and render a "
+        "comparison from it to the reported run.",
     )
     _add_repository_flags(
         report,
@@ -558,14 +566,6 @@ def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> Na
     return NamedRun(run=run, via=via)
 
 
-def _names_a_run_id(value: str) -> bool:
-    try:
-        ensure_run_id(value)
-    except InvalidIdentifierError:
-        return False
-    return True
-
-
 @dataclass(frozen=True)
 class _Mainline:
     """The configured remote, where the team's history lives. `opened` is None,
@@ -584,7 +584,7 @@ def _open_mainline(target: _OpenedRepository, config: EvaltrackConfig) -> _Mainl
     if remote is None:
         error = (
             f"no remote configured, and the mainline lives there. Set ${REMOTE_ENV} "
-            "or [tool.evaltrack].remote to get history and `--against` refs"
+            "or [tool.evaltrack].remote to get history and `--against-ref`"
         )
         print(f"warning: {error}", file=sys.stderr)
         return _Mainline(None, error)
@@ -611,7 +611,12 @@ class _Comparison:
 
 
 def _load_comparison(
-    target: _OpenedRepository, subject: NamedRun, *, against: str, mainline: _Mainline
+    target: _OpenedRepository,
+    subject: NamedRun,
+    *,
+    against: str,
+    as_ref: bool,
+    mainline: _Mainline,
 ) -> _Comparison:
     """The run to compare `subject` against, or the reason there is no
     comparison to make, with a warning printed. A project's first pull request
@@ -622,10 +627,8 @@ def _load_comparison(
     A run id names a run in `target`. A ref names one on the remote, where the
     team's refs live, so without a remote no ref resolves.
     """
-    # A canonical run id can only be a run id. A ref cannot tell the two
-    # apart, so a ref named like one is unreachable here.
     try:
-        if _names_a_run_id(against):
+        if not as_ref:
             loaded = _load_named_run(target, against, as_ref=False)
         elif mainline.opened is None:
             raise _RunNotFound(f"ref {against!r} cannot be looked up: {mainline.error}")
@@ -669,9 +672,14 @@ def _cmd_report(args: argparse.Namespace) -> int:
         return 1
     mainline = _open_mainline(target, config)
     comparison = _Comparison(None)
-    if args.against is not None:
+    against_name = args.against_ref or args.against_run_id
+    if against_name is not None:
         comparison = _load_comparison(
-            target, subject, against=args.against, mainline=mainline
+            target,
+            subject,
+            against=against_name,
+            as_ref=args.against_ref is not None,
+            mainline=mainline,
         )
     against = comparison.run
     data = collect_report_data(

@@ -97,7 +97,7 @@ A reviewer without the dashboard can still see the run. After the push, write it
 with the baseline embedded for comparison, and upload the file as the job's artifact:
 
 ```bash
-evaltrack report --ref "pr/$PR_NUMBER" --against baseline --output evaltrack-report.html
+evaltrack report --ref "pr/$PR_NUMBER" --against-ref baseline --output evaltrack-report.html
 ```
 
 The page opens from disk, with no server and no network. It holds every input and output the run

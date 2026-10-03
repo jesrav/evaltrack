@@ -142,7 +142,7 @@ def test_report_against_a_ref_embeds_both_runs(
             "report",
             "--ref",
             "pr/3",
-            "--against",
+            "--against-ref",
             "baseline",
             "--repository",
             url,
@@ -170,7 +170,7 @@ def test_report_against_a_run_id_names_no_ref(tmp_path: Path) -> None:
             "report",
             "--run-id",
             subject,
-            "--against",
+            "--against-run-id",
             base,
             "--repository",
             url,
@@ -236,7 +236,7 @@ def test_report_missing_comparison_reports_the_run_alone_with_a_warning(
             "report",
             "--run-id",
             run_id,
-            "--against",
+            "--against-ref",
             "baseline",
             "--repository",
             url,
@@ -270,7 +270,7 @@ def test_report_against_the_run_itself_reports_it_alone(
             "report",
             "--run-id",
             run_id,
-            "--against",
+            "--against-ref",
             "baseline",
             "--repository",
             url,
@@ -309,7 +309,7 @@ def test_report_against_a_run_in_another_stored_format_reports_the_run_alone(
             "report",
             "--run-id",
             run_id,
-            "--against",
+            "--against-ref",
             "baseline",
             "--repository",
             url,
@@ -404,7 +404,7 @@ def test_report_without_a_remote_has_no_history_and_resolves_no_ref(
     output = tmp_path / "report.html"
 
     result = run_cli(
-        ["report", "--run-id", run_id, "--local", "--against", "baseline"]
+        ["report", "--run-id", run_id, "--local", "--against-ref", "baseline"]
         + ["--output", str(output)]
     )
 
@@ -473,7 +473,7 @@ def test_report_against_a_ref_resolves_it_on_the_remote(
     output = tmp_path / "report.html"
 
     result = run_cli(
-        ["report", "--run-id", run_id, "--local", "--against", "baseline"]
+        ["report", "--run-id", run_id, "--local", "--against-ref", "baseline"]
         + ["--output", str(output)]
     )
 
@@ -497,7 +497,7 @@ def test_report_against_a_run_id_looks_in_the_named_repository(
     output = tmp_path / "report.html"
 
     result = run_cli(
-        ["report", "--run-id", run_id, "--local", "--against", earlier]
+        ["report", "--run-id", run_id, "--local", "--against-run-id", earlier]
         + ["--output", str(output)]
     )
 
@@ -522,7 +522,7 @@ def test_report_against_a_ref_with_the_remote_down_reports_the_run_alone(
     output = tmp_path / "report.html"
 
     result = run_cli(
-        ["report", "--run-id", run_id, "--local", "--against", "baseline"]
+        ["report", "--run-id", run_id, "--local", "--against-ref", "baseline"]
         + ["--output", str(output)]
     )
 
