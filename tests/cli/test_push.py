@@ -11,7 +11,7 @@ from evaltrack.cli import main
 from evaltrack.core.run_record import RUN_SCHEMA_VERSION
 from evaltrack.repositories import open_repository
 
-from .helpers import configure_repositories, run_cli, write_run_file
+from .helpers import configure_local, configure_repositories, run_cli, write_run_file
 
 
 def test_push_saves_run_to_repository(tmp_path: Path) -> None:
@@ -626,3 +626,24 @@ def test_push_url_missing_a_slash_in_pyproject_writes_nothing(
     assert [p.name for p in workspace.iterdir()] == ["pyproject.toml"], (
         "a refused push must write nothing"
     )
+
+
+def test_push_of_baseline_into_the_local_repository_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`push --ref baseline` is the second way to write the ref, so it is
+    refused where `promote` is, before anything is saved."""
+    url = str(tmp_path / "local")
+    configure_local(tmp_path, url)
+    monkeypatch.chdir(tmp_path)
+    run_file = write_run_file(tmp_path)
+
+    result = run_cli(
+        ["push", "--run-file", str(run_file.path), "--local", "--ref", "baseline"]
+    )
+
+    assert result.code == 2, "a baseline in the local repository is refused"
+    assert "remote" in result.err
+    repo = open_repository(url)
+    assert repo.get_ref("baseline") is None
+    assert repo.load_run(run_file.run_id) is None, "nothing was saved"

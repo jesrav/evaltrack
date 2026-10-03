@@ -20,6 +20,7 @@ from evaltrack.config import (
     EvaltrackConfig,
     RepositoryRole,
     load_config,
+    names_a_url,
     resolve_local,
     resolve_remote,
 )
@@ -415,6 +416,38 @@ def _open_resolved_repository(
     return _OpenedRepository(repository, url)
 
 
+def _same_location(one: str, other: str) -> bool:
+    """Whether two repository locations name the same place. A directory is
+    compared by its absolute path, a URL as written."""
+    if names_a_url(one) or names_a_url(other):
+        return one == other
+    return os.path.abspath(os.path.expanduser(one)) == os.path.abspath(
+        os.path.expanduser(other)
+    )
+
+
+def _refuse_baseline_in_local(
+    target: _OpenedRepository, config: EvaltrackConfig
+) -> bool:
+    """Print why and return True when `target` is the local repository, where
+    `baseline` must not be written. The check is on the role, so a remote that
+    is a directory passes, and so does any repository that is neither."""
+    remote = resolve_remote(config)
+    if remote is not None and _same_location(target.url, remote.url):
+        return False
+    if not _same_location(target.url, resolve_local(config)):
+        return False
+    print(
+        f"error: {BASELINE_REF!r} lives on the remote, and {target.url} is the "
+        "local repository. Add a remote to [tool.evaltrack] in pyproject.toml "
+        "and write there:\n"
+        '    remote = "<path-or-url>"\n'
+        "A second local directory works when you work alone.",
+        file=sys.stderr,
+    )
+    return True
+
+
 # --- the commands ---
 
 
@@ -464,6 +497,8 @@ def _cmd_push(args: argparse.Namespace) -> int:
         return 2
 
     target = _open_resolved_repository(args)
+    if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, load_config()):
+        return 2
     if args.ref is not None:
         # Before the save, so an invalid name cannot leave an orphan run behind.
         target.repository.validate_ref_name(args.ref)
@@ -492,7 +527,10 @@ def _cmd_promote(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    target = _open_resolved_repository(args)
+    config = load_config()
+    target = _open_resolved_repository(args, config=config)
+    if _refuse_baseline_in_local(target, config):
+        return 2
     result = promote(
         target.repository, args.ref, commit=args.commit, cleanup=args.cleanup
     )
@@ -631,7 +669,9 @@ def _load_comparison(
             loaded = _load_named_run(target, against, as_ref=False)
         elif mainline.opened is None:
             raise _RunNotFound(
-                f"ref {against!r} cannot be looked up without the remote"
+                f"ref {against!r} was not looked up, since refs resolve on the "
+                "remote. Use --against-run-id to compare against a run in this "
+                "repository"
             )
         else:
             loaded = _load_named_run(mainline.opened, against, as_ref=True)

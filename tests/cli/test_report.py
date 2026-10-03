@@ -387,6 +387,10 @@ def test_report_without_a_remote_has_no_history_and_resolves_no_ref(
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None
     assert data["against"] is None
+    error = data["against_error"]
+    assert isinstance(error, str) and "--against-run-id" in error, (
+        "the page says how to compare against a run in this repository"
+    )
 
 
 def test_report_carries_the_configured_pr_link_template(
