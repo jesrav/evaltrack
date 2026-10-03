@@ -21,9 +21,9 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ### Changed
 
-- The mainline is the configured `remote` and nothing else. A dashboard with only a local repository
-  mounted no longer measures reliability history over the local `baseline`. Point `remote` at a
-  second local directory to keep that history when working alone. `promote` and
+- **Breaking:** the mainline is the configured `remote` and nothing else. A dashboard with only a
+  local repository mounted no longer measures reliability history over the local `baseline`. Point
+  `remote` at a second local directory to keep that history when working alone. `promote` and
   `push --ref baseline` into the local repository now exit `2`.
 
 ## [0.3.0] - 2026-09-26

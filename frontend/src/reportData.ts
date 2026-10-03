@@ -1,7 +1,8 @@
 // The static report's data source. The report page carries its run inside the
 // document, in a JSON script element the CLI filled, instead of fetching it.
 
-import { collectDeferred } from "./deferred";
+import { collectDeferred, readDeferredEnvelope } from "./deferred";
+import { formatBytes } from "./format";
 import type { MainlineEntry, Ref, RunHistory, RunRecord } from "./types";
 
 /** Id of the element the CLI writes the report's data into. */
@@ -95,4 +96,31 @@ export function countCasesWithValuesLeftOut(data: ReportData): number {
     }
   }
   return cases.size;
+}
+
+/** `value` with each value the report left out replaced by text a pane can
+ *  show in its place: the first characters, and how much there was. A pane
+ *  renders an object as a tree, so the envelope itself would show as its
+ *  fields. Returns the same reference when nothing was replaced. */
+export function showPreviewsOfValuesLeftOut<T>(value: T): T {
+  const walk = (v: unknown): unknown => {
+    if (typeof v !== "object" || v === null) return v;
+    const env = readDeferredEnvelope(v);
+    if (env) {
+      return `${env.preview}… [${formatBytes(env.size)} in all, left out of the report]`;
+    }
+    if (Array.isArray(v)) {
+      const items = v.map(walk);
+      return items.every((item, i) => item === v[i]) ? v : items;
+    }
+    let changed = false;
+    const out: Record<string, unknown> = {};
+    for (const [k, item] of Object.entries(v)) {
+      const next = walk(item);
+      changed = changed || next !== item;
+      out[k] = next;
+    }
+    return changed ? out : v;
+  };
+  return walk(value) as T;
 }

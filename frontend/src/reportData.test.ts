@@ -4,6 +4,7 @@ import {
   ReportDataError,
   countCasesWithValuesLeftOut,
   parseReportData,
+  showPreviewsOfValuesLeftOut,
   type ReportData,
 } from "./reportData";
 import { buildCaseResult, buildRun } from "./test-support";
@@ -110,5 +111,43 @@ describe("countCasesWithValuesLeftOut", () => {
 
   it("is zero for a run with every value in the page", () => {
     expect(countCasesWithValuesLeftOut(parseReportData(reportJson()))).toBe(0);
+  });
+});
+
+describe("showPreviewsOfValuesLeftOut", () => {
+  const leftOut = {
+    $deferred: {
+      preview: "The first words",
+      size: 20480,
+      sha256: "0",
+      run: "01J9Z3QW2KJ5H8VN4TQY7B6MDC",
+      test: "test_x",
+      case: "c1",
+      field: "output",
+      attempt: 0,
+    },
+  };
+
+  it("puts the first characters and the size where the value was", () => {
+    const shown = showPreviewsOfValuesLeftOut({
+      title: "c1",
+      attempts: [{ output: leftOut }, { output: "short" }],
+    });
+
+    expect(shown).toEqual({
+      title: "c1",
+      attempts: [
+        {
+          output: "The first words… [20 KB in all, left out of the report]",
+        },
+        { output: "short" },
+      ],
+    });
+  });
+
+  it("returns the same content when nothing was left out", () => {
+    const content = { title: "c1", attempts: [{ output: "short" }] };
+
+    expect(showPreviewsOfValuesLeftOut(content)).toBe(content);
   });
 });

@@ -11,6 +11,7 @@ import {
   ReportDataError,
   countCasesWithValuesLeftOut,
   readEmbeddedReport,
+  showPreviewsOfValuesLeftOut,
   type ReportData,
 } from "./reportData";
 import "./index.css";
@@ -28,8 +29,8 @@ function Report({ data }: { data: ReportData }) {
   }, []);
   const dismissNotice = useCallback(() => setNotice(null), []);
   // A value the report left out has nowhere to be fetched from. The pane
-  // opens anyway, since the rest of it is there, with the preview standing in
-  // for the value and a banner saying so.
+  // opens anyway, since the rest of it is there, with the first characters
+  // standing in for the value and a banner saying so.
   const openDrawer = useCallback((content: DrawerContent) => {
     const deferred = collectDeferred(content);
     const first = deferred[0];
@@ -40,7 +41,7 @@ function Report({ data }: { data: ReportData }) {
             `or write the report with --full.`
         : null,
     );
-    setDrawer(content);
+    setDrawer(showPreviewsOfValuesLeftOut(content));
   }, []);
   // So the bar can say the page is not whole.
   const leftOut = countCasesWithValuesLeftOut(data);

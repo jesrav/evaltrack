@@ -649,9 +649,7 @@ def _load_comparison(
             loaded = _load_named_run(target, against, as_ref=False)
         elif remote is None:
             raise _RunNotFound(
-                f"ref {against!r} was not looked up, since refs resolve on the "
-                "remote. Use --against-run-id to compare against a run in this "
-                "repository"
+                "--against-ref resolves on the remote, and there is none to read"
             )
         else:
             loaded = _load_named_run(remote, against, as_ref=True)
@@ -700,17 +698,29 @@ def _cmd_report(args: argparse.Namespace) -> int:
     )
     # Everything the page lacks is announced here, each cause once. The page
     # carries the same reasons, for a reader who never sees stderr.
-    if data.history_error is not None:
+    alone = f"shows run {subject.run.id} alone"
+    if remote is None and args.against_ref is not None:
+        # One cause took both, so one line says so. A run in this repository
+        # is the way around a missing remote, and no help with a broken one.
+        hint = (
+            ". Use --against-run-id to compare against a run in this repository"
+            if resolve_remote(config) is None
+            else ""
+        )
         print(
-            f"warning: the report has no history: {data.history_error}",
+            f"warning: {remote_error}, so the report has no history and {alone}{hint}",
             file=sys.stderr,
         )
-    if comparison.error is not None:
-        print(
-            f"warning: {comparison.error}, so the report shows run "
-            f"{subject.run.id} alone",
-            file=sys.stderr,
-        )
+    else:
+        if data.history_error is not None:
+            print(
+                f"warning: the report has no history: {data.history_error}",
+                file=sys.stderr,
+            )
+        if comparison.error is not None:
+            print(
+                f"warning: {comparison.error}, so the report {alone}", file=sys.stderr
+            )
     html = render_report(data, inline_limit=None if args.full else INLINE_VALUE_BYTES)
     if args.output == "-":
         sys.stdout.write(html)

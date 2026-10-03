@@ -382,15 +382,15 @@ def test_report_without_a_remote_has_no_history_and_resolves_no_ref(
     )
 
     assert result.code == 0, "no remote is not a failure of the report"
-    assert result.err.count("no remote configured") == 1, "the cause is told once"
+    assert result.err.count("warning") == 1, "one cause, told once"
+    assert "no remote configured" in result.err
+    assert "--against-run-id" in result.err, "the way around a missing remote"
     data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None
     assert data["against"] is None
     error = data["against_error"]
-    assert isinstance(error, str) and "--against-run-id" in error, (
-        "the page says how to compare against a run in this repository"
-    )
+    assert isinstance(error, str) and "remote" in error
 
 
 def test_report_carries_the_configured_pr_link_template(
@@ -530,6 +530,32 @@ def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
     data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None
+
+
+def test_report_against_a_ref_with_a_remote_that_cannot_be_opened_warns_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The remote is configured and broken, so the advice is to mend it. A
+    run in the local repository is no answer to that, and is not offered."""
+    url = str(tmp_path / "local")
+    configure_local(tmp_path, url)
+    remote = "nosuchscheme://team/evals"
+    monkeypatch.setenv("EVALTRACK_REMOTE", remote)
+    monkeypatch.chdir(tmp_path)
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        ["report", "--run-id", run_id, "--local", "--against-ref", "baseline"]
+        + ["--output", str(output)]
+    )
+
+    assert result.code == 0
+    assert result.err.count("warning") == 1, "one cause, told once"
+    assert remote in result.err
+    assert "--against-run-id" not in result.err
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
+    assert data["against"] is None and data["against_error"] is not None
 
 
 def seed_run_with_a_large_output(url: str) -> tuple[str, str]:
