@@ -1,8 +1,6 @@
 """The dashboard's report download: the single-file report served as an
 attachment, for a run the user is looking at."""
 
-import json
-import re
 from pathlib import Path
 
 import pytest
@@ -14,7 +12,7 @@ from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore
-from ..report_support import named_run
+from ..report_support import embedded_report_json, named_run
 from .conftest import (
     make_client,
     make_recorded_run,
@@ -22,30 +20,7 @@ from .conftest import (
     make_repo_client,
 )
 
-TEMPLATE = (
-    "<!doctype html><title>evaltrack report</title>"
-    '<script type="application/json" id="evaltrack-data"></script>'
-)
-
-
-@pytest.fixture(autouse=True)
-def template(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point the renderer at a temp template, so these tests run whether or not
-    this checkout has a frontend build."""
-    path = tmp_path / "report.html"
-    path.write_text(TEMPLATE, encoding="utf-8")
-    monkeypatch.setattr(report_module, "TEMPLATE_PATH", path)
-    return path
-
-
-def embedded_json(html: str) -> dict[str, object]:
-    match = re.search(
-        r'<script type="application/json" id="evaltrack-data">(.*?)</script>',
-        html,
-        flags=re.DOTALL,
-    )
-    assert match is not None, "the page carries the data element"
-    return json.loads(match.group(1))
+pytestmark = pytest.mark.usefixtures("report_template")
 
 
 def test_report_is_an_html_attachment_holding_the_run() -> None:
@@ -63,7 +38,7 @@ def test_report_is_an_html_attachment_holding_the_run() -> None:
         r.headers["content-disposition"]
         == f'attachment; filename="evaltrack-report-{run.id}.html"'
     )
-    data = embedded_json(r.text)
+    data = embedded_report_json(r.text)
     assert named_run(data)["run"]["id"] == run.id
     assert named_run(data)["via"] == "pr/3"
     assert data["against"] is None
@@ -102,7 +77,7 @@ def test_comparison_report_takes_the_base_from_another_mount() -> None:
         r.headers["content-disposition"]
         == f'attachment; filename="evaltrack-report-{base.id}-to-{mine.id}.html"'
     )
-    data = embedded_json(r.text)
+    data = embedded_report_json(r.text)
     against = named_run(data, "against")
     assert (against["run"]["id"], against["via"]) == (base.id, "baseline")
 
@@ -127,7 +102,7 @@ def test_single_run_report_measures_history_over_the_remote() -> None:
         r = client.get(f"/api/repositories/local/runs/{mine.id}/report")
 
     assert r.status_code == 200
-    history = embedded_json(r.text)["history"]
+    history = embedded_report_json(r.text)["history"]
     assert isinstance(history, dict)
     assert history["reliability"]["test_x"]["test_case"]["pooled_runs"] == 1
 
@@ -179,7 +154,7 @@ def test_report_carries_the_dashboard_pr_link_template() -> None:
         r = client.get(f"/api/repositories/main/runs/{run.id}/report")
 
     assert r.status_code == 200
-    data = embedded_json(r.text)
+    data = embedded_report_json(r.text)
     assert data["pr_url_template"] == "https://example.test/pull/{pr}"
 
 
@@ -201,7 +176,7 @@ def test_report_of_a_local_run_survives_an_unreachable_remote() -> None:
         r = client.get(f"/api/repositories/local/runs/{mine.id}/report")
 
     assert r.status_code == 200, "the run is what the report is for"
-    data = embedded_json(r.text)
+    data = embedded_report_json(r.text)
     assert data["history"] == {"reliability": {}, "score_history": {}}
     error = data["history_error"]
     assert isinstance(error, str) and "expired login" in error
@@ -221,7 +196,7 @@ def test_the_dashboard_report_leaves_a_large_value_out() -> None:
         r = client.get(f"/api/repositories/main/runs/{run.id}/report")
 
     assert r.status_code == 200
-    embedded = named_run(embedded_json(r.text))["run"]
+    embedded = named_run(embedded_report_json(r.text))["run"]
     output = embedded["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
     assert isinstance(output, dict) and "$deferred" in output
     assert len(r.text) < 20_000

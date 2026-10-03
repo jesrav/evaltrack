@@ -1,7 +1,6 @@
 """`evaltrack report`, which writes a run as a single HTML file."""
 
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -15,7 +14,7 @@ from evaltrack.repositories import open_repository
 
 from ..factories import make_attempt, make_round
 from ..fakes import RaisingStore, mount_fake_azure
-from ..report_support import named_run
+from ..report_support import embedded_report_json, named_run
 from .helpers import (
     configure_local,
     configure_repositories,
@@ -24,33 +23,7 @@ from .helpers import (
     seed_run_in_repo,
 )
 
-# A stand-in for the built page: the element the CLI fills, and nothing that
-# needs a browser. The renderer's own tests cover what the build must carry.
-TEMPLATE = (
-    "<!doctype html><title>evaltrack report</title>"
-    '<script type="application/json" id="evaltrack-data"></script>'
-)
-
-
-@pytest.fixture(autouse=True)
-def template(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point the command at a temp template, so these tests run whether or not
-    this checkout has a frontend build."""
-    path = tmp_path / "template" / "report.html"
-    path.parent.mkdir()
-    path.write_text(TEMPLATE, encoding="utf-8")
-    monkeypatch.setattr(report_module, "TEMPLATE_PATH", path)
-    return path
-
-
-def embedded_json(html: str) -> dict[str, object]:
-    match = re.search(
-        r'<script type="application/json" id="evaltrack-data">(.*?)</script>',
-        html,
-        flags=re.DOTALL,
-    )
-    assert match is not None, "the page carries the data element"
-    return json.loads(match.group(1))
+pytestmark = pytest.mark.usefixtures("report_template")
 
 
 def test_report_writes_one_file_holding_the_run(tmp_path: Path) -> None:
@@ -67,7 +40,7 @@ def test_report_writes_one_file_holding_the_run(tmp_path: Path) -> None:
     assert [p.name for p in output.parent.iterdir()] == ["run.html"], (
         "the report is one file with no assets beside it"
     )
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert named_run(data)["run"]["id"] == run_id
     assert data["against"] is None
     assert run_id in result.out and str(output) in result.out
@@ -96,8 +69,8 @@ def test_report_to_stdout_prints_only_the_page(tmp_path: Path) -> None:
 
     assert result.code == 0
     assert result.out.startswith("<!doctype html>")
-    assert result.out.rstrip().endswith("</script>"), "nothing follows the page"
-    assert named_run(embedded_json(result.out))["run"] is not None
+    assert result.out.rstrip().endswith("</html>"), "nothing follows the page"
+    assert named_run(embedded_report_json(result.out))["run"] is not None
 
 
 def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
@@ -114,7 +87,7 @@ def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
     )
 
     assert result.code == 0
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert named_run(data)["run"]["id"] == newer
     assert named_run(data)["via"] == "pr/12"
     refs = data["refs"]
@@ -126,7 +99,7 @@ def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
 def test_report_against_a_ref_embeds_both_runs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`--against baseline` is the CI case: the PR's run with the mainline run
+    """`--against-ref baseline` is the CI case: the PR's run with the mainline run
     beside it, so the page opens on the comparison."""
     url = str(tmp_path / "repo")
     monkeypatch.setenv("EVALTRACK_REMOTE", url)
@@ -152,7 +125,7 @@ def test_report_against_a_ref_embeds_both_runs(
     )
 
     assert result.code == 0
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     run, against = named_run(data), named_run(data, "against")
     assert (run["run"]["id"], against["run"]["id"]) == (pr_run, baseline)
     assert (run["via"], against["via"]) == ("pr/3", "baseline")
@@ -180,7 +153,7 @@ def test_report_against_a_run_id_names_no_ref(tmp_path: Path) -> None:
     )
 
     assert result.code == 0
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     against = named_run(data, "against")
     assert against["run"]["id"] == base
     assert against["via"] is None
@@ -247,7 +220,7 @@ def test_report_missing_comparison_reports_the_run_alone_with_a_warning(
 
     assert result.code == 0, "a comparison target the repository lacks is not a failure"
     assert "warning" in result.err and "baseline" in result.err
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["against"] is None
     error = data["against_error"]
     assert isinstance(error, str) and "baseline" in error, "the page says why too"
@@ -281,7 +254,7 @@ def test_report_against_the_run_itself_reports_it_alone(
 
     assert result.code == 0
     assert "itself" in result.err
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["against"] is None
     error = data["against_error"]
     assert isinstance(error, str) and "itself" in error
@@ -320,7 +293,7 @@ def test_report_against_a_run_in_another_stored_format_reports_the_run_alone(
 
     assert result.code == 0, "a baseline this evaltrack cannot read is not a failure"
     assert "warning" in result.err and "evaltrack that reads it" in result.err
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["against"] is None
     assert isinstance(data["against_error"], str)
 
@@ -383,7 +356,7 @@ def test_report_of_a_local_run_measures_history_over_the_remote(
 
     assert result.code == 0
     assert repos.remote in result.err, "the mainline read is announced"
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     history = data["history"]
     assert isinstance(history, dict)
     assert history["reliability"]["test_x"]["test_case"]["pooled_runs"] == 1
@@ -410,7 +383,7 @@ def test_report_without_a_remote_has_no_history_and_resolves_no_ref(
 
     assert result.code == 0, "no remote is not a failure of the report"
     assert result.err.count("no remote configured") == 1, "the cause is told once"
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None
     assert data["against"] is None
@@ -432,7 +405,7 @@ def test_report_carries_the_configured_pr_link_template(
     result = run_cli(["report", "--run-id", run_id, "--output", str(output)])
 
     assert result.code == 0
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["pr_url_template"] == "https://example.test/pull/{pr}"
 
 
@@ -455,7 +428,7 @@ def test_report_of_a_local_run_with_the_remote_down_has_no_history(
 
     assert result.code == 0, "an unreachable mainline does not fail the report"
     assert "warning" in result.err and remote in result.err
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None
 
@@ -479,7 +452,7 @@ def test_report_against_a_ref_resolves_it_on_the_remote(
 
     assert result.code == 0
     assert "warning" not in result.err
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     against = named_run(data, "against")
     assert (against["run"]["id"], against["via"]) == (promoted, "baseline")
 
@@ -502,7 +475,7 @@ def test_report_against_a_run_id_looks_in_the_named_repository(
     )
 
     assert result.code == 0
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert named_run(data, "against")["run"]["id"] == earlier
 
 
@@ -527,7 +500,7 @@ def test_report_against_a_ref_with_the_remote_down_reports_the_run_alone(
     )
 
     assert result.code == 0, "an unreachable mainline does not fail the report"
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["against"] is None
     assert data["history_error"] is not None
 
@@ -550,7 +523,7 @@ def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
 
     assert result.code == 0, "an unopenable mainline does not fail the report"
     assert "warning" in result.err and remote in result.err
-    data = embedded_json(output.read_text(encoding="utf-8"))
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["history_error"] is not None
 
@@ -567,7 +540,7 @@ def seed_run_with_a_large_output(url: str) -> tuple[str, str]:
 
 
 def recorded_output(html: str) -> object:
-    run = named_run(embedded_json(html))["run"]
+    run = named_run(embedded_report_json(html))["run"]
     return run["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
 
 
