@@ -84,14 +84,15 @@ def build_run_view(run: RunRecord, *, limit: int | None = INLINE_VALUE_BYTES) ->
     """The run as plain data, the way the dashboard opens it. Every value over
     `limit` bytes is replaced by its envelope. None keeps every value."""
     plain = dump_plain(run)
-    for nodeid, test in plain["tests"].items():
+    for test in plain["tests"].values():
         # A run saved before 0.3.0 can hold `raw_results`, the runner's own
         # reports. They are large, and the dashboard does not show them.
         test.pop("raw_results", None)
+    if limit is None:
+        return plain
+    for nodeid, test in plain["tests"].items():
         for case_id, case in test["cases"].items():
             address = {"run": run.id, "test": nodeid, "case": case_id}
-            if limit is None:
-                continue
             for field in _CASE_FIELDS:
                 case[field] = _defer(
                     case[field], limit=limit, address={**address, "field": field}

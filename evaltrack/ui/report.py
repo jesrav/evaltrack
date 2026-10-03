@@ -22,7 +22,8 @@ from evaltrack.ui.views import (
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
 
 # The element the page reads. The build leaves it empty, and the report fills it.
-_DATA_SLOT = '<script type="application/json" id="evaltrack-data"></script>'
+_SLOT_OPEN = '<script type="application/json" id="evaltrack-data">'
+_SLOT_CLOSE = "</script>"
 
 
 def collect_report_data(
@@ -105,7 +106,7 @@ def _load_template(path: Path) -> tuple[str, str]:
             f"the report template is not built ({path} is missing). "
             "In a checkout, run `just frontend_build`."
         ) from None
-    head, slot, tail = template.partition(_DATA_SLOT)
+    head, slot, tail = template.partition(_SLOT_OPEN + _SLOT_CLOSE)
     if not slot:
         raise ValueError(
             f"{path} carries no data slot, so it is not the report "
@@ -139,7 +140,4 @@ def render_report(
     """
     head, tail = _load_template(TEMPLATE_PATH)
     payload = escape_json_for_html(_dump_report_json(data, inline_limit=inline_limit))
-    return (
-        f'{head}<script type="application/json" id="evaltrack-data">{payload}'
-        f"</script>{tail}"
-    )
+    return f"{head}{_SLOT_OPEN}{payload}{_SLOT_CLOSE}{tail}"
