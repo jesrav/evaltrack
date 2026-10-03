@@ -14,6 +14,7 @@ from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore
+from ..report_support import named_run
 from .conftest import (
     make_client,
     make_recorded_run,
@@ -63,9 +64,8 @@ def test_report_is_an_html_attachment_holding_the_run() -> None:
         == f'attachment; filename="evaltrack-report-{run.id}.html"'
     )
     data = embedded_json(r.text)
-    embedded = data["run"]
-    assert isinstance(embedded, dict) and embedded["id"] == run.id
-    assert data["via"] == "pr/3"
+    assert named_run(data)["run"]["id"] == run.id
+    assert named_run(data)["via"] == "pr/3"
     assert data["against"] is None
     refs = data["refs"]
     assert isinstance(refs, list) and [r["name"] for r in refs] == ["pr/3"]
@@ -103,9 +103,8 @@ def test_comparison_report_takes_the_base_from_another_mount() -> None:
         == f'attachment; filename="evaltrack-report-{base.id}-to-{mine.id}.html"'
     )
     data = embedded_json(r.text)
-    against = data["against"]
-    assert isinstance(against, dict) and against["id"] == base.id
-    assert data["against_via"] == "baseline"
+    against = named_run(data, "against")
+    assert (against["run"]["id"], against["via"]) == (base.id, "baseline")
 
 
 def test_single_run_report_measures_history_over_the_remote() -> None:
@@ -222,8 +221,7 @@ def test_the_dashboard_report_leaves_a_large_value_out() -> None:
         r = client.get(f"/api/repositories/main/runs/{run.id}/report")
 
     assert r.status_code == 200
-    embedded = embedded_json(r.text)["run"]
-    assert isinstance(embedded, dict)
+    embedded = named_run(embedded_json(r.text))["run"]
     output = embedded["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
     assert isinstance(output, dict) and "$deferred" in output
     assert len(r.text) < 20_000

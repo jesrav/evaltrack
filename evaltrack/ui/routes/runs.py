@@ -16,7 +16,7 @@ from evaltrack.core.run_record import (
     ensure_run_id,
 )
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
-from evaltrack.ui.models import MainlineEntry
+from evaltrack.ui.models import MainlineEntry, NamedRun
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
@@ -127,19 +127,20 @@ def build_runs_router(
         dashboard. `against` names a run to compare from, in `against_slug`
         or, without one, in `slug`. `via` and `against_via` label the runs
         with the refs the page reached them by."""
-        run = load_run_or_404(slug, run_id)
-        against_run: RunRecord | None = None
+        run = NamedRun(run=load_run_or_404(slug, run_id), via=via)
+        against_run: NamedRun | None = None
         if against is not None:
-            against_run = load_run_or_404(
-                against_slug if against_slug is not None else slug, against
+            against_run = NamedRun(
+                run=load_run_or_404(
+                    against_slug if against_slug is not None else slug, against
+                ),
+                via=against_via,
             )
         data = collect_report_data(
             resolve(slug),
             run,
             mainline=mainline,
-            via=via,
             against=against_run,
-            against_via=against_via,
             pr_url_template=pr_url_template,
         )
         if data.history_error is not None:

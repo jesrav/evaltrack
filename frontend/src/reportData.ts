@@ -7,15 +7,18 @@ import type { MainlineEntry, Ref, RunHistory, RunRecord } from "./types";
 /** Id of the element the CLI writes the report's data into. */
 export const REPORT_DATA_ID = "evaltrack-data";
 
-/** What a report page embeds. Mirrors the backend `ReportData`. `via` and
- *  `against_via` name the ref each run was reached by, when it was one, and
- *  `refs` are the refs pointing at the run. `history` and `mainline` are
- *  measured over the mainline the generator chose. */
-export interface ReportData {
+/** A run, and the ref it was reached by, when it was reached by one. */
+export interface NamedRun {
   run: RunRecord;
   via: string | null;
-  against: RunRecord | null;
-  against_via: string | null;
+}
+
+/** What a report page embeds. Mirrors the backend `ReportData`. `refs` are
+ *  the refs pointing at the run. `history` and `mainline` are measured over
+ *  the mainline the generator chose. */
+export interface ReportData {
+  run: NamedRun;
+  against: NamedRun | null;
   /** Why a comparison that was asked for is not in the page. */
   against_error: string | null;
   refs: Ref[];
@@ -43,6 +46,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function holdsRun(value: unknown): boolean {
+  return isRecord(value) && isRecord(value.run) && isRecord(value.run.tests);
+}
+
 /** Parse the text of the report's data element. The shape check stops at what
  *  the page reads first, since a run is too large to validate in full here and
  *  the CLI wrote it from the same models. */
@@ -60,17 +67,13 @@ export function parseReportData(text: string | null | undefined): ReportData {
       `The report data does not parse as JSON: ${e instanceof Error ? e.message : String(e)}`,
     );
   }
-  if (
-    !isRecord(parsed) ||
-    !isRecord(parsed.run) ||
-    !isRecord(parsed.run.tests)
-  ) {
+  if (!isRecord(parsed) || !holdsRun(parsed.run)) {
     throw new ReportDataError(
       "The report data does not hold a run. It was not written by this version of `evaltrack report`.",
     );
   }
   const against = parsed.against;
-  if (against !== null && against !== undefined && !isRecord(against)) {
+  if (against !== null && against !== undefined && !holdsRun(against)) {
     throw new ReportDataError(
       "The report's comparison run is not a run. It was not written by this version of `evaltrack report`.",
     );
@@ -79,10 +82,10 @@ export function parseReportData(text: string | null | undefined): ReportData {
   // Older or hand-made pages can leave the optional parts out; each has a
   // meaning for "absent".
   return {
-    run: data.run,
-    via: data.via ?? null,
-    against: data.against ?? null,
-    against_via: data.against_via ?? null,
+    run: { run: data.run.run, via: data.run.via ?? null },
+    against: data.against
+      ? { run: data.against.run, via: data.against.via ?? null }
+      : null,
     against_error:
       typeof data.against_error === "string" ? data.against_error : null,
     refs: Array.isArray(data.refs) ? data.refs : [],
@@ -112,9 +115,9 @@ export function readEmbeddedReport(doc: Document): ReportData {
  *  sides of a comparison, since the page shows it as one row. */
 export function countCasesWithValuesLeftOut(data: ReportData): number {
   const cases = new Set<string>();
-  for (const run of [data.run, data.against]) {
-    if (!run) continue;
-    for (const env of collectDeferred(run)) {
+  for (const named of [data.run, data.against]) {
+    if (!named) continue;
+    for (const env of collectDeferred(named.run)) {
       cases.add(`${env.test}\u0000${env.case}`);
     }
   }

@@ -15,6 +15,7 @@ from evaltrack.repositories import open_repository
 
 from ..factories import make_attempt, make_round
 from ..fakes import RaisingStore, mount_fake_azure
+from ..report_support import named_run
 from .helpers import (
     configure_local,
     configure_repositories,
@@ -67,9 +68,7 @@ def test_report_writes_one_file_holding_the_run(tmp_path: Path) -> None:
         "the report is one file with no assets beside it"
     )
     data = embedded_json(output.read_text(encoding="utf-8"))
-    run = data["run"]
-    assert isinstance(run, dict)
-    assert run["id"] == run_id
+    assert named_run(data)["run"]["id"] == run_id
     assert data["against"] is None
     assert run_id in result.out and str(output) in result.out
 
@@ -98,7 +97,7 @@ def test_report_to_stdout_prints_only_the_page(tmp_path: Path) -> None:
     assert result.code == 0
     assert result.out.startswith("<!doctype html>")
     assert result.out.rstrip().endswith("</script>"), "nothing follows the page"
-    assert embedded_json(result.out)["run"] is not None
+    assert named_run(embedded_json(result.out))["run"] is not None
 
 
 def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
@@ -116,10 +115,8 @@ def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
 
     assert result.code == 0
     data = embedded_json(output.read_text(encoding="utf-8"))
-    run = data["run"]
-    assert isinstance(run, dict)
-    assert run["id"] == newer
-    assert data["via"] == "pr/12"
+    assert named_run(data)["run"]["id"] == newer
+    assert named_run(data)["via"] == "pr/12"
     refs = data["refs"]
     assert isinstance(refs, list) and [r["name"] for r in refs] == ["pr/12"], (
         "the page can show which refs reach the run, and the PR they record"
@@ -156,10 +153,9 @@ def test_report_against_a_ref_embeds_both_runs(
 
     assert result.code == 0
     data = embedded_json(output.read_text(encoding="utf-8"))
-    run, against = data["run"], data["against"]
-    assert isinstance(run, dict) and isinstance(against, dict)
-    assert (run["id"], against["id"]) == (pr_run, baseline)
-    assert (data["via"], data["against_via"]) == ("pr/3", "baseline")
+    run, against = named_run(data), named_run(data, "against")
+    assert (run["run"]["id"], against["run"]["id"]) == (pr_run, baseline)
+    assert (run["via"], against["via"]) == ("pr/3", "baseline")
     assert baseline in result.out and pr_run in result.out
 
 
@@ -185,10 +181,9 @@ def test_report_against_a_run_id_names_no_ref(tmp_path: Path) -> None:
 
     assert result.code == 0
     data = embedded_json(output.read_text(encoding="utf-8"))
-    against = data["against"]
-    assert isinstance(against, dict)
-    assert against["id"] == base
-    assert data["against_via"] is None
+    against = named_run(data, "against")
+    assert against["run"]["id"] == base
+    assert against["via"] is None
 
 
 def test_report_missing_run_exits_1_and_writes_nothing(tmp_path: Path) -> None:
@@ -485,9 +480,8 @@ def test_report_against_a_ref_resolves_it_on_the_remote(
     assert result.code == 0
     assert "warning" not in result.err
     data = embedded_json(output.read_text(encoding="utf-8"))
-    against = data["against"]
-    assert isinstance(against, dict)
-    assert (against["id"], data["against_via"]) == (promoted, "baseline")
+    against = named_run(data, "against")
+    assert (against["run"]["id"], against["via"]) == (promoted, "baseline")
 
 
 def test_report_against_a_run_id_looks_in_the_named_repository(
@@ -508,9 +502,8 @@ def test_report_against_a_run_id_looks_in_the_named_repository(
     )
 
     assert result.code == 0
-    against = embedded_json(output.read_text(encoding="utf-8"))["against"]
-    assert isinstance(against, dict)
-    assert against["id"] == earlier
+    data = embedded_json(output.read_text(encoding="utf-8"))
+    assert named_run(data, "against")["run"]["id"] == earlier
 
 
 def test_report_against_a_ref_with_the_remote_down_reports_the_run_alone(
@@ -574,8 +567,7 @@ def seed_run_with_a_large_output(url: str) -> tuple[str, str]:
 
 
 def recorded_output(html: str) -> object:
-    run = embedded_json(html)["run"]
-    assert isinstance(run, dict)
+    run = named_run(embedded_json(html))["run"]
     return run["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
 
 

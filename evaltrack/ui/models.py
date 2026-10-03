@@ -78,22 +78,26 @@ class RunHistory(BaseModel):
     score_history: dict[str, list[ScoreHistory]] = {}
 
 
+class NamedRun(BaseModel):
+    """A run, and the ref it was reached by, when it was reached by one."""
+
+    run: RunRecord
+    via: str | None = None
+
+
 class ReportData(BaseModel):
     """What the single-file report embeds: the same shapes the API serves, so
     the page reads them as the dashboard does.
 
-    `via` and `against_via` name the ref each run was reached by, when it was
-    one. `refs` are the refs pointing at the run in its own repository.
-    `history` and `mainline` are measured over the mainline the generator
-    chose. `history` is empty for a comparison, which does not render it, and
-    when the mainline could not be read, which `history_error` then says.
+    `refs` are the refs pointing at the run in its own repository. `history`
+    and `mainline` are measured over the mainline the generator chose.
+    `history` is empty for a comparison, which does not render it, and when
+    the mainline could not be read, which `history_error` then says.
     `against_error` says why a comparison that was asked for is not there.
     """
 
-    run: RunRecord
-    via: str | None = None
-    against: RunRecord | None = None
-    against_via: str | None = None
+    run: NamedRun
+    against: NamedRun | None = None
     against_error: str | None = None
     refs: list[Ref] = []
     history: RunHistory = RunHistory()

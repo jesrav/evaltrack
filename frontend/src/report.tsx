@@ -53,18 +53,8 @@ function Report({ data }: { data: ReportData }) {
     : null;
   const sides = data.against
     ? swapped
-      ? {
-          a: data.run,
-          b: data.against,
-          viaA: data.via,
-          viaB: data.against_via,
-        }
-      : {
-          a: data.against,
-          b: data.run,
-          viaA: data.against_via,
-          viaB: data.via,
-        }
+      ? { a: data.run, b: data.against }
+      : { a: data.against, b: data.run }
     : null;
   return (
     <div className="report">
@@ -119,18 +109,18 @@ function Report({ data }: { data: ReportData }) {
         )}
         {sides ? (
           <RunDiff
-            a={sides.a}
-            b={sides.b}
-            viaA={sides.viaA ?? undefined}
-            viaB={sides.viaB ?? undefined}
+            a={sides.a.run}
+            b={sides.b.run}
+            viaA={sides.a.via ?? undefined}
+            viaB={sides.b.via ?? undefined}
             standalone
             onSwap={swap}
             onOpenDrawer={openDrawer}
           />
         ) : (
           <RunDetail
-            run={data.run}
-            via={data.via ?? undefined}
+            run={data.run.run}
+            via={data.run.via ?? undefined}
             refs={data.refs}
             standalone
             history={
@@ -180,7 +170,7 @@ if (!root) throw new Error("missing #root in report.html");
 let page: ReactElement;
 try {
   const data = readEmbeddedReport(document);
-  document.title = `evaltrack report · ${data.via ?? data.run.id}`;
+  document.title = `evaltrack report · ${data.run.via ?? data.run.run.id}`;
   page = <Report data={data} />;
 } catch (e) {
   if (!(e instanceof ReportDataError)) throw e;

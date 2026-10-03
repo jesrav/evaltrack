@@ -9,9 +9,9 @@ from pathlib import Path
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.refs import BASELINE_REF
-from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
+from evaltrack.core.run_record import dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import MainlineEntry, ReportData, RunHistory
+from evaltrack.ui.models import MainlineEntry, NamedRun, ReportData, RunHistory
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES, build_run_view
 from evaltrack.ui.views import mainline_entry_in, refs_pointing_at, run_history_over
 
@@ -24,13 +24,11 @@ _DATA_SLOT = '<script type="application/json" id="evaltrack-data"></script>'
 
 def collect_report_data(
     repository: RunRepository,
-    run: RunRecord,
+    run: NamedRun,
     *,
     mainline: RunRepository | None,
     mainline_error: str | None = None,
-    via: str | None = None,
-    against: RunRecord | None = None,
-    against_via: str | None = None,
+    against: NamedRun | None = None,
     against_error: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
@@ -60,17 +58,15 @@ def collect_report_data(
             # reflog the entry is found in.
             reflog = list(mainline.get_reflog(BASELINE_REF))
             if against is None:
-                history = run_history_over(mainline, reflog, viewed=run)
-            mainline_entry = mainline_entry_in(reflog, run.id)
+                history = run_history_over(mainline, reflog, viewed=run.run)
+            mainline_entry = mainline_entry_in(reflog, run.run.id)
         except RepositoryUnavailableError as exc:
             history, mainline_entry, history_error = RunHistory(), None, str(exc)
     return ReportData(
         run=run,
-        via=via,
         against=against,
-        against_via=against_via,
         against_error=against_error,
-        refs=refs_pointing_at(repository, run.id),
+        refs=refs_pointing_at(repository, run.run.id),
         history=history,
         mainline=mainline_entry,
         history_error=history_error,
@@ -123,9 +119,9 @@ def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
     it, with every value over `inline_limit` bytes replaced by its preview and
     size, so a report of a large run stays a file worth sending."""
     plain = dump_plain(data)
-    plain["run"] = build_run_view(data.run, limit=inline_limit)
+    plain["run"]["run"] = build_run_view(data.run.run, limit=inline_limit)
     if data.against is not None:
-        plain["against"] = build_run_view(data.against, limit=inline_limit)
+        plain["against"]["run"] = build_run_view(data.against.run, limit=inline_limit)
     return dump_plain_json(plain).decode()
 
 

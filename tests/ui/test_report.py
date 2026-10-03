@@ -10,13 +10,14 @@ import pytest
 
 import evaltrack.ui.report as report_module
 from evaltrack.core.errors import RepositoryUnavailableError
-from evaltrack.core.run_record import dump_run_json, parse_run_json
+from evaltrack.core.run_record import RunRecord, dump_run_json, parse_run_json
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import ReportData
+from evaltrack.ui.models import NamedRun, ReportData
 from evaltrack.ui.report import collect_report_data, render_report
 
 from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore
+from ..report_support import named_run
 from .conftest import make_recorded_run
 
 # What a built page carries: the element the CLI fills, inside markup the
@@ -42,15 +43,21 @@ def template(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return path
 
 
-def make_data(**overrides: object) -> ReportData:
-    run = make_recorded_run(make_round(), commit="c0")
-    fields: dict[str, object] = {
-        "run": run,
-        "generated_at": GENERATED_AT,
-        "generated_by": "0.0.0",
-    }
-    fields.update(overrides)
-    return ReportData.model_validate(fields)
+def make_data(
+    run: RunRecord | None = None,
+    *,
+    via: str | None = None,
+    against: RunRecord | None = None,
+    against_via: str | None = None,
+    against_error: str | None = None,
+) -> ReportData:
+    return ReportData(
+        run=NamedRun(run=run or make_recorded_run(make_round(), commit="c0"), via=via),
+        against=NamedRun(run=against, via=against_via) if against else None,
+        against_error=against_error,
+        generated_at=GENERATED_AT,
+        generated_by="0.0.0",
+    )
 
 
 def embedded_json(html: str) -> dict[str, object]:
@@ -66,8 +73,7 @@ def embedded_json(html: str) -> dict[str, object]:
 
 def recorded_output(embedded: dict[str, object]) -> object:
     """The output of the one case the fixture run records."""
-    run = embedded["run"]
-    assert isinstance(run, dict)
+    run = named_run(embedded)["run"]
     return run["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
 
 
@@ -77,7 +83,7 @@ def test_the_page_carries_the_run_as_the_api_serves_it(template: Path) -> None:
     html = render_report(data)
 
     embedded = embedded_json(html)
-    assert embedded["run"] == json.loads(data.run.model_dump_json())
+    assert named_run(embedded)["run"] == json.loads(data.run.run.model_dump_json())
     assert embedded["against"] is None
     assert embedded["generated_at"] == "2026-01-02T03:04:05Z"
     assert html.startswith("<!doctype html>"), "the template around the data survives"
@@ -89,9 +95,10 @@ def test_a_comparison_embeds_both_runs(template: Path) -> None:
 
     embedded = embedded_json(render_report(data))
 
-    assert embedded["run"] == json.loads(data.run.model_dump_json())
-    assert embedded["against"] == json.loads(against.model_dump_json())
-    assert (embedded["via"], embedded["against_via"]) == ("pr/7", "baseline")
+    reported, base = named_run(embedded), named_run(embedded, "against")
+    assert reported["run"] == json.loads(data.run.run.model_dump_json())
+    assert base["run"] == json.loads(against.model_dump_json())
+    assert (reported["via"], base["via"]) == ("pr/7", "baseline")
 
 
 def test_an_output_cannot_close_the_data_element(template: Path) -> None:
@@ -103,7 +110,7 @@ def test_an_output_cannot_close_the_data_element(template: Path) -> None:
         make_round(attempts=[make_attempt(output=hostile)]), commit="c0"
     )
 
-    html = render_report(make_data(run=run))
+    html = render_report(make_data(run))
 
     _, _, tail = html.partition('id="evaltrack-data">')
     body, _, rest = tail.partition("</script>")
@@ -152,11 +159,11 @@ def test_collected_data_finds_the_mainline() -> None:
     repo.save_run(run)
     repo.move_ref("baseline", run.id, commit="main-0", pr=3, title="Land it")
 
-    data = collect_report_data(repo, run, mainline=repo, via="baseline")
+    data = collect_report_data(repo, NamedRun(run=run, via="baseline"), mainline=repo)
 
     assert data.mainline is not None
     assert (data.mainline.commit, data.mainline.pr) == ("main-0", 3)
-    assert data.via == "baseline"
+    assert data.run.via == "baseline"
     assert data.against is None
 
 
@@ -175,7 +182,7 @@ def test_collected_history_is_measured_over_the_repository_baseline() -> None:
     viewed = make_recorded_run(make_round(), commit="pr", reliability_target=0.9)
     repo.save_run(viewed)
 
-    data = collect_report_data(repo, viewed, mainline=repo)
+    data = collect_report_data(repo, NamedRun(run=viewed), mainline=repo)
 
     reliability = data.history.reliability["test_x"]["test_case"]
     assert reliability.pooled_runs == 3
@@ -194,12 +201,15 @@ def test_a_comparison_reads_no_history() -> None:
     repo.save_run(viewed)
 
     data = collect_report_data(
-        repo, viewed, mainline=repo, against=base, against_via="baseline"
+        repo,
+        NamedRun(run=viewed),
+        mainline=repo,
+        against=NamedRun(run=base, via="baseline"),
     )
 
     assert data.history.reliability == {}
     assert data.against is not None
-    assert data.against.id == base.id
+    assert data.against.run.id == base.id
 
 
 def test_collected_history_is_measured_over_the_given_mainline() -> None:
@@ -213,7 +223,7 @@ def test_collected_history_is_measured_over_the_given_mainline() -> None:
     viewed = make_recorded_run(make_round(), commit="wip", reliability_target=0.9)
     local.save_run(viewed)
 
-    data = collect_report_data(local, viewed, mainline=remote)
+    data = collect_report_data(local, NamedRun(run=viewed), mainline=remote)
 
     assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
     assert data.mainline is None
@@ -231,7 +241,7 @@ def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
     repo.move_ref("pr/8", other.id, pr=8)
     repo.move_ref("baseline", run.id)
 
-    data = collect_report_data(repo, run, mainline=None)
+    data = collect_report_data(repo, NamedRun(run=run), mainline=None)
 
     assert [r.name for r in data.refs] == ["baseline", "pr/7"]
     pr = data.refs[1].tip
@@ -246,12 +256,12 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
     repo.save_run(run)
     down = RunRepository(RaisingStore(RepositoryUnavailableError("no route to host")))
 
-    data = collect_report_data(repo, run, mainline=down)
+    data = collect_report_data(repo, NamedRun(run=run), mainline=down)
 
     assert data.history.reliability == {}
     assert data.mainline is None
     assert data.history_error is not None and "no route" in data.history_error
-    assert data.run.id == run.id
+    assert data.run.run.id == run.id
 
 
 def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None:
@@ -262,7 +272,10 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     repo.save_run(run)
 
     data = collect_report_data(
-        repo, run, mainline=None, mainline_error="the azure extra is not installed"
+        repo,
+        NamedRun(run=run),
+        mainline=None,
+        mainline_error="the azure extra is not installed",
     )
 
     assert data.history.reliability == {}
@@ -280,12 +293,10 @@ def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
     stored["tests"]["test_x"]["raw_results"] = [{"cases": [{"output": "x" * 100}]}]
     old_run = parse_run_json(json.dumps(stored).encode())
 
-    embedded = embedded_json(render_report(make_data(run=old_run, against=old_run)))
+    embedded = embedded_json(render_report(make_data(old_run, against=old_run)))
 
     for key in ("run", "against"):
-        run_json = embedded[key]
-        assert isinstance(run_json, dict)
-        test = run_json["tests"]["test_x"]
+        test = named_run(embedded, key)["run"]["tests"]["test_x"]
         assert "raw_results" not in test
         assert test["cases"], "the structured cases still stand"
 
@@ -298,7 +309,7 @@ def test_a_large_value_is_left_out_with_its_preview(template: Path) -> None:
         make_round(attempts=[make_attempt(output=big)]), commit="c0"
     )
 
-    embedded = embedded_json(render_report(make_data(run=run), inline_limit=100))
+    embedded = embedded_json(render_report(make_data(run), inline_limit=100))
 
     output = recorded_output(embedded)
     assert isinstance(output, dict) and set(output) == {"$deferred"}
@@ -314,7 +325,7 @@ def test_every_value_is_embedded_on_request(template: Path) -> None:
         make_round(attempts=[make_attempt(output=big)]), commit="c0"
     )
 
-    embedded = embedded_json(render_report(make_data(run=run), inline_limit=None))
+    embedded = embedded_json(render_report(make_data(run), inline_limit=None))
 
     assert recorded_output(embedded) == big
 

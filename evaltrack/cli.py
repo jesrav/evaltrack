@@ -32,7 +32,6 @@ from evaltrack.core.errors import (
 )
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
 from evaltrack.core.run_record import (
-    RunRecord,
     dump_run_json,
     ensure_run_id,
     parse_run_json,
@@ -43,6 +42,7 @@ from evaltrack.repositories import (
     open_repository,
     promote,
 )
+from evaltrack.ui.models import NamedRun
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES
 
@@ -533,20 +533,12 @@ def _cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
-@dataclass(frozen=True)
-class _NamedRun:
-    """A loaded run and the ref it was named by, when it was named by one."""
-
-    run: RunRecord
-    via: str | None
-
-
 class _RunNotFound(Exception):
     """The repository does not hold the run a name picks. The message says
     which name, and where it was looked for."""
 
 
-def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> _NamedRun:
+def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> NamedRun:
     """The run `name` picks: the tip of that ref, or the run with that id.
 
     Raises:
@@ -563,7 +555,7 @@ def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> _N
     if run is None:
         held_by = f" (the tip of ref {name!r})" if as_ref else ""
         raise _RunNotFound(f"run {run_id!r} not found in {target.url}{held_by}")
-    return _NamedRun(run, via)
+    return NamedRun(run=run, via=via)
 
 
 def _names_a_run_id(value: str) -> bool:
@@ -614,12 +606,12 @@ class _Comparison:
     reason goes into the page too, since a reader of a CI artifact never sees
     stderr."""
 
-    run: _NamedRun | None
+    run: NamedRun | None
     error: str | None = None
 
 
 def _load_comparison(
-    target: _OpenedRepository, subject: _NamedRun, *, against: str, mainline: _Mainline
+    target: _OpenedRepository, subject: NamedRun, *, against: str, mainline: _Mainline
 ) -> _Comparison:
     """The run to compare `subject` against, or the reason there is no
     comparison to make, with a warning printed. A project's first pull request
@@ -684,12 +676,10 @@ def _cmd_report(args: argparse.Namespace) -> int:
     against = comparison.run
     data = collect_report_data(
         target.repository,
-        subject.run,
+        subject,
         mainline=mainline.opened.repository if mainline.opened else None,
         mainline_error=mainline.error,
-        via=subject.via,
-        against=against.run if against else None,
-        against_via=against.via if against else None,
+        against=against,
         against_error=comparison.error,
         pr_url_template=config.pr_url_template,
     )
