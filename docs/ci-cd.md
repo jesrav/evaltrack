@@ -134,7 +134,7 @@ event means shipped in your process. I promote on merge, which suits trunk-based
 Promoting later than merge leaves `pr/{n}` refs standing until their run ships, and a ref reaches
 every run in its history. Delete them once their PR is closed.
 
-A repository has one `baseline`. The dashboard's Mainline section and the [cross-run reliability
+The remote has one `baseline`. The dashboard's Mainline section and the [cross-run reliability
 estimate][cross-run reliability] read it.
 
 ## Reviewing a PR

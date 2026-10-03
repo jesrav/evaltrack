@@ -13,7 +13,8 @@ already points at the run. See
 
 ## evaltrack promote
 
-See [Repositories › Promote](./repositories.md#promote) and
+`promote` writes `baseline` to the remote. If the target is the local repository, the command exits
+`2`. See [Repositories › Promote](./repositories.md#promote) and
 [Cleaning up runs](./repositories.md#cleaning-up-runs).
 
 ## evaltrack runs
@@ -63,11 +64,11 @@ evaltrack report --ref pr/482 --against-ref baseline --output evaltrack-report.h
 ```
 
 `--against-ref` embeds the run that a ref on the remote points at, and opens the page on the changes
-from that run to the reported one. `--against-ref baseline` compares against the mainline.
-`--against-run-id` does the same with a run in the repository. If the comparison run is not found,
-or it is the reported run itself, the page shows the one run, and the page and a warning both say
-why. Without either flag the page shows the one run, with its history over the remote's
-[`baseline`][baseline].
+from that run to the reported one. `--against-ref baseline` compares against the mainline. Refs
+resolve on the remote. To compare against a run in the local repository, use `--against-run-id`. If
+the comparison run is not found, or it is the reported run itself, the page shows the one run, and
+the page and a warning both say why. Without either flag the page shows the one run, with its
+history over the remote's [`baseline`][baseline].
 
 The page holds the inputs and outputs that the run recorded. Share it as you would share the run. A
 value over 16 KB is left out, and its first 200 characters and its size stand in, so a report of a
