@@ -85,6 +85,24 @@ class NamedRun(BaseModel):
     via: str | None = None
 
 
+@dataclass(frozen=True)
+class Mainline:
+    """The repository the mainline is read from, or None and the reason there
+    is none."""
+
+    repository: RunRepository | None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class Comparison:
+    """The run a report compares against, or None. `error` says why a
+    comparison that was asked for could not be made."""
+
+    run: NamedRun | None = None
+    error: str | None = None
+
+
 class ReportData(BaseModel):
     """What the single-file report embeds: the same shapes the API serves, so
     the page reads them as the dashboard does.

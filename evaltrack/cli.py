@@ -42,7 +42,7 @@ from evaltrack.repositories import (
     open_repository,
     promote,
 )
-from evaltrack.ui.models import NamedRun
+from evaltrack.ui.models import Comparison, Mainline, NamedRun
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES
 
@@ -604,47 +604,27 @@ def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> Na
     return NamedRun(run=run, via=via)
 
 
-@dataclass(frozen=True)
-class _Mainline:
-    """The configured remote, where the team's history lives. `opened` is None,
-    and `error` says why, when there is no remote or it could not be opened."""
-
-    opened: _OpenedRepository | None
-    error: str | None = None
-
-
-def _open_mainline(target: _OpenedRepository, config: EvaltrackConfig) -> _Mainline:
+def _open_mainline(
+    target: _OpenedRepository, config: EvaltrackConfig
+) -> tuple[_OpenedRepository | None, str | None]:
     """The configured remote, whichever repository holds the run, since the
-    team's `baseline` lives there and nowhere else. A remote that is missing
-    or cannot be opened leaves the report without history, as an unreachable
-    one does, since the run itself is what the report is for."""
+    team's `baseline` lives there and nowhere else. None and the reason when
+    it is missing or cannot be opened. The report then has no history, as
+    with an unreachable one, since the run itself is what the report is for."""
     remote = resolve_remote(config)
     if remote is None:
-        return _Mainline(
-            None,
+        return None, (
             f"no remote configured, and the mainline lives there. Set ${REMOTE_ENV} "
-            "or [tool.evaltrack].remote",
+            "or [tool.evaltrack].remote"
         )
     if remote.url == target.url:
-        return _Mainline(target)
+        return target, None
     print(f"reading the mainline from {remote.url}", file=sys.stderr)
     try:
         repository = open_repository(remote.url)
     except (ValueError, ImportError) as exc:
-        return _Mainline(
-            None, f"could not open the remote {remote.url}: {_first_line(exc)}"
-        )
-    return _Mainline(_OpenedRepository(repository, remote.url))
-
-
-@dataclass(frozen=True)
-class _Comparison:
-    """The run to compare against, or None and the reason there is none. The
-    reason goes into the page too, since a reader of a CI artifact never sees
-    stderr."""
-
-    run: NamedRun | None
-    error: str | None = None
+        return None, f"could not open the remote {remote.url}: {_first_line(exc)}"
+    return _OpenedRepository(repository, remote.url), None
 
 
 def _load_comparison(
@@ -653,8 +633,8 @@ def _load_comparison(
     *,
     against: str,
     as_ref: bool,
-    mainline: _Mainline,
-) -> _Comparison:
+    remote: _OpenedRepository | None,
+) -> Comparison:
     """The run to compare `subject` against, or the reason there is no
     comparison to make. A project's first pull request has no `baseline` yet,
     and a report of the run alone beats none in its artifacts. A `baseline`
@@ -667,24 +647,24 @@ def _load_comparison(
     try:
         if not as_ref:
             loaded = _load_named_run(target, against, as_ref=False)
-        elif mainline.opened is None:
+        elif remote is None:
             raise _RunNotFound(
                 f"ref {against!r} was not looked up, since refs resolve on the "
                 "remote. Use --against-run-id to compare against a run in this "
                 "repository"
             )
         else:
-            loaded = _load_named_run(mainline.opened, against, as_ref=True)
+            loaded = _load_named_run(remote, against, as_ref=True)
     except (
         _RunNotFound,
         RepositoryUnavailableError,
         UnsupportedSchemaError,
         CorruptRecordError,
     ) as exc:
-        return _Comparison(None, str(exc))
+        return Comparison(None, str(exc))
     if loaded.run.id == subject.run.id:
-        return _Comparison(None, f"{against!r} is run {subject.run.id} itself")
-    return _Comparison(loaded)
+        return Comparison(None, f"{against!r} is run {subject.run.id} itself")
+    return Comparison(loaded)
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
@@ -700,8 +680,8 @@ def _cmd_report(args: argparse.Namespace) -> int:
         # Like a missing export, a defined outcome, so exit 1.
         print(f"report: {exc}", file=sys.stderr)
         return 1
-    mainline = _open_mainline(target, config)
-    comparison = _Comparison(None)
+    remote, remote_error = _open_mainline(target, config)
+    comparison = Comparison()
     against_name = args.against_ref or args.against_run_id
     if against_name is not None:
         comparison = _load_comparison(
@@ -709,16 +689,13 @@ def _cmd_report(args: argparse.Namespace) -> int:
             subject,
             against=against_name,
             as_ref=args.against_ref is not None,
-            mainline=mainline,
+            remote=remote,
         )
-    against = comparison.run
     data = collect_report_data(
         target.repository,
         subject,
-        mainline=mainline.opened.repository if mainline.opened else None,
-        mainline_error=mainline.error,
-        against=against,
-        against_error=comparison.error,
+        mainline=Mainline(remote.repository if remote else None, remote_error),
+        comparison=comparison,
         pr_url_template=config.pr_url_template,
     )
     # Everything the page lacks is announced here, each cause once. The page
@@ -740,8 +717,8 @@ def _cmd_report(args: argparse.Namespace) -> int:
         return 0
     Path(args.output).write_text(html, encoding="utf-8")
     what = f"run {subject.run.id}"
-    if against is not None:
-        what += f" against {against.run.id}"
+    if comparison.run is not None:
+        what += f" against {comparison.run.run.id}"
     print(f"wrote report of {what} to {args.output}")
     return 0
 

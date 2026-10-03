@@ -16,7 +16,7 @@ from evaltrack.core.run_record import (
     ensure_run_id,
 )
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
-from evaltrack.ui.models import MainlineEntry, NamedRun
+from evaltrack.ui.models import Comparison, Mainline, MainlineEntry, NamedRun
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
@@ -139,8 +139,8 @@ def build_runs_router(
         data = collect_report_data(
             resolve(slug),
             run,
-            mainline=mainline,
-            against=against_run,
+            mainline=Mainline(mainline),
+            comparison=Comparison(against_run),
             pr_url_template=pr_url_template,
         )
         if data.history_error is not None:

@@ -12,7 +12,7 @@ import evaltrack.ui.report as report_module
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.run_record import RunRecord, dump_run_json, parse_run_json
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import NamedRun, ReportData
+from evaltrack.ui.models import Comparison, Mainline, NamedRun, ReportData
 from evaltrack.ui.report import collect_report_data, render_report
 
 from ..factories import make_attempt, make_round
@@ -128,7 +128,9 @@ def test_collected_data_finds_the_mainline() -> None:
     repo.save_run(run)
     repo.move_ref("baseline", run.id, commit="main-0", pr=3, title="Land it")
 
-    data = collect_report_data(repo, NamedRun(run=run, via="baseline"), mainline=repo)
+    data = collect_report_data(
+        repo, NamedRun(run=run, via="baseline"), mainline=Mainline(repo)
+    )
 
     assert data.mainline is not None
     assert (data.mainline.commit, data.mainline.pr) == ("main-0", 3)
@@ -151,7 +153,7 @@ def test_collected_history_is_measured_over_the_repository_baseline() -> None:
     viewed = make_recorded_run(make_round(), commit="pr", reliability_target=0.9)
     repo.save_run(viewed)
 
-    data = collect_report_data(repo, NamedRun(run=viewed), mainline=repo)
+    data = collect_report_data(repo, NamedRun(run=viewed), mainline=Mainline(repo))
 
     reliability = data.history.reliability["test_x"]["test_case"]
     assert reliability.pooled_runs == 3
@@ -174,8 +176,8 @@ def test_a_comparison_reads_no_history_refs_or_mainline_entry() -> None:
     data = collect_report_data(
         repo,
         NamedRun(run=viewed),
-        mainline=repo,
-        against=NamedRun(run=base, via="baseline"),
+        mainline=Mainline(repo),
+        comparison=Comparison(NamedRun(run=base, via="baseline")),
     )
 
     assert data.history.reliability == {}
@@ -196,7 +198,7 @@ def test_collected_history_is_measured_over_the_given_mainline() -> None:
     viewed = make_recorded_run(make_round(), commit="wip", reliability_target=0.9)
     local.save_run(viewed)
 
-    data = collect_report_data(local, NamedRun(run=viewed), mainline=remote)
+    data = collect_report_data(local, NamedRun(run=viewed), mainline=Mainline(remote))
 
     assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
     assert data.mainline is None
@@ -214,7 +216,7 @@ def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
     repo.move_ref("pr/8", other.id, pr=8)
     repo.move_ref("baseline", run.id)
 
-    data = collect_report_data(repo, NamedRun(run=run), mainline=None)
+    data = collect_report_data(repo, NamedRun(run=run), mainline=Mainline(None))
 
     assert [r.name for r in data.refs] == ["baseline", "pr/7"]
     pr = data.refs[1].tip
@@ -229,7 +231,7 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
     repo.save_run(run)
     down = RunRepository(RaisingStore(RepositoryUnavailableError("no route to host")))
 
-    data = collect_report_data(repo, NamedRun(run=run), mainline=down)
+    data = collect_report_data(repo, NamedRun(run=run), mainline=Mainline(down))
 
     assert data.history.reliability == {}
     assert data.mainline is None
@@ -247,8 +249,7 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     data = collect_report_data(
         repo,
         NamedRun(run=run),
-        mainline=None,
-        mainline_error="the azure extra is not installed",
+        mainline=Mainline(None, "the azure extra is not installed"),
     )
 
     assert data.history.reliability == {}

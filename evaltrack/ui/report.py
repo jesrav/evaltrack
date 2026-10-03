@@ -11,7 +11,14 @@ from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.run_record import dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import MainlineEntry, NamedRun, ReportData, RunHistory
+from evaltrack.ui.models import (
+    Comparison,
+    Mainline,
+    MainlineEntry,
+    NamedRun,
+    ReportData,
+    RunHistory,
+)
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES, build_run_view
 from evaltrack.ui.views import (
     find_mainline_entry,
@@ -26,47 +33,46 @@ TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
 _SLOT_OPEN = '<script type="application/json" id="evaltrack-data">'
 _SLOT_CLOSE = "</script>"
 
+_NO_COMPARISON = Comparison()
+
 
 def collect_report_data(
     repository: RunRepository,
     run: NamedRun,
     *,
-    mainline: RunRepository | None,
-    mainline_error: str | None = None,
-    against: NamedRun | None = None,
-    against_error: str | None = None,
+    mainline: Mainline,
+    comparison: Comparison = _NO_COMPARISON,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
     """The report's data for `run`, held by `repository`, with its history and
     promotion measured over `mainline`'s `baseline`. The two differ when the
-    run is a developer's own and the team's mainline lives elsewhere.
-    `mainline_error` says why there is no mainline when the caller could not
-    open the one it wanted, and the page carries it as `history_error`.
-    `against_error` does the same for a comparison that was asked for and
-    could not be made.
+    run is a developer's own and the team's mainline lives elsewhere. The page
+    carries `mainline.error` as `history_error` and `comparison.error` as
+    `against_error`.
 
-    The history, the mainline entry and the refs are read only without
-    `against`. A comparison renders none of them, and the history costs a run
-    body per mainline entry. A mainline that cannot be reached leaves the
-    report without history and says so, as the dashboard drops the column,
-    since the run itself is what the report is for.
+    The history, the mainline entry and the refs are read only without a
+    comparison run. A comparison renders none of them, and the history costs
+    a run body per mainline entry. A mainline that cannot be reached leaves
+    the report without history and says so, as the dashboard drops the
+    column, since the run itself is what the report is for.
 
     Raises:
         CorruptRecordError: when the `baseline` reflog does not parse.
     """
+    against = comparison.run
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
-    history_error = mainline_error
-    if against is None and mainline is not None:
+    history_error = mainline.error
+    if against is None and mainline.repository is not None:
         try:
-            history = load_run_history(mainline, viewed=run.run)
-            mainline_entry = find_mainline_entry(mainline, run.run.id)
+            history = load_run_history(mainline.repository, viewed=run.run)
+            mainline_entry = find_mainline_entry(mainline.repository, run.run.id)
         except RepositoryUnavailableError as exc:
             history, mainline_entry, history_error = RunHistory(), None, str(exc)
     return ReportData(
         run=run,
         against=against,
-        against_error=against_error,
+        against_error=comparison.error,
         refs=refs_pointing_at(repository, run.run.id) if against is None else [],
         history=history,
         mainline=mainline_entry,
