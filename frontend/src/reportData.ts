@@ -46,13 +46,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function holdsRun(value: unknown): boolean {
-  return isRecord(value) && isRecord(value.run) && isRecord(value.run.tests);
-}
-
-/** Parse the text of the report's data element. The shape check stops at what
- *  the page reads first, since a run is too large to validate in full here and
- *  the CLI wrote it from the same models. */
+/** Parse the text of the report's data element. Only what can go wrong in
+ *  practice is checked: a page with nothing in the slot, and text that is not
+ *  a report. The rest is taken as written, since the page and its data are
+ *  put into one file by one version of evaltrack. */
 export function parseReportData(text: string | null | undefined): ReportData {
   if (text === null || text === undefined || text.trim() === "") {
     throw new ReportDataError(
@@ -67,41 +64,17 @@ export function parseReportData(text: string | null | undefined): ReportData {
       `The report data does not parse as JSON: ${e instanceof Error ? e.message : String(e)}`,
     );
   }
-  if (!isRecord(parsed) || !holdsRun(parsed.run)) {
+  if (
+    !isRecord(parsed) ||
+    !isRecord(parsed.run) ||
+    !isRecord(parsed.run.run) ||
+    !isRecord(parsed.run.run.tests)
+  ) {
     throw new ReportDataError(
       "The report data does not hold a run. It was not written by this version of `evaltrack report`.",
     );
   }
-  const against = parsed.against;
-  if (against !== null && against !== undefined && !holdsRun(against)) {
-    throw new ReportDataError(
-      "The report's comparison run is not a run. It was not written by this version of `evaltrack report`.",
-    );
-  }
-  const data = parsed as unknown as ReportData;
-  // Older or hand-made pages can leave the optional parts out; each has a
-  // meaning for "absent".
-  return {
-    run: { run: data.run.run, via: data.run.via ?? null },
-    against: data.against
-      ? { run: data.against.run, via: data.against.via ?? null }
-      : null,
-    against_error:
-      typeof data.against_error === "string" ? data.against_error : null,
-    refs: Array.isArray(data.refs) ? data.refs : [],
-    history: isRecord(data.history)
-      ? data.history
-      : { reliability: {}, score_history: {} },
-    mainline: data.mainline ?? null,
-    history_error:
-      typeof data.history_error === "string" ? data.history_error : null,
-    pr_url_template:
-      typeof data.pr_url_template === "string" ? data.pr_url_template : null,
-    generated_at:
-      typeof data.generated_at === "string" ? data.generated_at : "",
-    generated_by:
-      typeof data.generated_by === "string" ? data.generated_by : "",
-  };
+  return parsed as unknown as ReportData;
 }
 
 /** The report data embedded in `doc`, which is the page's own document. */

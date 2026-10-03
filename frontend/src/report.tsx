@@ -48,9 +48,7 @@ function Report({ data }: { data: ReportData }) {
   const [swapped, setSwapped] = useState(false);
   const swap = useCallback(() => setSwapped((s) => !s), []);
 
-  const generated = data.generated_at
-    ? new Date(data.generated_at).toLocaleString()
-    : null;
+  const generated = new Date(data.generated_at).toLocaleString();
   const sides = data.against
     ? swapped
       ? { a: data.run, b: data.against }
@@ -61,13 +59,8 @@ function Report({ data }: { data: ReportData }) {
       <header className="report-bar">
         <Brand />
         <p className="report-meta">
-          {generated && <>report generated {generated}</>}
-          {generated && data.generated_by && " · "}
-          {data.generated_by && (
-            <>
-              evaltrack <code>{data.generated_by}</code>
-            </>
-          )}
+          report generated {generated} · evaltrack{" "}
+          <code>{data.generated_by}</code>
           {leftOut > 0 && (
             <>
               {" · "}
