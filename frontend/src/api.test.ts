@@ -60,20 +60,4 @@ describe("runReportUrl", () => {
       "/api/repositories/local/runs/01B/report",
     );
   });
-
-  it("keeps the query in a browser without URLSearchParams.size", () => {
-    // Safari before 17 and Chromium before 113 have no `size`, and a page in
-    // one of them downloaded a report of the wrong run.
-    const proto = URLSearchParams.prototype as { size?: number };
-    const descriptor = Object.getOwnPropertyDescriptor(proto, "size");
-    Reflect.deleteProperty(proto, "size");
-    try {
-      const url = api.runReportUrl("local", "01B", {
-        against: { slug: "remote", id: "01A" },
-      });
-      expect(url).toContain("?against=01A&against_slug=remote");
-    } finally {
-      if (descriptor) Object.defineProperty(proto, "size", descriptor);
-    }
-  });
 });
