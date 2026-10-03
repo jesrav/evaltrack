@@ -5,6 +5,7 @@ import importlib.metadata
 from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
+from typing import Any
 
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
@@ -44,11 +45,11 @@ def collect_report_data(
     `against_error` does the same for a comparison that was asked for and
     could not be made.
 
-    The cross-run history is read only without `against`, since a
-    comparison does not show it and it costs a run body per mainline entry.
-    A mainline that cannot be reached leaves the report without history and
-    says so, as the dashboard drops the column, since the run itself is
-    what the report is for.
+    The history, the mainline entry and the refs are read only without
+    `against`. A comparison renders none of them, and the history costs a run
+    body per mainline entry. A mainline that cannot be reached leaves the
+    report without history and says so, as the dashboard drops the column,
+    since the run itself is what the report is for.
 
     Raises:
         CorruptRecordError: when the `baseline` reflog does not parse.
@@ -56,10 +57,9 @@ def collect_report_data(
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
     history_error = mainline_error
-    if mainline is not None:
+    if against is None and mainline is not None:
         try:
-            if against is None:
-                history = load_run_history(mainline, viewed=run.run)
+            history = load_run_history(mainline, viewed=run.run)
             mainline_entry = find_mainline_entry(mainline, run.run.id)
         except RepositoryUnavailableError as exc:
             history, mainline_entry, history_error = RunHistory(), None, str(exc)
@@ -67,7 +67,7 @@ def collect_report_data(
         run=run,
         against=against,
         against_error=against_error,
-        refs=refs_pointing_at(repository, run.run.id),
+        refs=refs_pointing_at(repository, run.run.id) if against is None else [],
         history=history,
         mainline=mainline_entry,
         history_error=history_error,
@@ -119,11 +119,19 @@ def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
     """The report as compact JSON. Each run is embedded as the dashboard opens
     it, with every value over `inline_limit` bytes replaced by its preview and
     size, so a report of a large run stays a file worth sending."""
-    plain = dump_plain(data)
-    plain["run"]["run"] = build_run_view(data.run.run, limit=inline_limit)
-    if data.against is not None:
-        plain["against"]["run"] = build_run_view(data.against.run, limit=inline_limit)
-    return dump_plain_json(plain).decode()
+
+    def view(named: NamedRun | None) -> dict[str, Any] | None:
+        if named is None:
+            return None
+        return {
+            "run": build_run_view(named.run, limit=inline_limit),
+            "via": named.via,
+        }
+
+    # The runs are dumped once, as their views, and not also whole.
+    sides = {"run": view(data.run), "against": view(data.against)}
+    rest = dump_plain(data, include=set(ReportData.model_fields) - set(sides))
+    return dump_plain_json(sides | rest).decode()
 
 
 def render_report(

@@ -159,15 +159,17 @@ def test_collected_history_is_measured_over_the_repository_baseline() -> None:
     assert data.mainline is None
 
 
-def test_a_comparison_reads_no_history() -> None:
-    """The comparison view does not show it, and it costs a run body per
-    mainline entry."""
+def test_a_comparison_reads_no_history_refs_or_mainline_entry() -> None:
+    """The comparison view shows none of them, and the history costs a run
+    body per mainline entry."""
     repo = RunRepository(MemoryStore())
     base = make_recorded_run(make_round(), commit="c0")
     repo.save_run(base)
     repo.move_ref("baseline", base.id, commit="main-0")
     viewed = make_recorded_run(make_round(), commit="c1")
     repo.save_run(viewed)
+    repo.move_ref("pr/9", viewed.id, pr=9)
+    repo.move_ref("baseline", viewed.id, commit="main-1")
 
     data = collect_report_data(
         repo,
@@ -177,6 +179,8 @@ def test_a_comparison_reads_no_history() -> None:
     )
 
     assert data.history.reliability == {}
+    assert data.refs == []
+    assert data.mainline is None
     assert data.against is not None
     assert data.against.run.id == base.id
 
