@@ -72,9 +72,6 @@ interface Props {
    *  as chips. A ref whose tip records a PR shows its number and title too. */
   refs: Ref[];
   actions?: RunActions;
-  /** True on a page with no sidebar to pick another run from, the static
-   *  report, which then gives no hint about one. */
-  standalone?: boolean;
   /** Cross-run reliability and score history for this run's repository,
    *  fetched separately and lazily. `loading` shows a spinner in the
    *  Reliability column. `error` (or absent) degrades to no column and no
@@ -101,7 +98,6 @@ export function RunDetail({
   via,
   refs,
   actions,
-  standalone,
   history,
   mainline,
   prUrlTemplate,
@@ -127,7 +123,6 @@ export function RunDetail({
         via={via}
         refs={refs}
         actions={actions}
-        standalone={standalone}
         mainline={mainline}
         prUrlTemplate={prUrlTemplate}
         onCompareToBaseline={onCompareToBaseline}
@@ -882,7 +877,6 @@ function RunHeader({
   via,
   refs,
   actions,
-  standalone,
   mainline,
   prUrlTemplate,
   onCompareToBaseline,
@@ -891,7 +885,6 @@ function RunHeader({
   via?: string;
   refs: Ref[];
   actions?: RunActions;
-  standalone?: boolean;
   mainline?: MainlineEntry | null;
   prUrlTemplate: string | null;
   onCompareToBaseline?: () => void;
@@ -1073,7 +1066,9 @@ function RunHeader({
           </span>
         )}
       </div>
-      {!standalone && (
+      {/* No actions means no repository behind the page, so no sidebar
+          to pick another run from either. */}
+      {actions && (
         <p className="hint">
           <span className="kbd">⌘/Ctrl</span>+click another run or ref in the
           sidebar to compare this run against it.

@@ -39,9 +39,6 @@ interface Props {
   b: RunRecord;
   viaA?: string;
   viaB?: string;
-  /** True on a page with no sidebar to pick another view from, the static
-   *  report, which then gives no hint about one. */
-  standalone?: boolean;
   /** The comparison as the single-file report, to share with someone without
    *  the dashboard. Absent on a page that cannot serve one. */
   reportHref?: string;
@@ -55,7 +52,6 @@ export function RunDiff({
   b,
   viaA,
   viaB,
-  standalone,
   reportHref,
   onSwap,
   onOpenDrawer,
@@ -107,7 +103,8 @@ export function RunDiff({
         <h1>Eval run comparison</h1>
         <p className="hint">
           Showing what changed from base (left) to compare (right).
-          {!standalone &&
+          {/* A page that can serve a report has a sidebar too. */}
+          {reportHref &&
             " Pick a single run in the sidebar to leave this view."}
         </p>
       </header>

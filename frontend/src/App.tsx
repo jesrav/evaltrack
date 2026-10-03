@@ -1043,24 +1043,20 @@ export function App() {
             </div>
           </div>
         )}
-        {!error && runA && runB && (
+        {!error && runA && runB && selA && selB && (
           <RunDiff
             a={runA}
             b={runB}
-            viaA={selA?.via}
-            viaB={selB?.via}
-            reportHref={
-              selA && selB
-                ? api.runReportUrl(selB.repository, selB.runId, {
-                    via: selB.via,
-                    against: {
-                      slug: selA.repository,
-                      id: selA.runId,
-                      via: selA.via,
-                    },
-                  })
-                : undefined
-            }
+            viaA={selA.via}
+            viaB={selB.via}
+            reportHref={api.runReportUrl(selB.repository, selB.runId, {
+              via: selB.via,
+              against: {
+                slug: selA.repository,
+                id: selA.runId,
+                via: selA.via,
+              },
+            })}
             onSwap={swap}
             onOpenDrawer={openDrawer}
           />

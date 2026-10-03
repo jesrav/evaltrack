@@ -20,8 +20,12 @@ import "./index.css";
  *  gets no repository actions and no way to navigate to another run. */
 function Report({ data }: { data: ReportData }) {
   const [drawer, setDrawer] = useState<DrawerContent | null>(null);
-  const closeDrawer = useCallback(() => setDrawer(null), []);
   const [notice, setNotice] = useState<string | null>(null);
+  // The notice is about the open pane, so it goes when the pane does.
+  const closeDrawer = useCallback(() => {
+    setDrawer(null);
+    setNotice(null);
+  }, []);
   const dismissNotice = useCallback(() => setNotice(null), []);
   // A value the report left out has nowhere to be fetched from. The pane
   // opens anyway, since the rest of it is there, with the preview standing in
@@ -106,7 +110,6 @@ function Report({ data }: { data: ReportData }) {
             b={sides.b.run}
             viaA={sides.a.via ?? undefined}
             viaB={sides.b.via ?? undefined}
-            standalone
             onSwap={swap}
             onOpenDrawer={openDrawer}
           />
@@ -115,7 +118,6 @@ function Report({ data }: { data: ReportData }) {
             run={data.run.run}
             via={data.run.via ?? undefined}
             refs={data.refs}
-            standalone
             history={
               data.history_error
                 ? { status: "error" }
