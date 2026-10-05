@@ -16,7 +16,8 @@ const run = buildRun("01J9Z3QW2KJ5H8VN4TQY7B6MDC", {
 /** A report as the CLI writes it, with every field the page reads. */
 function reportJson(overrides: Partial<ReportData> = {}): string {
   const data: ReportData = {
-    run: { run, via: null },
+    run,
+    via_ref: null,
     baseline: null,
     refs: [],
     history: { reliability: {}, score_history: {} },
@@ -34,14 +35,14 @@ describe("parseReportData", () => {
   it("reads what the CLI embeds", () => {
     const data = parseReportData(
       reportJson({
-        run: { run, via: "pr/12" },
+        via_ref: "pr/12",
         baseline: run,
         refs: [{ name: "pr/12", tip: null, kind: "other" }],
       }),
     );
 
-    expect(data.run.run.id).toBe(run.id);
-    expect(data.run.via).toBe("pr/12");
+    expect(data.run.id).toBe(run.id);
+    expect(data.via_ref).toBe("pr/12");
     expect(data.baseline?.id).toBe(run.id);
     expect(data.refs.map((r) => r.name)).toEqual(["pr/12"]);
     expect(data.generated_by).toBe("0.3.0");
@@ -57,7 +58,7 @@ describe("parseReportData", () => {
 
     const data = parseReportData(escaped);
 
-    expect(Object.keys(data.run.run.tests)).toEqual(["</script> & \u2028"]);
+    expect(Object.keys(data.run.tests)).toEqual(["</script> & \u2028"]);
   });
 
   it.each([
@@ -65,7 +66,7 @@ describe("parseReportData", () => {
     ["an empty element", "   "],
     ["text that is not JSON", "{not json"],
     ["JSON that is not a report", JSON.stringify({ tests: {} })],
-    ["a run with no tests", JSON.stringify({ run: { run: { id: "x" } } })],
+    ["a run with no tests", JSON.stringify({ run: { id: "x" } })],
   ])("rejects %s with a message the page can show", (_what, text) => {
     expect(() => parseReportData(text)).toThrow(ReportDataError);
   });
@@ -99,7 +100,7 @@ describe("countCasesWithValuesLeftOut", () => {
   it("counts a case once, however many values and runs it is missing in", () => {
     const data = parseReportData(
       reportJson({
-        run: { run: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDA"), via: null },
+        run: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDA"),
         baseline: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDB"),
       }),
     );

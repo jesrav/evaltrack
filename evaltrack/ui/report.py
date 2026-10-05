@@ -14,7 +14,6 @@ from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import (
     Mainline,
     MainlineEntry,
-    NamedRun,
     ReportData,
     RunHistory,
 )
@@ -36,16 +35,18 @@ _SLOT_CLOSE = "</script>"
 
 def collect_report_data(
     repository: RunRepository,
-    run: NamedRun,
+    run: RunRecord,
     *,
     mainline: Mainline,
+    via_ref: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
     """The report's data for `run`, held by `repository`: the run, and what
     `mainline` says about it. That is its history and promotion over the
     `baseline` reflog, and the `baseline` run to compare against. The two
     repositories differ when the run is a developer's own and the team's
-    mainline lives elsewhere.
+    mainline lives elsewhere. `via_ref` is the ref the report was asked for by,
+    which titles the page.
 
     A mainline that is missing, cannot be reached, or holds a `baseline`
     reflog that does not parse leaves the report with the run alone and says
@@ -58,16 +59,17 @@ def collect_report_data(
     mainline_error = mainline.error
     if mainline.repository is not None:
         try:
-            history = load_run_history(mainline.repository, viewed=run.run)
-            mainline_entry = find_mainline_entry(mainline.repository, run.run.id)
-            baseline = load_baseline_run(mainline.repository, other_than=run.run.id)
+            history = load_run_history(mainline.repository, viewed=run)
+            mainline_entry = find_mainline_entry(mainline.repository, run.id)
+            baseline = load_baseline_run(mainline.repository, other_than=run.id)
         except (RepositoryUnavailableError, CorruptRecordError) as exc:
             history, mainline_entry, baseline = RunHistory(), None, None
             mainline_error = str(exc)
     return ReportData(
         run=run,
+        via_ref=via_ref,
         baseline=baseline,
-        refs=refs_pointing_at(repository, run.run.id),
+        refs=refs_pointing_at(repository, run.id),
         history=history,
         mainline=mainline_entry,
         mainline_error=mainline_error,
@@ -121,10 +123,7 @@ def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
     size, so a report of a large run stays a file worth sending."""
     # The runs are dumped once, as their views, and not also whole.
     runs: dict[str, Any] = {
-        "run": {
-            "run": build_run_view(data.run.run, limit=inline_limit),
-            "via": data.run.via,
-        },
+        "run": build_run_view(data.run, limit=inline_limit),
         "baseline": (
             build_run_view(data.baseline, limit=inline_limit)
             if data.baseline is not None

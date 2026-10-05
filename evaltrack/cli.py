@@ -32,6 +32,7 @@ from evaltrack.core.errors import (
 )
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
 from evaltrack.core.run_record import (
+    RunRecord,
     dump_run_json,
     parse_run_json,
 )
@@ -41,7 +42,7 @@ from evaltrack.repositories import (
     open_repository,
     promote,
 )
-from evaltrack.ui.models import Mainline, NamedRun
+from evaltrack.ui.models import Mainline
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES
 
@@ -568,24 +569,23 @@ class _RunNotFound(Exception):
     which name, and where it was looked for."""
 
 
-def _load_named_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> NamedRun:
+def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecord:
     """The run `name` picks: the tip of that ref, or the run with that id.
 
     Raises:
         _RunNotFound: when the repository does not hold it.
     """
-    via: str | None = None
     run_id = name
     if as_ref:
         tip = target.repository.get_ref(name)
         if tip is None:
             raise _RunNotFound(f"ref {name!r} not found in {target.url}")
-        via, run_id = name, tip.run_id
+        run_id = tip.run_id
     run = target.repository.load_run(run_id)
     if run is None:
         held_by = f" (the tip of ref {name!r})" if as_ref else ""
         raise _RunNotFound(f"run {run_id!r} not found in {target.url}{held_by}")
-    return NamedRun(run=run, via=via)
+    return run
 
 
 def _open_mainline(
@@ -617,9 +617,9 @@ def _cmd_report(args: argparse.Namespace) -> int:
     target = _open_resolved_repository(args, config=config)
     try:
         if args.run_id is not None:
-            subject = _load_named_run(target, args.run_id, as_ref=False)
+            subject = _load_run(target, args.run_id, as_ref=False)
         else:
-            subject = _load_named_run(target, args.ref, as_ref=True)
+            subject = _load_run(target, args.ref, as_ref=True)
     except _RunNotFound as exc:
         # Like a missing export, a defined outcome, so exit 1.
         print(f"report: {exc}", file=sys.stderr)
@@ -629,6 +629,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
         target.repository,
         subject,
         mainline=Mainline(remote.repository if remote else None, remote_error),
+        via_ref=args.ref,
         pr_url_template=config.pr_url_template,
     )
     if data.mainline_error is not None:
@@ -643,7 +644,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
         sys.stdout.write(html)
         return 0
     Path(args.output).write_text(html, encoding="utf-8")
-    what = f"run {subject.run.id}"
+    what = f"run {subject.id}"
     if data.baseline is not None:
         what += f", with baseline run {data.baseline.id} to compare against,"
     print(f"wrote report of {what} to {args.output}")

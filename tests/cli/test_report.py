@@ -14,7 +14,7 @@ from evaltrack.repositories import open_repository
 
 from ..factories import make_attempt, make_round
 from ..fakes import RaisingStore, mount_fake_azure
-from ..report_support import embedded_report_json, named_run, recorded_output
+from ..report_support import embedded_report_json, embedded_run, recorded_output
 from .helpers import (
     configure_local,
     configure_repositories,
@@ -41,7 +41,7 @@ def test_report_writes_one_file_holding_the_run(tmp_path: Path) -> None:
         "the report is one file with no assets beside it"
     )
     data = embedded_report_json(output.read_text(encoding="utf-8"))
-    assert named_run(data)["run"]["id"] == run_id
+    assert embedded_run(data)["id"] == run_id
     assert data["baseline"] is None
     assert run_id in result.out and str(output) in result.out
 
@@ -70,7 +70,7 @@ def test_report_to_stdout_prints_only_the_page(tmp_path: Path) -> None:
     assert result.code == 0
     assert result.out.startswith("<!doctype html>")
     assert result.out.rstrip().endswith("</html>"), "nothing follows the page"
-    assert named_run(embedded_report_json(result.out))["run"] is not None
+    assert embedded_run(embedded_report_json(result.out)) is not None
 
 
 def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
@@ -88,8 +88,8 @@ def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
 
     assert result.code == 0
     data = embedded_report_json(output.read_text(encoding="utf-8"))
-    assert named_run(data)["run"]["id"] == newer
-    assert named_run(data)["via"] == "pr/12"
+    assert embedded_run(data)["id"] == newer
+    assert data["via_ref"] == "pr/12"
     refs = data["refs"]
     assert isinstance(refs, list) and [r["name"] for r in refs] == ["pr/12"], (
         "the page can show which refs reach the run, and the PR they record"
@@ -118,8 +118,8 @@ def test_report_carries_the_baseline_to_compare_against(
     data = embedded_report_json(output.read_text(encoding="utf-8"))
     embedded_baseline = data["baseline"]
     assert isinstance(embedded_baseline, dict)
-    assert (named_run(data)["run"]["id"], embedded_baseline["id"]) == (pr_run, baseline)
-    assert named_run(data)["via"] == "pr/3"
+    assert (embedded_run(data)["id"], embedded_baseline["id"]) == (pr_run, baseline)
+    assert data["via_ref"] == "pr/3"
     assert baseline in result.out and pr_run in result.out
 
 
@@ -222,7 +222,7 @@ def test_report_with_a_baseline_in_another_stored_format_is_of_the_run_alone(
 
     assert result.code == 0, "a baseline this evaltrack cannot read is not a failure"
     data = embedded_report_json(output.read_text(encoding="utf-8"))
-    assert named_run(data)["run"]["id"] == run_id
+    assert embedded_run(data)["id"] == run_id
     assert data["baseline"] is None
 
 

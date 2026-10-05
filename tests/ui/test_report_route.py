@@ -12,7 +12,7 @@ from evaltrack.ui.app import MountedRepository, create_app
 
 from ..factories import make_round
 from ..fakes import MemoryStore, RaisingStore
-from ..report_support import embedded_report_json, named_run
+from ..report_support import embedded_report_json, embedded_run
 from .conftest import (
     make_client,
     make_recorded_run,
@@ -30,7 +30,7 @@ def test_report_is_an_html_attachment_holding_the_run() -> None:
     repo.move_ref("pr/3", run.id, pr=3)
 
     with make_repo_client(repo) as client:
-        r = client.get(f"/api/repositories/main/runs/{run.id}/report?via=pr/3")
+        r = client.get(f"/api/repositories/main/runs/{run.id}/report?via_ref=pr/3")
 
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/html")
@@ -39,8 +39,8 @@ def test_report_is_an_html_attachment_holding_the_run() -> None:
         == f'attachment; filename="evaltrack-report-{run.id}.html"'
     )
     data = embedded_report_json(r.text)
-    assert named_run(data)["run"]["id"] == run.id
-    assert named_run(data)["via"] == "pr/3"
+    assert embedded_run(data)["id"] == run.id
+    assert data["via_ref"] == "pr/3"
     assert data["baseline"] is None
     refs = data["refs"]
     assert isinstance(refs, list) and [r["name"] for r in refs] == ["pr/3"]

@@ -78,13 +78,6 @@ class RunHistory(BaseModel):
     score_history: dict[str, list[ScoreHistory]] = {}
 
 
-class NamedRun(BaseModel):
-    """A run, and the ref it was reached by, when it was reached by one."""
-
-    run: RunRecord
-    via: str | None = None
-
-
 @dataclass(frozen=True)
 class Mainline:
     """The repository the mainline is read from, or None and the reason there
@@ -99,14 +92,16 @@ class ReportData(BaseModel):
     about it. The shapes are the ones the API serves, so the page reads them
     as the dashboard does.
 
-    `refs` are the refs pointing at the run in its own repository. `history`,
+    `via_ref` is the ref the report was asked for by, when it was asked for
+    by one. `refs` are the refs pointing at the run in its own repository. `history`,
     `mainline` and `baseline` come from the mainline. `baseline` is the run
     the `baseline` ref points at, for the page to compare against, and None
     when there is none or it is the run itself. `mainline_error` says why,
     when the mainline could not be read, and the three are then empty.
     """
 
-    run: NamedRun
+    run: RunRecord
+    via_ref: str | None = None
     baseline: RunRecord | None = None
     refs: list[Ref] = []
     history: RunHistory = RunHistory()

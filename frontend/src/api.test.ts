@@ -46,7 +46,7 @@ describe("readJsonWithProgress", () => {
 describe("runReportUrl", () => {
   it("names the ref the run was reached by in the query", () => {
     expect(api.runReportUrl("local", "01B", "pr/7")).toBe(
-      "/api/repositories/local/runs/01B/report?via=pr%2F7",
+      "/api/repositories/local/runs/01B/report?via_ref=pr%2F7",
     );
   });
 

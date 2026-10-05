@@ -161,10 +161,12 @@ export const api = {
     )}/download`;
   },
   /** URL of the run as the single-file HTML report, as a file attachment, to
-   *  hand to someone without the dashboard. `via` is the ref the run was
+   *  hand to someone without the dashboard. `viaRef` is the ref the run was
    *  reached by, so the page names it as this one does. */
-  runReportUrl(slug: string, id: string, via?: string): string {
-    const query = via ? `?${new URLSearchParams({ via }).toString()}` : "";
+  runReportUrl(slug: string, id: string, viaRef?: string): string {
+    const query = viaRef
+      ? `?${new URLSearchParams({ via_ref: viaRef }).toString()}`
+      : "";
     return `/api/repositories/${encodePath(slug)}/runs/${encodePath(
       id,
     )}/report${query}`;

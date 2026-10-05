@@ -66,7 +66,7 @@ function Report({ data }: { data: ReportData }) {
   const swap = useCallback(() => setSwapped((s) => !s), []);
 
   const generated = new Date(data.generated_at).toLocaleString();
-  const reported = { run: data.run.run, via: data.run.via ?? undefined };
+  const reported = { run: data.run, via: data.via_ref ?? undefined };
   const baseline = data.baseline
     ? { run: data.baseline, via: "baseline" }
     : null;
@@ -178,7 +178,7 @@ if (!root) throw new Error("missing #root in report.html");
 let page: ReactElement;
 try {
   const data = readEmbeddedReport(document);
-  document.title = `evaltrack report · ${data.run.via ?? data.run.run.id}`;
+  document.title = `evaltrack report · ${data.via_ref ?? data.run.id}`;
   page = <Report data={data} />;
 } catch (e) {
   if (!(e instanceof ReportDataError)) throw e;

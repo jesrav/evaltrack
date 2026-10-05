@@ -16,7 +16,7 @@ from evaltrack.core.run_record import (
     ensure_run_id,
 )
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
-from evaltrack.ui.models import Mainline, MainlineEntry, NamedRun
+from evaltrack.ui.models import Mainline, MainlineEntry
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
@@ -115,14 +115,15 @@ def build_runs_router(
 
     @router.get("/{run_id}/report")
     def download_report(  # pyright: ignore[reportUnusedFunction]
-        slug: str, run_id: str, *, via: str | None = None
+        slug: str, run_id: str, *, via_ref: str | None = None
     ) -> Response:
         """The run as the single-file report, to hand to someone without the
-        dashboard. `via` labels the run with the ref the page reached it by."""
-        run = NamedRun(run=load_run_or_404(slug, run_id), via=via)
+        dashboard. `via_ref` is the ref the dashboard reached the run by, which
+        titles the page."""
         data = collect_report_data(
             resolve(slug),
-            run,
+            load_run_or_404(slug, run_id),
+            via_ref=via_ref,
             mainline=Mainline(
                 mainline,
                 None

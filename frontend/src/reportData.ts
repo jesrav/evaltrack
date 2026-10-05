@@ -8,16 +8,13 @@ import type { MainlineEntry, Ref, RunHistory, RunRecord } from "./types";
 /** Id of the element the CLI writes the report's data into. */
 export const REPORT_DATA_ID = "evaltrack-data";
 
-/** A run, and the ref it was reached by, when it was reached by one. */
-export interface NamedRun {
-  run: RunRecord;
-  via: string | null;
-}
-
 /** What a report page embeds: the run, and what the mainline says about it.
  *  Mirrors the backend `ReportData`. */
 export interface ReportData {
-  run: NamedRun;
+  run: RunRecord;
+  /** The ref the report was asked for by, when it was asked for by one. It
+   *  titles the page. */
+  via_ref: string | null;
   /** The run the mainline's `baseline` points at, to compare against. Null
    *  when there is none, or it is the run itself. */
   baseline: RunRecord | null;
@@ -68,8 +65,7 @@ export function parseReportData(text: string | null | undefined): ReportData {
   if (
     !isRecord(parsed) ||
     !isRecord(parsed.run) ||
-    !isRecord(parsed.run.run) ||
-    !isRecord(parsed.run.run.tests)
+    !isRecord(parsed.run.tests)
   ) {
     throw new ReportDataError(
       "The report data does not hold a run. It was not written by this version of `evaltrack report`.",
@@ -89,7 +85,7 @@ export function readEmbeddedReport(doc: Document): ReportData {
  *  runs, since the comparison shows it as one row. */
 export function countCasesWithValuesLeftOut(data: ReportData): number {
   const cases = new Set<string>();
-  for (const run of [data.run.run, data.baseline]) {
+  for (const run of [data.run, data.baseline]) {
     if (!run) continue;
     for (const env of collectDeferred(run)) {
       cases.add(`${env.test}\u0000${env.case}`);
