@@ -1,25 +1,18 @@
-"""The cross-run views the dashboard and the report both compute from a
-repository: the pooled reliability and score history around one run, and where
-the run landed on the mainline. No web framework here, so the report can be
-generated without the `[ui]` extra."""
+"""What the mainline says about a run: the pooled reliability and score history
+around it, where it landed on the mainline, and the `baseline` run to compare
+it against."""
 
 import logging
-from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
-from typing import NamedTuple
 
-from evaltrack.core.errors import (
-    CorruptRecordError,
-    InvalidIdentifierError,
-    UnsupportedSchemaError,
-)
-from evaltrack.core.refs import BASELINE_REF, Ref, ReflogEntry
+from evaltrack.core.errors import CorruptRecordError, UnsupportedSchemaError
+from evaltrack.core.refs import BASELINE_REF, ReflogEntry
 from evaltrack.core.run_record import RunRecord
 from evaltrack.history.reliability import report_all_case_reliability_over
 from evaltrack.history.score_history import report_all_score_history_over
 from evaltrack.history.segments import DEFAULT_WINDOW, HistoryRun
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import MainlineEntry, RunHistory
+from evaltrack.views.models import MainlineEntry, RunHistory
 
 _logger = logging.getLogger(__name__)
 
@@ -42,26 +35,6 @@ def load_run_tolerating_another_schema(
             exc,
         )
         return None
-
-
-class RefTip(NamedTuple):
-    """A ref and its tip. `tip` is None with `error` set when the ref's history
-    cannot be read, and None alone when the ref points at nothing."""
-
-    name: str
-    tip: ReflogEntry | None
-    error: str | None
-
-
-def iter_ref_tips(repo: RunRepository) -> Iterator[RefTip]:
-    """Every ref by name with its tip. A ref whose history cannot be read is
-    still yielded, logged, so a caller can show or repair it."""
-    for name in sorted(repo.list_refs()):
-        try:
-            yield RefTip(name, repo.get_ref(name), None)
-        except (CorruptRecordError, InvalidIdentifierError) as exc:
-            _logger.warning("ref %s has an unreadable history: %s", name, exc)
-            yield RefTip(name, None, str(exc))
 
 
 def _newest_entry_per_run(entries: list[ReflogEntry]) -> list[ReflogEntry]:
@@ -172,13 +145,3 @@ def load_baseline_run(mainline: RunRepository, *, other_than: str) -> RunRecord 
     except CorruptRecordError as exc:
         _logger.warning("the baseline run %s cannot be read: %s", tip.run_id, exc)
         return None
-
-
-def refs_pointing_at(repo: RunRepository, run_id: str) -> list[Ref]:
-    """The refs whose tip is `run_id`, by name. A ref whose history cannot be
-    read is left out, since its tip is unknown, not absent."""
-    return [
-        Ref(name=name, tip=tip)
-        for name, tip, _ in iter_ref_tips(repo)
-        if tip is not None and tip.run_id == run_id
-    ]

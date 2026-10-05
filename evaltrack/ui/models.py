@@ -1,14 +1,11 @@
-"""What the API returns. `frontend/src/types.ts` mirrors these."""
+"""What only the dashboard's API returns. `frontend/src/types.ts` mirrors these."""
 
 from dataclasses import dataclass
 
-from pydantic import AwareDatetime, BaseModel
+from pydantic import BaseModel
 
 from evaltrack.config import PrUrlTemplate, RepositoryRole
 from evaltrack.core.refs import Ref, ReflogEntry
-from evaltrack.core.run_record import RunRecord
-from evaltrack.history.reliability import CaseReliability
-from evaltrack.history.score_history import ScoreHistory
 from evaltrack.repositories import RunRepository, RunSummary
 
 
@@ -46,67 +43,3 @@ class ReflogListing(ReflogEntry):
     """A reflog entry plus the summary of the run it moved to."""
 
     run: RunSummary | None = None
-
-
-class MainlineEntry(BaseModel):
-    """Where a run ended up on the mainline, as the newest `baseline` reflog entry
-    pointing at it.
-
-    The run's own eval-time commit cannot give this, because a squash merge
-    leaves that commit off main.
-    """
-
-    commit: str | None = None
-    pr: int | None = None
-    title: str | None = None
-    moved_at: AwareDatetime
-
-
-class RunHistory(BaseModel):
-    """A repository's cross-run history: how reliably each case has passed, and
-    how each of its scores has moved.
-
-    The two are served together because they are measured over one read of the
-    mainline. A request for each reads every run body in the window twice.
-
-    `reliability` is keyed by test, then by case. `score_history` is keyed by
-    test and holds one history per score. Both are empty when there is no
-    mainline history to measure over.
-    """
-
-    reliability: dict[str, dict[str, CaseReliability]] = {}
-    score_history: dict[str, list[ScoreHistory]] = {}
-
-
-@dataclass(frozen=True)
-class Mainline:
-    """The repository the mainline is read from, or None and the reason there
-    is none."""
-
-    repository: RunRepository | None
-    error: str | None = None
-
-
-class ReportData(BaseModel):
-    """What the single-file report embeds: the run, and what the mainline says
-    about it. The shapes are the ones the API serves, so the page reads them
-    as the dashboard does.
-
-    `via_ref` is the ref the report was asked for by, when it was asked for
-    by one. `refs` are the refs pointing at the run in its own repository. `history`,
-    `mainline` and `baseline` come from the mainline. `baseline` is the run
-    the `baseline` ref points at, for the page to compare against, and None
-    when there is none or it is the run itself. `mainline_error` says why,
-    when the mainline could not be read, and the three are then empty.
-    """
-
-    run: RunRecord
-    via_ref: str | None = None
-    baseline: RunRecord | None = None
-    refs: list[Ref] = []
-    history: RunHistory = RunHistory()
-    mainline: MainlineEntry | None = None
-    mainline_error: str | None = None
-    pr_url_template: PrUrlTemplate | None = None
-    generated_at: AwareDatetime
-    generated_by: str

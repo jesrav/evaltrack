@@ -10,22 +10,18 @@ from typing import Any
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import CorruptRecordError, RepositoryUnavailableError
 from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
+from evaltrack.report.models import Mainline, ReportData
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import (
-    Mainline,
-    MainlineEntry,
-    ReportData,
-    RunHistory,
-)
-from evaltrack.ui.run_view import INLINE_VALUE_BYTES, build_run_view
-from evaltrack.ui.views import (
+from evaltrack.views.mainline import (
     find_mainline_entry,
     load_baseline_run,
     load_run_history,
-    refs_pointing_at,
 )
+from evaltrack.views.models import MainlineEntry, RunHistory
+from evaltrack.views.refs import refs_pointing_at
+from evaltrack.views.run_view import INLINE_VALUE_BYTES, build_run_view
 
-# Beside the dashboard bundle, so one frontend build ships both.
+# Written by the frontend build, one self-contained page.
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
 
 # The element the page reads. The build leaves it empty, and the report fills it.

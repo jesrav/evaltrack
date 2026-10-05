@@ -90,11 +90,12 @@ evaltrack = "evaltrack.pytest_plugin"
 requires = ["hatchling>=1.32.1"]
 build-backend = "hatchling.build"
 
-# The dashboard's built frontend (evaltrack/ui/static) is a gitignored build
-# artifact, so hatchling drops it by default. Force it into *both* the sdist and
-# the wheel. CI builds the frontend before `uv build`.
+# The built frontend is a gitignored build artifact, so hatchling drops it by
+# default: the dashboard (evaltrack/ui/static) and the report page
+# (evaltrack/report/static). Force both into the sdist and the wheel. CI builds
+# the frontend before `uv build`.
 [tool.hatch.build]
-artifacts = ["evaltrack/ui/static/**/*"]
+artifacts = ["evaltrack/ui/static/**/*", "evaltrack/report/static/**/*"]
 
 # hatch_build.py fails wheel/sdist builds when the frontend is missing, so a
 # from-source build can't silently ship without the dashboard.

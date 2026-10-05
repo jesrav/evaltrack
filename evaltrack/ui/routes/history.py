@@ -5,8 +5,11 @@ from collections.abc import Callable
 from fastapi import APIRouter
 
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import RunHistory
-from evaltrack.ui.views import load_run_history, load_run_tolerating_another_schema
+from evaltrack.views.mainline import (
+    load_run_history,
+    load_run_tolerating_another_schema,
+)
+from evaltrack.views.models import RunHistory
 
 
 def build_history_router(

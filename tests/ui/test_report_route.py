@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import evaltrack.ui.report as report_module
+import evaltrack.report.page as report_module
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.app import MountedRepository, create_app

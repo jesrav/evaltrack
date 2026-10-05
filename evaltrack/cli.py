@@ -36,15 +36,15 @@ from evaltrack.core.run_record import (
     dump_run_json,
     parse_run_json,
 )
+from evaltrack.report.models import Mainline
+from evaltrack.report.page import collect_report_data, render_report
 from evaltrack.repositories import (
     RunRepository,
     RunSummary,
     open_repository,
     promote,
 )
-from evaltrack.ui.models import Mainline
-from evaltrack.ui.report import collect_report_data, render_report
-from evaltrack.ui.run_view import INLINE_VALUE_BYTES
+from evaltrack.views.run_view import INLINE_VALUE_BYTES
 
 # The dashboard is unauthenticated, so it binds loopback only.
 _UI_HOST = "127.0.0.1"

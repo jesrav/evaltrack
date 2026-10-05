@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-import evaltrack.ui.report as report_module
+import evaltrack.report.page as report_module
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.run_record import (
     RUN_SCHEMA_VERSION,
@@ -16,9 +16,9 @@ from evaltrack.core.run_record import (
     dump_run_json,
     parse_run_json,
 )
+from evaltrack.report.models import Mainline, ReportData
+from evaltrack.report.page import collect_report_data, render_report
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import Mainline, ReportData
-from evaltrack.ui.report import collect_report_data, render_report
 
 from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import evaltrack.ui.report as report_module
+import evaltrack.report.page as report_module
 
 from .report_support import TEMPLATE
 

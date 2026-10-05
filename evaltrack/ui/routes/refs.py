@@ -18,7 +18,7 @@ from evaltrack.ui.models import RefListing, ReflogListing
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
 from evaltrack.ui.security import reject_cross_origin_write
-from evaltrack.ui.views import iter_ref_tips
+from evaltrack.views.refs import iter_ref_tips
 
 
 class _SummaryCache:

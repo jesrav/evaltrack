@@ -15,14 +15,15 @@ from evaltrack.core.run_record import (
     dump_run_json,
     ensure_run_id,
 )
+from evaltrack.report.models import Mainline
+from evaltrack.report.page import collect_report_data, render_report
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
-from evaltrack.ui.models import Mainline, MainlineEntry
-from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
-from evaltrack.ui.run_view import dump_case_json, dump_run_view_json
 from evaltrack.ui.security import reject_cross_origin_write
-from evaltrack.ui.views import find_mainline_entry
+from evaltrack.views.mainline import find_mainline_entry
+from evaltrack.views.models import MainlineEntry
+from evaltrack.views.run_view import dump_case_json, dump_run_view_json
 
 _logger = logging.getLogger(__name__)
 

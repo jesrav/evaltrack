@@ -23,11 +23,7 @@ from evaltrack.core.errors import (
     UnsupportedSchemaError,
 )
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import (
-    MountedRepository,
-    ProjectConfig,
-    RepositoryInfo,
-)
+from evaltrack.ui.models import MountedRepository, ProjectConfig, RepositoryInfo
 from evaltrack.ui.routes import static as static_routes
 from evaltrack.ui.routes.history import build_history_router
 from evaltrack.ui.routes.meta import build_meta_router

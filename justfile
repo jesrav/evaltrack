@@ -38,8 +38,9 @@ frontend_install:
 frontend_dev:
     cd frontend && npm run dev
 
-# Build the frontend into evaltrack/ui/static: the dashboard `evaltrack ui`
-# serves, and the page `evaltrack report` writes a run into
+# Build the frontend: the dashboard `evaltrack ui` serves, into
+# evaltrack/ui/static, and the page `evaltrack report` writes a run into, into
+# evaltrack/report/static
 frontend_build:
     cd frontend && npm run build
 

@@ -1,6 +1,6 @@
-"""Dashboard UI over one or more mounted repositories, and the single-file
-report. Internal. These names can change without notice.
+"""The dashboard: a web app over one or more mounted repositories. Internal.
+These names can change without notice.
 
-The app is in `evaltrack.ui.app`, imported on use because it needs the `[ui]`
-extra. The report does not.
+Everything here needs the `[ui]` extra, so it is imported only to serve the
+dashboard.
 """
