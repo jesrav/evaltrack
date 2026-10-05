@@ -26,7 +26,7 @@ An editable install serves a fallback page at `evaltrack ui` until `just fronten
 
 ```bash
 just test          # run the test suite
-just lint          # ruff, basedpyright (strict), bandit, prettier (via pre-commit)
+just lint          # ruff, basedpyright (strict), import-linter, bandit, prettier (via pre-commit)
 ```
 
 The justfile has the rest: the frontend checks, the runnable examples, and the live cloud
@@ -62,6 +62,8 @@ just docs_fallback    # the same site with MkDocs and mkdocs-material, which mus
 - Add tests for new behavior and for bug fixes.
 - Prefer dependency injection with fakes over mocking. Test what a caller can observe, not internal
   behavior.
+- The package's layers are set out in `.importlinter`, and `just lint` checks them. If a new import
+  breaks a rule, move the code, or change the rule there and say why.
 - If you change the stored run format, bump `RUN_SCHEMA_VERSION`. Its docstring in
   `evaltrack/core/run_record.py` says what else a bump needs.
 
