@@ -9,10 +9,9 @@ from typing import Any
 
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
-from evaltrack.core.run_record import dump_plain, dump_plain_json
+from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import (
-    Comparison,
     Mainline,
     MainlineEntry,
     NamedRun,
@@ -22,6 +21,7 @@ from evaltrack.ui.models import (
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES, build_run_view
 from evaltrack.ui.views import (
     find_mainline_entry,
+    load_baseline_run,
     load_run_history,
     refs_pointing_at,
 )
@@ -33,50 +33,46 @@ TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
 _SLOT_OPEN = '<script type="application/json" id="evaltrack-data">'
 _SLOT_CLOSE = "</script>"
 
-_NO_COMPARISON = Comparison()
-
 
 def collect_report_data(
     repository: RunRepository,
     run: NamedRun,
     *,
     mainline: Mainline,
-    comparison: Comparison = _NO_COMPARISON,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
-    """The report's data for `run`, held by `repository`, with its history and
-    promotion measured over `mainline`'s `baseline`. The two differ when the
-    run is a developer's own and the team's mainline lives elsewhere. The page
-    carries `mainline.error` as `history_error` and `comparison.error` as
-    `against_error`.
+    """The report's data for `run`, held by `repository`: the run, and what
+    `mainline` says about it. That is its history and promotion over the
+    `baseline` reflog, and the `baseline` run to compare against. The two
+    repositories differ when the run is a developer's own and the team's
+    mainline lives elsewhere.
 
-    The history, the mainline entry and the refs are read only without a
-    comparison run. A comparison renders none of them, and the history costs
-    a run body per mainline entry. A mainline that cannot be reached leaves
-    the report without history and says so, as the dashboard drops the
-    column, since the run itself is what the report is for.
+    A mainline that is missing or cannot be reached leaves the report with
+    the run alone and says why, as the dashboard drops the column, since the
+    run itself is what the report is for.
 
     Raises:
         CorruptRecordError: when the `baseline` reflog does not parse.
     """
-    against = comparison.run
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
-    history_error = mainline.error
-    if against is None and mainline.repository is not None:
+    baseline: RunRecord | None = None
+    mainline_error = mainline.error
+    if mainline.repository is not None:
         try:
             history = load_run_history(mainline.repository, viewed=run.run)
             mainline_entry = find_mainline_entry(mainline.repository, run.run.id)
+            baseline = load_baseline_run(mainline.repository, other_than=run.run.id)
         except RepositoryUnavailableError as exc:
-            history, mainline_entry, history_error = RunHistory(), None, str(exc)
+            history, mainline_entry, baseline = RunHistory(), None, None
+            mainline_error = str(exc)
     return ReportData(
         run=run,
-        against=against,
-        against_error=comparison.error,
-        refs=refs_pointing_at(repository, run.run.id) if against is None else [],
+        baseline=baseline,
+        refs=refs_pointing_at(repository, run.run.id),
         history=history,
         mainline=mainline_entry,
-        history_error=history_error,
+        mainline_error=mainline_error,
         pr_url_template=pr_url_template,
         generated_at=datetime.now(UTC),
         generated_by=importlib.metadata.version("evaltrack"),
@@ -125,19 +121,20 @@ def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
     """The report as compact JSON. Each run is embedded as the dashboard opens
     it, with every value over `inline_limit` bytes replaced by its preview and
     size, so a report of a large run stays a file worth sending."""
-
-    def view(named: NamedRun | None) -> dict[str, Any] | None:
-        if named is None:
-            return None
-        return {
-            "run": build_run_view(named.run, limit=inline_limit),
-            "via": named.via,
-        }
-
     # The runs are dumped once, as their views, and not also whole.
-    sides = {"run": view(data.run), "against": view(data.against)}
-    rest = dump_plain(data, include=set(ReportData.model_fields) - set(sides))
-    return dump_plain_json(sides | rest).decode()
+    runs: dict[str, Any] = {
+        "run": {
+            "run": build_run_view(data.run.run, limit=inline_limit),
+            "via": data.run.via,
+        },
+        "baseline": (
+            build_run_view(data.baseline, limit=inline_limit)
+            if data.baseline is not None
+            else None
+        ),
+    }
+    rest = dump_plain(data, include=set(ReportData.model_fields) - set(runs))
+    return dump_plain_json(runs | rest).decode()
 
 
 def render_report(

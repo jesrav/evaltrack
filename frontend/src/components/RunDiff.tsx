@@ -39,9 +39,9 @@ interface Props {
   b: RunRecord;
   viaA?: string;
   viaB?: string;
-  /** The comparison as the single-file report, to share with someone without
-   *  the dashboard. Absent on a page that cannot serve one. */
-  reportHref?: string;
+  /** Leaves the comparison for the run it started from. Set on a page with no
+   *  sidebar to do that from, the static report. */
+  onBack?: () => void;
   onSwap: () => void;
   onOpenDrawer: (content: DrawerContent) => void;
 }
@@ -52,7 +52,7 @@ export function RunDiff({
   b,
   viaA,
   viaB,
-  reportHref,
+  onBack,
   onSwap,
   onOpenDrawer,
 }: Props) {
@@ -87,25 +87,24 @@ export function RunDiff({
 
   return (
     <div>
-      {reportHref && (
+      {onBack && (
         <div className="page-actions">
-          <a
+          <button
+            type="button"
             className="page-action"
-            href={reportHref}
-            download
-            title="Save this comparison as a single-file HTML report that opens anywhere, to share with someone without the dashboard"
+            title="Back to the run on its own"
+            onClick={onBack}
           >
-            ↓ Report
-          </a>
+            ← Back to the run
+          </button>
         </div>
       )}
       <header className="view-title">
         <h1>Eval run comparison</h1>
         <p className="hint">
           Showing what changed from base (left) to compare (right).
-          {/* A page that can serve a report has a sidebar too. */}
-          {reportHref &&
-            " Pick a single run in the sidebar to leave this view."}
+          {/* A page with its own way back has no sidebar. */}
+          {!onBack && " Pick a single run in the sidebar to leave this view."}
         </p>
       </header>
       <div className="run-pickers">

@@ -94,33 +94,24 @@ class Mainline:
     error: str | None = None
 
 
-@dataclass(frozen=True)
-class Comparison:
-    """The run a report compares against, or None. `error` says why a
-    comparison that was asked for could not be made."""
-
-    run: NamedRun | None = None
-    error: str | None = None
-
-
 class ReportData(BaseModel):
-    """What the single-file report embeds: the same shapes the API serves, so
-    the page reads them as the dashboard does.
+    """What the single-file report embeds: the run, and what the mainline says
+    about it. The shapes are the ones the API serves, so the page reads them
+    as the dashboard does.
 
-    `refs` are the refs pointing at the run in its own repository. `history`
-    and `mainline` are measured over the mainline the generator chose.
-    `history` is empty for a comparison, which does not render it, and when
-    the mainline could not be read, which `history_error` then says.
-    `against_error` says why a comparison that was asked for is not there.
+    `refs` are the refs pointing at the run in its own repository. `history`,
+    `mainline` and `baseline` come from the mainline. `baseline` is the run
+    the `baseline` ref points at, for the page to compare against, and None
+    when there is none or it is the run itself. `mainline_error` says why,
+    when the mainline could not be read, and the three are then empty.
     """
 
     run: NamedRun
-    against: NamedRun | None = None
-    against_error: str | None = None
+    baseline: RunRecord | None = None
     refs: list[Ref] = []
     history: RunHistory = RunHistory()
     mainline: MainlineEntry | None = None
-    history_error: str | None = None
+    mainline_error: str | None = None
     pr_url_template: PrUrlTemplate | None = None
     generated_at: AwareDatetime
     generated_by: str

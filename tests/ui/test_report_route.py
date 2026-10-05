@@ -41,14 +41,14 @@ def test_report_is_an_html_attachment_holding_the_run() -> None:
     data = embedded_report_json(r.text)
     assert named_run(data)["run"]["id"] == run.id
     assert named_run(data)["via"] == "pr/3"
-    assert data["against"] is None
+    assert data["baseline"] is None
     refs = data["refs"]
     assert isinstance(refs, list) and [r["name"] for r in refs] == ["pr/3"]
 
 
-def test_comparison_report_takes_the_base_from_another_mount() -> None:
+def test_report_of_a_local_run_carries_the_remote_baseline() -> None:
     """A local run compared against the remote baseline is the dashboard's
-    everyday comparison, and the report has to reach both mounts for it."""
+    everyday comparison, so the report it hands out carries that run."""
     local, remote = RunRepository(MemoryStore()), RunRepository(MemoryStore())
     base = make_recorded_run(make_round(), commit="c0")
     remote.save_run(base)
@@ -63,23 +63,12 @@ def test_comparison_report_takes_the_base_from_another_mount() -> None:
     )
 
     with make_client(app) as client:
-        r = client.get(
-            f"/api/repositories/local/runs/{mine.id}/report",
-            params={
-                "against": base.id,
-                "against_slug": "remote",
-                "against_via": "baseline",
-            },
-        )
+        r = client.get(f"/api/repositories/local/runs/{mine.id}/report")
 
     assert r.status_code == 200
-    assert (
-        r.headers["content-disposition"]
-        == f'attachment; filename="evaltrack-report-{base.id}-to-{mine.id}.html"'
-    )
     data = embedded_report_json(r.text)
-    against = named_run(data, "against")
-    assert (against["run"]["id"], against["via"]) == (base.id, "baseline")
+    baseline = data["baseline"]
+    assert isinstance(baseline, dict) and baseline["id"] == base.id
 
 
 def test_single_run_report_measures_history_over_the_remote() -> None:
@@ -107,22 +96,11 @@ def test_single_run_report_measures_history_over_the_remote() -> None:
     assert history["reliability"]["test_x"]["test_case"]["pooled_runs"] == 1
 
 
-@pytest.mark.parametrize(
-    "query",
-    [
-        "",
-        "?against=01J9Z3QW2KJ5H8VN4TQY7B6MDC",
-    ],
-    ids=["the run", "the comparison run"],
-)
-def test_report_of_a_missing_run_404s(query: str) -> None:
+def test_report_of_a_missing_run_404s() -> None:
     repo = RunRepository(MemoryStore())
-    run = make_recorded_run(make_round(), commit="c0")
-    repo.save_run(run)
-    run_id = run.id if query else "01J9Z3QW2KJ5H8VN4TQY7B6MDC"
 
     with make_repo_client(repo) as client:
-        r = client.get(f"/api/repositories/main/runs/{run_id}/report{query}")
+        r = client.get("/api/repositories/main/runs/01J9Z3QW2KJ5H8VN4TQY7B6MDC/report")
 
     assert r.status_code == 404
 
@@ -178,5 +156,5 @@ def test_report_of_a_local_run_survives_an_unreachable_remote() -> None:
     assert r.status_code == 200, "the run is what the report is for"
     data = embedded_report_json(r.text)
     assert data["history"] == {"reliability": {}, "score_history": {}}
-    error = data["history_error"]
+    error = data["mainline_error"]
     assert isinstance(error, str) and "expired login" in error

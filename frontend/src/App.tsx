@@ -1049,14 +1049,6 @@ export function App() {
             b={runB}
             viaA={selA.via}
             viaB={selB.via}
-            reportHref={api.runReportUrl(selB.repository, selB.runId, {
-              via: selB.via,
-              against: {
-                slug: selA.repository,
-                id: selA.runId,
-                via: selA.via,
-              },
-            })}
             onSwap={swap}
             onOpenDrawer={openDrawer}
           />
@@ -1069,9 +1061,11 @@ export function App() {
             actions={{
               slug: selA.repository,
               downloadHref: api.runDownloadUrl(selA.repository, runA.id),
-              reportHref: api.runReportUrl(selA.repository, selA.runId, {
-                via: selA.via,
-              }),
+              reportHref: api.runReportUrl(
+                selA.repository,
+                selA.runId,
+                selA.via,
+              ),
               onDeleteRun: handleDeleteRun,
               onDeleteRef: handleDeleteRef,
             }}

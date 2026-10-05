@@ -44,18 +44,13 @@ describe("readJsonWithProgress", () => {
 });
 
 describe("runReportUrl", () => {
-  it("names the labels and the comparison in the query", () => {
-    const url = api.runReportUrl("local", "01B", {
-      via: "pr/7",
-      against: { slug: "remote", id: "01A", via: "baseline" },
-    });
-
-    expect(url).toBe(
-      "/api/repositories/local/runs/01B/report?via=pr%2F7&against=01A&against_slug=remote&against_via=baseline",
+  it("names the ref the run was reached by in the query", () => {
+    expect(api.runReportUrl("local", "01B", "pr/7")).toBe(
+      "/api/repositories/local/runs/01B/report?via=pr%2F7",
     );
   });
 
-  it("carries no query for a run alone", () => {
+  it("carries no query for a run reached by its id", () => {
     expect(api.runReportUrl("local", "01B")).toBe(
       "/api/repositories/local/runs/01B/report",
     );

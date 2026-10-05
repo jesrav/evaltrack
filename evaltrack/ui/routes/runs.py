@@ -16,7 +16,7 @@ from evaltrack.core.run_record import (
     ensure_run_id,
 )
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
-from evaltrack.ui.models import Comparison, Mainline, MainlineEntry, NamedRun
+from evaltrack.ui.models import Mainline, MainlineEntry, NamedRun
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
@@ -115,39 +115,23 @@ def build_runs_router(
 
     @router.get("/{run_id}/report")
     def download_report(  # pyright: ignore[reportUnusedFunction]
-        slug: str,
-        run_id: str,
-        *,
-        via: str | None = None,
-        against: str | None = None,
-        against_slug: str | None = None,
-        against_via: str | None = None,
+        slug: str, run_id: str, *, via: str | None = None
     ) -> Response:
         """The run as the single-file report, to hand to someone without the
-        dashboard. `against` names a run to compare from, in `against_slug`
-        or, without one, in `slug`. `via` and `against_via` label the runs
-        with the refs the page reached them by."""
+        dashboard. `via` labels the run with the ref the page reached it by."""
         run = NamedRun(run=load_run_or_404(slug, run_id), via=via)
-        against_run: NamedRun | None = None
-        if against is not None:
-            against_run = NamedRun(
-                run=load_run_or_404(
-                    against_slug if against_slug is not None else slug, against
-                ),
-                via=against_via,
-            )
         data = collect_report_data(
             resolve(slug),
             run,
             mainline=Mainline(mainline),
-            comparison=Comparison(against_run),
             pr_url_template=pr_url_template,
         )
-        if data.history_error is not None:
+        if data.mainline_error is not None:
             _logger.warning(
-                "report of run %s has no history, the mainline is unreachable: %s",
+                "report of run %s has no history or comparison, the mainline is "
+                "unreachable: %s",
                 run_id,
-                data.history_error,
+                data.mainline_error,
             )
         try:
             html = render_report(data)
@@ -155,12 +139,8 @@ def build_runs_router(
             # An editable install before `just frontend_build`, not a fault
             # of the request.
             raise HTTPException(HTTPStatus.SERVICE_UNAVAILABLE, str(exc)) from exc
-        filename = (
-            f"evaltrack-report-{run_id}.html"
-            if against is None
-            else f"evaltrack-report-{against}-to-{run_id}.html"
-        )
         # An attachment, so the page never runs in the dashboard's origin.
+        filename = f"evaltrack-report-{run_id}.html"
         return Response(
             content=html,
             media_type="text/html",

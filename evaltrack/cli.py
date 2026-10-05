@@ -29,7 +29,6 @@ from evaltrack.core.errors import (
     EvaltrackError,
     InvalidIdentifierError,
     RepositoryUnavailableError,
-    UnsupportedSchemaError,
 )
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
 from evaltrack.core.run_record import (
@@ -42,7 +41,7 @@ from evaltrack.repositories import (
     open_repository,
     promote,
 )
-from evaltrack.ui.models import Comparison, Mainline, NamedRun
+from evaltrack.ui.models import Mainline, NamedRun
 from evaltrack.ui.report import collect_report_data, render_report
 from evaltrack.ui.run_view import INLINE_VALUE_BYTES
 
@@ -274,9 +273,9 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Write one HTML file that shows a recorded run the way the "
             "dashboard does, with the run embedded, so it opens anywhere "
-            "with no server and no network. With --against-ref or "
-            "--against-run-id it shows the changes from that run to the "
-            "reported one instead."
+            "with no server and no network. When the remote has a baseline, "
+            "the page also carries the run's history over the mainline and "
+            "the baseline run to compare against."
         ),
     )
     report.set_defaults(func=_cmd_report)
@@ -290,24 +289,6 @@ def _build_parser() -> argparse.ArgumentParser:
         "--ref",
         default=None,
         help="Report the run this ref points at, for example pr/123 or baseline.",
-    )
-    # When the comparison run cannot be found, the report shows the run alone
-    # and a warning says so.
-    against = report.add_mutually_exclusive_group()
-    against.add_argument(
-        "--against-ref",
-        default=None,
-        metavar="REF",
-        help="Embed the run this ref on the remote points at too, and render "
-        "a comparison from it to the reported run. `--against-ref baseline` "
-        "compares against the mainline.",
-    )
-    against.add_argument(
-        "--against-run-id",
-        default=None,
-        metavar="RUN_ID",
-        help="Embed this run from the repository too, and render a "
-        "comparison from it to the reported run.",
     )
     _add_repository_flags(
         report,
@@ -627,44 +608,6 @@ def _open_mainline(
     return _OpenedRepository(repository, remote.url), None
 
 
-def _load_comparison(
-    target: _OpenedRepository,
-    subject: NamedRun,
-    *,
-    against: str,
-    as_ref: bool,
-    remote: _OpenedRepository | None,
-) -> Comparison:
-    """The run to compare `subject` against, or the reason there is no
-    comparison to make. A project's first pull request has no `baseline` yet,
-    and a report of the run alone beats none in its artifacts. A `baseline`
-    an older or newer evaltrack cannot read is the same case: the run itself
-    is readable, and it is what the report is for.
-
-    A run id names a run in `target`. A ref names one on the remote, where the
-    team's refs live, so without a remote no ref resolves.
-    """
-    try:
-        if not as_ref:
-            loaded = _load_named_run(target, against, as_ref=False)
-        elif remote is None:
-            raise _RunNotFound(
-                "--against-ref resolves on the remote, and there is none to read"
-            )
-        else:
-            loaded = _load_named_run(remote, against, as_ref=True)
-    except (
-        _RunNotFound,
-        RepositoryUnavailableError,
-        UnsupportedSchemaError,
-        CorruptRecordError,
-    ) as exc:
-        return Comparison(None, str(exc))
-    if loaded.run.id == subject.run.id:
-        return Comparison(None, f"{against!r} is run {subject.run.id} itself")
-    return Comparison(loaded)
-
-
 def _cmd_report(args: argparse.Namespace) -> int:
     # Read up front, since the mainline needs it whichever repository is named.
     config = load_config()
@@ -679,56 +622,27 @@ def _cmd_report(args: argparse.Namespace) -> int:
         print(f"report: {exc}", file=sys.stderr)
         return 1
     remote, remote_error = _open_mainline(target, config)
-    comparison = Comparison()
-    against_name = args.against_ref or args.against_run_id
-    if against_name is not None:
-        comparison = _load_comparison(
-            target,
-            subject,
-            against=against_name,
-            as_ref=args.against_ref is not None,
-            remote=remote,
-        )
     data = collect_report_data(
         target.repository,
         subject,
         mainline=Mainline(remote.repository if remote else None, remote_error),
-        comparison=comparison,
         pr_url_template=config.pr_url_template,
     )
-    # Everything the page lacks is announced here, each cause once. The page
-    # carries the same reasons, for a reader who never sees stderr.
-    alone = f"shows run {subject.run.id} alone"
-    if remote is None and args.against_ref is not None:
-        # One cause took both, so one line says so. A run in this repository
-        # is the way around a missing remote, and no help with a broken one.
-        hint = (
-            ". Use --against-run-id to compare against a run in this repository"
-            if resolve_remote(config) is None
-            else ""
-        )
+    if data.mainline_error is not None:
+        # The page carries the same reason, for a reader who never sees stderr.
         print(
-            f"warning: {remote_error}, so the report has no history and {alone}{hint}",
+            "warning: the report has no history and no comparison against the "
+            f"mainline: {data.mainline_error}",
             file=sys.stderr,
         )
-    else:
-        if data.history_error is not None:
-            print(
-                f"warning: the report has no history: {data.history_error}",
-                file=sys.stderr,
-            )
-        if comparison.error is not None:
-            print(
-                f"warning: {comparison.error}, so the report {alone}", file=sys.stderr
-            )
     html = render_report(data, inline_limit=None if args.full else INLINE_VALUE_BYTES)
     if args.output == "-":
         sys.stdout.write(html)
         return 0
     Path(args.output).write_text(html, encoding="utf-8")
     what = f"run {subject.run.id}"
-    if comparison.run is not None:
-        what += f" against {comparison.run.run.id}"
+    if data.baseline is not None:
+        what += f", with baseline run {data.baseline.id} to compare against,"
     print(f"wrote report of {what} to {args.output}")
     return 0
 

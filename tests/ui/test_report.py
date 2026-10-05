@@ -10,9 +10,14 @@ import pytest
 
 import evaltrack.ui.report as report_module
 from evaltrack.core.errors import RepositoryUnavailableError
-from evaltrack.core.run_record import RunRecord, dump_run_json, parse_run_json
+from evaltrack.core.run_record import (
+    RUN_SCHEMA_VERSION,
+    RunRecord,
+    dump_run_json,
+    parse_run_json,
+)
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import Comparison, Mainline, NamedRun, ReportData
+from evaltrack.ui.models import Mainline, NamedRun, ReportData
 from evaltrack.ui.report import collect_report_data, render_report
 
 from ..factories import make_attempt, make_round
@@ -27,14 +32,11 @@ def make_data(
     run: RunRecord | None = None,
     *,
     via: str | None = None,
-    against: RunRecord | None = None,
-    against_via: str | None = None,
-    against_error: str | None = None,
+    baseline: RunRecord | None = None,
 ) -> ReportData:
     return ReportData(
         run=NamedRun(run=run or make_recorded_run(make_round(), commit="c0"), via=via),
-        against=NamedRun(run=against, via=against_via) if against else None,
-        against_error=against_error,
+        baseline=baseline,
         generated_at=GENERATED_AT,
         generated_by="0.0.0",
     )
@@ -53,21 +55,23 @@ def test_the_page_carries_the_run_as_the_api_serves_it(report_template: Path) ->
 
     embedded = embedded_report_json(html)
     assert named_run(embedded)["run"] == json.loads(data.run.run.model_dump_json())
-    assert embedded["against"] is None
+    assert embedded["baseline"] is None
     assert embedded["generated_at"] == "2026-01-02T03:04:05Z"
     assert html.startswith("<!doctype html>"), "the template around the data survives"
 
 
-def test_a_comparison_embeds_both_runs(report_template: Path) -> None:
-    against = make_recorded_run(make_round(assertions={"passed": False}), commit="c1")
-    data = make_data(against=against, against_via="baseline", via="pr/7")
+def test_the_page_carries_the_baseline_run_beside_the_run(
+    report_template: Path,
+) -> None:
+    baseline = make_recorded_run(make_round(assertions={"passed": False}), commit="c1")
+    data = make_data(baseline=baseline, via="pr/7")
 
     embedded = embedded_report_json(render_report(data))
 
-    reported, base = named_run(embedded), named_run(embedded, "against")
+    reported = named_run(embedded)
     assert reported["run"] == json.loads(data.run.run.model_dump_json())
-    assert base["run"] == json.loads(against.model_dump_json())
-    assert (reported["via"], base["via"]) == ("pr/7", "baseline")
+    assert reported["via"] == "pr/7"
+    assert embedded["baseline"] == json.loads(baseline.model_dump_json())
 
 
 def test_an_output_cannot_close_the_data_element(report_template: Path) -> None:
@@ -135,7 +139,7 @@ def test_collected_data_finds_the_mainline() -> None:
     assert data.mainline is not None
     assert (data.mainline.commit, data.mainline.pr) == ("main-0", 3)
     assert data.run.via == "baseline"
-    assert data.against is None
+    assert data.baseline is None, "the baseline run is not compared against itself"
 
 
 def test_collected_history_is_measured_over_the_repository_baseline() -> None:
@@ -161,30 +165,42 @@ def test_collected_history_is_measured_over_the_repository_baseline() -> None:
     assert data.mainline is None
 
 
-def test_a_comparison_reads_no_history_refs_or_mainline_entry() -> None:
-    """The comparison view shows none of them, and the history costs a run
-    body per mainline entry."""
+def test_collected_data_carries_the_baseline_to_compare_against() -> None:
+    """The page offers the comparison the dashboard offers, so the run the
+    mainline's `baseline` points at comes along, beside the history."""
     repo = RunRepository(MemoryStore())
+    base = make_recorded_run(make_round(), commit="c0", reliability_target=0.9)
+    repo.save_run(base)
+    repo.move_ref("baseline", base.id, commit="main-0")
+    viewed = make_recorded_run(make_round(), commit="c1", reliability_target=0.9)
+    repo.save_run(viewed)
+    repo.move_ref("pr/9", viewed.id, pr=9)
+
+    data = collect_report_data(repo, NamedRun(run=viewed), mainline=Mainline(repo))
+
+    assert data.baseline is not None and data.baseline.id == base.id
+    assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
+    assert [r.name for r in data.refs] == ["pr/9"]
+
+
+def test_a_baseline_this_version_cannot_read_is_left_out() -> None:
+    """During a rolling upgrade a newer evaltrack promotes `baseline`. The
+    run itself is readable, and it is what the report is for."""
+    store = MemoryStore()
+    repo = RunRepository(store)
     base = make_recorded_run(make_round(), commit="c0")
     repo.save_run(base)
     repo.move_ref("baseline", base.id, commit="main-0")
+    stored = json.loads(store.read(f"runs/{base.id}.json"))
+    stored["run_schema_version"] = RUN_SCHEMA_VERSION + 1
+    store.write(json.dumps(stored).encode(), f"runs/{base.id}.json")
     viewed = make_recorded_run(make_round(), commit="c1")
     repo.save_run(viewed)
-    repo.move_ref("pr/9", viewed.id, pr=9)
-    repo.move_ref("baseline", viewed.id, commit="main-1")
 
-    data = collect_report_data(
-        repo,
-        NamedRun(run=viewed),
-        mainline=Mainline(repo),
-        comparison=Comparison(NamedRun(run=base, via="baseline")),
-    )
+    data = collect_report_data(repo, NamedRun(run=viewed), mainline=Mainline(repo))
 
-    assert data.history.reliability == {}
-    assert data.refs == []
-    assert data.mainline is None
-    assert data.against is not None
-    assert data.against.run.id == base.id
+    assert data.baseline is None
+    assert data.mainline_error is None, "the mainline itself was read"
 
 
 def test_collected_history_is_measured_over_the_given_mainline() -> None:
@@ -235,7 +251,7 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
 
     assert data.history.reliability == {}
     assert data.mainline is None
-    assert data.history_error is not None and "no route" in data.history_error
+    assert data.mainline_error is not None and "no route" in data.mainline_error
     assert data.run.run.id == run.id
 
 
@@ -254,7 +270,7 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
 
     assert data.history.reliability == {}
     assert data.mainline is None
-    assert data.history_error == "the azure extra is not installed"
+    assert data.mainline_error == "the azure extra is not installed"
 
 
 def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
@@ -267,10 +283,12 @@ def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
     stored["tests"]["test_x"]["raw_results"] = [{"cases": [{"output": "x" * 100}]}]
     old_run = parse_run_json(json.dumps(stored).encode())
 
-    embedded = embedded_report_json(render_report(make_data(old_run, against=old_run)))
+    embedded = embedded_report_json(render_report(make_data(old_run, baseline=old_run)))
 
-    for key in ("run", "against"):
-        test = named_run(embedded, key)["run"]["tests"]["test_x"]
+    baseline = embedded["baseline"]
+    assert isinstance(baseline, dict)
+    for run_json in (named_run(embedded)["run"], baseline):
+        test = run_json["tests"]["test_x"]
         assert "raw_results" not in test
         assert test["cases"], "the structured cases still stand"
 
@@ -302,14 +320,3 @@ def test_every_value_is_embedded_on_request(report_template: Path) -> None:
     embedded = embedded_report_json(render_report(make_data(run), inline_limit=None))
 
     assert recorded_output(embedded) == big
-
-
-def test_the_page_carries_why_a_comparison_is_missing(report_template: Path) -> None:
-    """A reader of a CI artifact never sees stderr, so the reason a report
-    asked for as a comparison shows one run has to be in the page."""
-    embedded = embedded_report_json(
-        render_report(make_data(against_error="ref 'baseline' not found in /r"))
-    )
-
-    assert embedded["against"] is None
-    assert embedded["against_error"] == "ref 'baseline' not found in /r"

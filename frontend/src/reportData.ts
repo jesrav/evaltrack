@@ -14,20 +14,20 @@ export interface NamedRun {
   via: string | null;
 }
 
-/** What a report page embeds. Mirrors the backend `ReportData`. `refs` are
- *  the refs pointing at the run. `history` and `mainline` are measured over
- *  the mainline the generator chose. */
+/** What a report page embeds: the run, and what the mainline says about it.
+ *  Mirrors the backend `ReportData`. */
 export interface ReportData {
   run: NamedRun;
-  against: NamedRun | null;
-  /** Why a comparison that was asked for is not in the page. */
-  against_error: string | null;
+  /** The run the mainline's `baseline` points at, to compare against. Null
+   *  when there is none, or it is the run itself. */
+  baseline: RunRecord | null;
+  /** The refs pointing at the run. */
   refs: Ref[];
   history: RunHistory;
   mainline: MainlineEntry | null;
-  /** Why the history could not be read, when the mainline was unreachable.
-   *  `history` is then empty and the page says so. */
-  history_error: string | null;
+  /** Why the mainline could not be read. `history` is then empty and
+   *  `baseline` null, and the page says so. */
+  mainline_error: string | null;
   /** Project `{pr}` link template, so PR numbers link as in the dashboard. */
   pr_url_template: string | null;
   generated_at: string;
@@ -86,12 +86,12 @@ export function readEmbeddedReport(doc: Document): ReportData {
 
 /** How many cases have a value the report left out, across both runs. A case
  *  counts once however many of its values are missing, and once for both
- *  sides of a comparison, since the page shows it as one row. */
+ *  runs, since the comparison shows it as one row. */
 export function countCasesWithValuesLeftOut(data: ReportData): number {
   const cases = new Set<string>();
-  for (const named of [data.run, data.against]) {
-    if (!named) continue;
-    for (const env of collectDeferred(named.run)) {
+  for (const run of [data.run.run, data.baseline]) {
+    if (!run) continue;
+    for (const env of collectDeferred(run)) {
       cases.add(`${env.test}\u0000${env.case}`);
     }
   }

@@ -17,12 +17,11 @@ const run = buildRun("01J9Z3QW2KJ5H8VN4TQY7B6MDC", {
 function reportJson(overrides: Partial<ReportData> = {}): string {
   const data: ReportData = {
     run: { run, via: null },
-    against: null,
-    against_error: null,
+    baseline: null,
     refs: [],
     history: { reliability: {}, score_history: {} },
     mainline: null,
-    history_error: null,
+    mainline_error: null,
     pr_url_template: null,
     generated_at: "2026-01-01T00:00:00Z",
     generated_by: "0.3.0",
@@ -36,15 +35,14 @@ describe("parseReportData", () => {
     const data = parseReportData(
       reportJson({
         run: { run, via: "pr/12" },
-        against: { run, via: "baseline" },
+        baseline: run,
         refs: [{ name: "pr/12", tip: null, kind: "other" }],
       }),
     );
 
     expect(data.run.run.id).toBe(run.id);
     expect(data.run.via).toBe("pr/12");
-    expect(data.against?.run.id).toBe(run.id);
-    expect(data.against?.via).toBe("baseline");
+    expect(data.baseline?.id).toBe(run.id);
     expect(data.refs.map((r) => r.name)).toEqual(["pr/12"]);
     expect(data.generated_by).toBe("0.3.0");
   });
@@ -98,11 +96,11 @@ describe("countCasesWithValuesLeftOut", () => {
       },
     });
 
-  it("counts a case once, however many values and sides it is missing on", () => {
+  it("counts a case once, however many values and runs it is missing in", () => {
     const data = parseReportData(
       reportJson({
         run: { run: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDA"), via: null },
-        against: { run: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDB"), via: null },
+        baseline: withLeftOut("01J9Z3QW2KJ5H8VN4TQY7B6MDB"),
       }),
     );
 

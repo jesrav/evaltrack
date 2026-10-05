@@ -156,6 +156,24 @@ def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry |
     )
 
 
+def load_baseline_run(mainline: RunRepository, *, other_than: str) -> RunRecord | None:
+    """The run `mainline`'s `baseline` points at, to compare the run
+    `other_than` against. None when there is no `baseline`, when it points at
+    that run itself, or when this evaltrack cannot read the run.
+
+    Raises:
+        CorruptRecordError: when the reflog does not parse.
+    """
+    tip = mainline.get_ref(BASELINE_REF)
+    if tip is None or tip.run_id == other_than:
+        return None
+    try:
+        return load_run_tolerating_another_schema(mainline, tip.run_id)
+    except CorruptRecordError as exc:
+        _logger.warning("the baseline run %s cannot be read: %s", tip.run_id, exc)
+        return None
+
+
 def refs_pointing_at(repo: RunRepository, run_id: str) -> list[Ref]:
     """The refs whose tip is `run_id`, by name. A ref whose history cannot be
     read is left out, since its tip is unknown, not absent."""

@@ -60,15 +60,15 @@ the dashboard does. It opens from disk with no server, so you can attach it to a
 release. Name the run with `--run-id`, or with `--ref` to take the run that a ref points at.
 
 ```bash
-evaltrack report --ref pr/482 --against-ref baseline --output evaltrack-report.html
+evaltrack report --ref pr/482 --output evaltrack-report.html
 ```
 
-`--against-ref` embeds the run that a ref on the remote points at, and opens the page on the changes
-from that run to the reported one. `--against-ref baseline` compares against the mainline. It
-resolves on the remote whichever repository holds the reported run. To compare against a run in the
-local repository, use `--against-run-id`. If the comparison run is not found, or it is the reported
-run itself, the page shows the one run, and the page and a warning both say why. Without either flag
-the page shows the one run, with its history over the remote's [`baseline`][baseline].
+The page also holds what the mainline says about the run. It shows the run's history over the
+remote's [`baseline`][baseline]. When `baseline` points at another run, the page holds that run too,
+and **Compare to mainline** shows the changes from it to the reported run. No flag asks for either.
+The command reads them from the remote, whichever repository holds the reported run. Without a
+remote, or when it cannot be reached, the page shows the run alone, and the page and a warning both
+say why.
 
 The page holds the inputs and outputs that the run recorded. Share it as you would share the run. A
 value over 16 KB is left out, and its first 200 characters and its size stand in, so a report of a
@@ -76,11 +76,9 @@ large run stays a file worth sending. Open the run in the dashboard to see such 
 `--full` to embed every value whole.
 
 `--output` defaults to `evaltrack-report.html`. `-` writes the page to stdout. Like `push` and
-`promote`, the command reads the remote unless a repository flag names another. The history is
-always read from the remote. Without a remote, or when it cannot be reached, the page has no history
-and a warning says why.
+`promote`, the command reads the remote unless a repository flag names another.
 
-The dashboard offers the same page as **Report** on a run and on a comparison.
+The dashboard offers the same page as **Report** on a run.
 
 **Exit codes:** `0` when the report was written. `1` when the repository does not hold the run or
 the ref. Nothing is written then. `2` when no repository is named.
