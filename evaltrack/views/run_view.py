@@ -1,13 +1,13 @@
-"""What the dashboard receives for a run, and for a single case.
+"""A run as a page first receives it, and a single case whole.
 
-A run can hold values of hundreds of kilobytes, and a browser that receives
-them all at once freezes. So the run view replaces each large input, expected
-output, metadata and attempt output with an envelope, `{"$deferred": {...}}`,
-and the dashboard fetches the whole case when a pane needs it.
+A run can hold values of hundreds of kilobytes, and a browser that receives them all at
+once freezes. So the run view replaces each large input, expected output, metadata and
+attempt output with an envelope, `{"$deferred": {...}}`. A page that can fetch gets the
+whole case when a pane needs it.
 
-An envelope holds a preview for the table cell, the size, a hash, and the
-address of the value. The hash covers the part of a value that the dashboard
-compares for a small value, so two runs diff the same way whatever the size.
+An envelope holds a preview for the table cell, the size, a hash, and the address of the
+value. The hash covers the same part of a value that is compared for a small value, so
+two runs diff the same way whatever the size.
 """
 
 import hashlib
@@ -29,10 +29,10 @@ DEFERRED_KEY = "$deferred"
 
 PREVIEW_CHARS = 200
 
-# The case fields that the dashboard shows in a cell.
+# The case fields that a table cell shows.
 _CASE_FIELDS = ("inputs", "expected_output", "metadata")
 
-# The keys the dashboard unwraps to find the answer in a wrapped result. Keep
+# The keys the frontend unwraps to find the answer in a wrapped result. Keep
 # them the same as `getPrimaryView` in the frontend, so that a preview shows
 # what a cell shows.
 _RESULT_KEYS = frozenset({"output", "result", "answer", "content"})
@@ -81,12 +81,12 @@ def _defer(value: Any, *, limit: int, address: dict[str, Any]) -> Any:
 
 
 def build_run_view(run: RunRecord, *, limit: int | None = INLINE_VALUE_BYTES) -> Any:
-    """The run as plain data, the way the dashboard opens it. Every value over
-    `limit` bytes is replaced by its envelope. None keeps every value."""
+    """The run view as plain data. Every value over `limit` bytes is replaced by its
+    envelope. None keeps every value."""
     plain = dump_plain(run)
     for test in plain["tests"].values():
         # A run saved before 0.3.0 can hold `raw_results`, the runner's own
-        # reports. They are large, and the dashboard does not show them.
+        # reports. They are large, and no page shows them.
         test.pop("raw_results", None)
     if limit is None:
         return plain

@@ -1,11 +1,11 @@
-// The static report's data source. The report page carries its run inside the
-// document, in a JSON script element the CLI filled, instead of fetching it.
+// The data source of the static report. The page does not fetch its run. The
+// run is inside the document, in a JSON script element that evaltrack filled.
 
 import { collectDeferred, mapDeferred } from "./deferred";
 import { formatBytes } from "./format";
 import type { MainlineEntry, Ref, RunHistory, RunRecord } from "./types";
 
-/** Id of the element the CLI writes the report's data into. */
+/** Id of the element that holds the report's data. */
 export const REPORT_DATA_ID = "evaltrack-data";
 
 /** What a report page embeds: the run, and what the mainline says about it.
@@ -22,10 +22,10 @@ export interface ReportData {
   refs: Ref[];
   history: RunHistory;
   mainline: MainlineEntry | null;
-  /** Why the mainline could not be read. `history` is then empty and
-   *  `baseline` null, and the page says so. */
+  /** Why the mainline was not read. `history` is then empty and `baseline`
+   *  null, and the page says so. */
   mainline_error: string | null;
-  /** Project `{pr}` link template, so PR numbers link as in the dashboard. */
+  /** Project `{pr}` link template, so that PR numbers are links. */
   pr_url_template: string | null;
   generated_at: string;
   generated_by: string;
@@ -44,10 +44,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Parse the text of the report's data element. Only what can go wrong in
- *  practice is checked: a page with nothing in the slot, and text that is not
- *  a report. The rest is taken as written, since the page and its data are
- *  put into one file by one version of evaltrack. */
+/** Parse the text of the report's data element. It checks only what can go
+ *  wrong in practice: a page with nothing in the slot, and text that is not a
+ *  report. The rest is taken as written, because one version of evaltrack
+ *  writes the page and its data into one file. */
 export function parseReportData(text: string | null | undefined): ReportData {
   if (text === null || text === undefined || text.trim() === "") {
     throw new ReportDataError(
@@ -96,8 +96,8 @@ export function countCasesWithValuesLeftOut(data: ReportData): number {
 
 /** `value` with each value the report left out replaced by text a pane can
  *  show in its place: the first characters, and how much there was. A pane
- *  renders an object as a tree, so the envelope itself would show as its
- *  fields. */
+ *  renders an object as a tree. Without this, it shows the fields of the
+ *  envelope. */
 export function showPreviewsOfValuesLeftOut<T>(value: T): T {
   return mapDeferred(
     value,

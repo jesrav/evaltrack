@@ -16,7 +16,7 @@ TEMPLATE = (
 
 
 def embedded_report_json(html: str) -> dict[str, object]:
-    """The report's data as the page reads it: the one JSON element's text."""
+    """The data of the report, parsed from the one JSON element of the page."""
     matches = re.findall(
         r'<script type="application/json" id="evaltrack-data">(.*?)</script>',
         html,
@@ -27,7 +27,7 @@ def embedded_report_json(html: str) -> dict[str, object]:
 
 
 def embedded_run(data: dict[str, object]) -> dict[str, Any]:
-    """The reported run as the page reads it."""
+    """The reported run, as the page reads it."""
     run = data["run"]
     assert isinstance(run, dict), "the page carries no run"
     return run  # pyright: ignore[reportUnknownVariableType]

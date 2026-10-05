@@ -90,10 +90,10 @@ evaltrack = "evaltrack.pytest_plugin"
 requires = ["hatchling>=1.32.1"]
 build-backend = "hatchling.build"
 
-# The built frontend is a gitignored build artifact, so hatchling drops it by
-# default: the dashboard (evaltrack/ui/static) and the report page
-# (evaltrack/report/static). Force both into the sdist and the wheel. CI builds
-# the frontend before `uv build`.
+# The built frontend is in two gitignored directories, the dashboard
+# (evaltrack/ui/static) and the report page (evaltrack/report/static).
+# hatchling drops ignored files by default, so both are forced into the sdist
+# and the wheel. CI builds the frontend before `uv build`.
 [tool.hatch.build]
 artifacts = ["evaltrack/ui/static/**/*", "evaltrack/report/static/**/*"]
 

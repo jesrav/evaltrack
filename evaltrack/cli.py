@@ -411,9 +411,8 @@ def _same_location(one: str, other: str) -> bool:
 def _refuse_baseline_in_local(
     target: _OpenedRepository, config: EvaltrackConfig
 ) -> bool:
-    """Print why and return True when `target` is the local repository, where
-    `baseline` must not be written. The check is on the role, so a remote that
-    is a directory passes, and so does any repository that is neither."""
+    """If `target` is the local repository, print why `baseline` cannot be written there
+    and return True. The role decides, so a remote that is a directory passes."""
     remote = resolve_remote(config)
     if remote is not None and _same_location(target.url, remote.url):
         return False
@@ -570,7 +569,7 @@ class _RunNotFound(Exception):
 
 
 def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecord:
-    """The run `name` picks: the tip of that ref, or the run with that id.
+    """The run that `name` picks. It is the tip of that ref, or the run with that id.
 
     Raises:
         _RunNotFound: when the repository does not hold it.
@@ -591,10 +590,9 @@ def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecor
 def _open_mainline(
     target: _OpenedRepository, config: EvaltrackConfig
 ) -> tuple[_OpenedRepository | None, str | None]:
-    """The configured remote, whichever repository holds the run, since the
-    team's `baseline` lives there and nowhere else. None and the reason when
-    it is missing or cannot be opened. The report then has no history, as
-    with an unreachable one, since the run itself is what the report is for."""
+    """The configured remote, or None and the reason it cannot be used. The mainline is
+    read from the remote, whichever repository holds the run. A report can be written
+    without it."""
     remote = resolve_remote(config)
     if remote is None:
         return None, (
@@ -621,7 +619,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
         else:
             subject = _load_run(target, args.ref, as_ref=True)
     except _RunNotFound as exc:
-        # Like a missing export, a defined outcome, so exit 1.
+        # A missing run is a defined outcome, so the exit code is 1.
         print(f"report: {exc}", file=sys.stderr)
         return 1
     remote, remote_error = _open_mainline(target, config)

@@ -1,5 +1,5 @@
-"""The single-file report: what it embeds, and how it keeps a run's content
-from breaking out of the page."""
+"""The single-file report. What it embeds, and how it keeps the content of a run inside
+the data element."""
 
 import json
 import re
@@ -69,9 +69,9 @@ def test_the_page_carries_the_baseline_run_beside_the_run(
 
 
 def test_an_output_cannot_close_the_data_element(report_template: Path) -> None:
-    """A model output is whatever the task returned. The parser ends a script
-    element at the first `</script`, whatever the element's type, so one in
-    an output would turn the rest of the run into markup and script."""
+    """An output can hold any text. The HTML parser ends a script element at the first
+    `</script`, whatever the type of the element. Without the escapes, the rest of the
+    run becomes markup and script."""
     hostile = '</script><script>alert("x")</script>&amp;\u2028\u2029'
     run = make_recorded_run(
         make_round(attempts=[make_attempt(output=hostile)]), commit="c0"
@@ -109,8 +109,8 @@ def test_a_missing_template_names_the_build(
 def test_a_template_without_a_slot_is_refused(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A page from another build has nowhere to put the run, and a report
-    with no run in it must not be written as if it had one."""
+    """A template without the data slot has no place for the run. The report must fail,
+    and not write a page with no run in it."""
     path = tmp_path / "report.html"
     path.write_text("<!doctype html><title>other</title>", encoding="utf-8")
     monkeypatch.setattr(report_module, "TEMPLATE_PATH", path)
@@ -135,8 +135,8 @@ def test_collected_data_finds_the_mainline() -> None:
 
 
 def test_collected_history_is_measured_over_the_repository_baseline() -> None:
-    """A single-run report carries the reliability the dashboard would show
-    for it: the run over its repository's promoted history."""
+    """The report holds the reliability of the run, measured over the promoted history
+    of the mainline."""
     repo = RunRepository(MemoryStore())
     for i, ok in enumerate([True, False, True]):
         promoted = make_recorded_run(
@@ -158,8 +158,8 @@ def test_collected_history_is_measured_over_the_repository_baseline() -> None:
 
 
 def test_collected_data_carries_the_baseline_to_compare_against() -> None:
-    """The page offers the comparison the dashboard offers, so the run the
-    mainline's `baseline` points at comes along, beside the history."""
+    """The report holds the run that the mainline's `baseline` points at, and the
+    history. The page can then compare against that run."""
     repo = RunRepository(MemoryStore())
     base = make_recorded_run(make_round(), commit="c0", reliability_target=0.9)
     repo.save_run(base)
@@ -176,8 +176,8 @@ def test_collected_data_carries_the_baseline_to_compare_against() -> None:
 
 
 def test_a_baseline_this_version_cannot_read_is_left_out() -> None:
-    """During a rolling upgrade a newer evaltrack promotes `baseline`. The
-    run itself is readable, and it is what the report is for."""
+    """A newer evaltrack can promote a `baseline` that this one cannot read. The report
+    then has no baseline run, and the mainline is still read."""
     store = MemoryStore()
     repo = RunRepository(store)
     base = make_recorded_run(make_round(), commit="c0")
@@ -196,9 +196,8 @@ def test_a_baseline_this_version_cannot_read_is_left_out() -> None:
 
 
 def test_collected_history_is_measured_over_the_given_mainline() -> None:
-    """A developer's own run is held locally while the team's baseline lives
-    on the remote. The report then measures over the remote, as the dashboard
-    shows it, and finds no promotion for a run that was never on it."""
+    """A local run is measured over the remote's baseline. A run that was never promoted
+    has no mainline entry."""
     local, remote = RunRepository(MemoryStore()), RunRepository(MemoryStore())
     promoted = make_recorded_run(make_round(), commit="c0", reliability_target=0.9)
     remote.save_run(promoted)
@@ -213,8 +212,8 @@ def test_collected_history_is_measured_over_the_given_mainline() -> None:
 
 
 def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
-    """The page shows which refs reach the run, with the PR a ref records,
-    the way the dashboard does. A ref pointing elsewhere is not among them."""
+    """The report names the refs that point at the run, each with the PR that it
+    records. A ref that points at another run is not included."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_round(), commit="c0")
     other = make_recorded_run(make_round(), commit="c1")
@@ -232,8 +231,8 @@ def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
 
 
 def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
-    """A local run with the remote down is still a run worth sharing. The
-    page says why it carries no history rather than showing none."""
+    """When the remote is down, the report still holds the run. It says why there is no
+    history."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_round(), commit="c0")
     repo.save_run(run)
@@ -248,8 +247,8 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
 
 
 def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None:
-    """The generator, not the collector, opens the mainline. When it cannot,
-    the page still says why it carries no history."""
+    """When the caller cannot open the mainline, it passes the reason, and the report
+    holds that reason."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_round(), commit="c0")
     repo.save_run(run)
@@ -268,8 +267,8 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
 def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
     report_template: Path,
 ) -> None:
-    """A run saved before 0.3.0 holds the runner's own reports beside the
-    cases. The page never renders them, and they can be most of the run."""
+    """A run saved before 0.3.0 also holds the raw results of the eval runner. The page
+    does not show them, so the report leaves them out."""
     run = make_recorded_run(make_round(), commit="c0")
     stored = json.loads(dump_run_json(run))
     stored["tests"]["test_x"]["raw_results"] = [{"cases": [{"output": "x" * 100}]}]
@@ -286,8 +285,8 @@ def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
 
 
 def test_a_large_value_is_left_out_with_its_preview(report_template: Path) -> None:
-    """A report of a large run has to stay a file worth sending, so the page
-    gets what the dashboard gets on a first load: the preview and the size."""
+    """A large value is left out of the report, so that the file stays small. Its
+    preview and its size take its place."""
     big = "y" * 500
     run = make_recorded_run(
         make_round(attempts=[make_attempt(output=big)]), commit="c0"
@@ -315,8 +314,8 @@ def test_every_value_is_embedded_on_request(report_template: Path) -> None:
 
 
 def test_a_baseline_reflog_that_does_not_parse_leaves_the_run_alone() -> None:
-    """A torn reflog on the mainline is as far out of reach as a remote that
-    is down. The run is still what the report is for."""
+    """When the `baseline` reflog does not parse, the report holds the run alone and
+    says why."""
     store = MemoryStore()
     mainline = RunRepository(store)
     promoted = make_recorded_run(make_round(), commit="c0")

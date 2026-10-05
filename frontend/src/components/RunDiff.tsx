@@ -39,8 +39,8 @@ interface Props {
   b: RunRecord;
   viaA?: string;
   viaB?: string;
-  /** Leaves the comparison for the run it started from. Set on a page with no
-   *  sidebar to do that from, the static report. */
+  /** Goes back from the comparison to the run. A page with no sidebar sets
+   *  it. */
   onBack?: () => void;
   onSwap: () => void;
   onOpenDrawer: (content: DrawerContent) => void;

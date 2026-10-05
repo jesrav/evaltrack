@@ -28,9 +28,9 @@ def _clear_evaltrack_env(  # pyright: ignore[reportUnusedFunction]
 
 @pytest.fixture
 def report_template(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point the report at a temp template, so its tests run whether or not
-    this checkout has a frontend build. In a directory of its own, clear of
-    what a test writes into `tmp_path`."""
+    """Point the report at a temporary template, so that the tests run without a
+    frontend build. The template has its own directory, apart from the files that a test
+    writes."""
     path = tmp_path / "report-template" / "report.html"
     path.parent.mkdir()
     path.write_text(TEMPLATE, encoding="utf-8")

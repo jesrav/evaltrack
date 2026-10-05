@@ -160,9 +160,8 @@ export const api = {
       id,
     )}/download`;
   },
-  /** URL of the run as the single-file HTML report, as a file attachment, to
-   *  hand to someone without the dashboard. `viaRef` is the ref the run was
-   *  reached by, so the page names it as this one does. */
+  /** URL of the run as the single-file HTML report, served as a file. `viaRef`
+   *  is the ref the run was reached by. The report uses it as its title. */
   runReportUrl(slug: string, id: string, viaRef?: string): string {
     const query = viaRef
       ? `?${new URLSearchParams({ via_ref: viaRef }).toString()}`

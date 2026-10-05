@@ -65,15 +65,15 @@ evaltrack report --ref pr/482 --output evaltrack-report.html
 
 The page also holds what the mainline says about the run. It shows the run's history over the
 remote's [`baseline`][baseline]. When `baseline` points at another run, the page holds that run too,
-and **Compare to mainline** shows the changes from it to the reported run. No flag asks for either.
-The command reads them from the remote, whichever repository holds the reported run. Without a
-remote, or when it cannot be reached, the page shows the run alone, and the page and a warning both
-say why.
+and **Compare to mainline** shows the changes from it to the reported run. You do not need a flag
+for either. The command reads them from the remote, whichever repository holds the reported run.
+Without a remote, or when it cannot be reached, the page shows the run alone, and the page and a
+warning both say why.
 
-The page holds the inputs and outputs that the run recorded. Share it as you would share the run. A
-value over 16 KB is left out, and its first 200 characters and its size stand in, so a report of a
-large run stays a file worth sending. Open the run in the dashboard to see such a value, or pass
-`--full` to embed every value whole.
+The page holds the inputs and outputs that the run recorded. Share it with the same care as the run.
+A value over 16 KB is left out, so a report of a large run stays small. Its first 200 characters and
+its size take its place. Open the run in the dashboard to see such a value, or pass `--full` to
+embed every value whole.
 
 `--output` defaults to `evaltrack-report.html`. `-` writes the page to stdout. Like `push` and
 `promote`, the command reads the remote unless a repository flag names another.

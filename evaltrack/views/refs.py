@@ -1,5 +1,4 @@
-"""The refs of a repository as a reader sees them: each with its tip, and the
-ones pointing at a run."""
+"""The refs of a repository, each with its tip, and the refs that point at a run."""
 
 import logging
 from collections.abc import Iterator

@@ -48,13 +48,13 @@ import type {
   RecordedTest,
 } from "../types";
 
-/** What the page can do to the run in the repository behind it: download it
- *  in full, and delete it or a ref that reaches it. A page with no repository
- *  behind it, the static report, has none, and the header shows none. */
+/** What the page can do to the run in its repository. It can download the
+ *  run, and delete the run or a ref that reaches it. A page with no repository
+ *  behind it passes none. */
 export interface RunActions {
   /** The repository the run is addressed in, passed back to the deletes. */
   slug: string;
-  /** The full run as a file, the eval runner's own result objects included. */
+  /** The whole stored run, as a file. */
   downloadHref: string;
   /** The run as the single-file report, to share with someone without the
    *  dashboard. */
@@ -82,9 +82,8 @@ interface Props {
   mainline?: MainlineEntry | null;
   /** Project `{pr}` URL template. When set, the mainline PR number is a link. */
   prUrlTemplate: string | null;
-  /** Opens the comparison against the mainline. Absent when there is nothing
-   *  to compare to (no baseline ref, or this run is the baseline), or the page
-   *  cannot navigate, and the action is then not offered. */
+  /** Opens the comparison against the mainline. If it is absent, the action
+   *  is not shown. */
   onCompareToBaseline?: () => void;
   onOpenDrawer: (content: DrawerContent) => void;
   /** Selected attempt index per case, keyed by case title. Unset means the

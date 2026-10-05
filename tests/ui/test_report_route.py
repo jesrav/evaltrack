@@ -1,5 +1,5 @@
-"""The dashboard's report download: the single-file report served as an
-attachment, for a run the user is looking at."""
+"""The report download of the dashboard. It serves the single-file report of a run as an
+attachment."""
 
 from pathlib import Path
 
@@ -47,8 +47,8 @@ def test_report_is_an_html_attachment_holding_the_run() -> None:
 
 
 def test_report_of_a_local_run_carries_the_remote_baseline() -> None:
-    """A local run compared against the remote baseline is the dashboard's
-    everyday comparison, so the report it hands out carries that run."""
+    """The report of a local run holds the remote's baseline run, so the page can
+    compare against it."""
     local, remote = RunRepository(MemoryStore()), RunRepository(MemoryStore())
     base = make_recorded_run(make_round(), commit="c0")
     remote.save_run(base)
@@ -72,8 +72,7 @@ def test_report_of_a_local_run_carries_the_remote_baseline() -> None:
 
 
 def test_single_run_report_measures_history_over_the_remote() -> None:
-    """The dashboard draws a local run over the remote's mainline, and the
-    report it hands out shows the same."""
+    """The history in the report of a local run is measured over the remote's mainline."""
     local, remote = RunRepository(MemoryStore()), RunRepository(MemoryStore())
     promoted = make_recorded_run(make_round(), commit="c0", reliability_target=0.9)
     remote.save_run(promoted)
@@ -108,8 +107,8 @@ def test_report_of_a_missing_run_404s() -> None:
 def test_report_without_a_built_template_is_503(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An editable install before `just frontend_build`: the dashboard is up
-    on its fallback page, and the report says what to run rather than crash."""
+    """An editable install has no report template until `just frontend_build` has run.
+    The route answers 503 and names that command."""
     monkeypatch.setattr(report_module, "TEMPLATE_PATH", tmp_path / "missing.html")
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_round(), commit="c0")
@@ -137,8 +136,8 @@ def test_report_carries_the_dashboard_pr_link_template() -> None:
 
 
 def test_report_of_a_local_run_survives_an_unreachable_remote() -> None:
-    """The dashboard drops the history column when the remote is down, and
-    the report it hands out does the same rather than failing."""
+    """When the remote is down, the route still returns the report of a local run,
+    without history."""
     local = RunRepository(MemoryStore())
     mine = make_recorded_run(make_round(), commit="wip")
     local.save_run(mine)
@@ -161,8 +160,8 @@ def test_report_of_a_local_run_survives_an_unreachable_remote() -> None:
 
 
 def test_report_from_a_dashboard_with_no_remote_says_why_it_has_no_history() -> None:
-    """A reader of the file never saw the dashboard, so the page has to say
-    that there was no mainline to read."""
+    """Without a remote mount there is no mainline. The report says so, because its
+    reader does not see the dashboard."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_round(), commit="c0")
     repo.save_run(run)

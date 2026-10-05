@@ -99,8 +99,8 @@ def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
 def test_report_carries_the_baseline_to_compare_against(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The CI case: the PR's run with the mainline's baseline run beside it,
-    so the page can show what changed, with no flag asking for it."""
+    """A report of a PR's run also holds the mainline's baseline run, with no flag. The
+    page can then show what changed."""
     url = str(tmp_path / "repo")
     monkeypatch.setenv("EVALTRACK_REMOTE", url)
     baseline = seed_run_in_repo(url)
@@ -124,8 +124,8 @@ def test_report_carries_the_baseline_to_compare_against(
 
 
 def test_report_missing_run_exits_1_and_writes_nothing(tmp_path: Path) -> None:
-    """A run the repository does not hold is the one outcome that exits 1,
-    as it is for `export`, so a script can tell it from a crash."""
+    """A run that the repository does not hold exits 1, as with `export`. A script can
+    then tell it from a crash."""
     url = str(tmp_path / "repo")
     seed_run_in_repo(url)
     output = tmp_path / "report.html"
@@ -161,8 +161,8 @@ def test_report_missing_ref_exits_1(tmp_path: Path) -> None:
 def test_report_before_there_is_a_baseline_is_of_the_run_alone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The first PR of a project has no baseline yet. Nothing was asked for
-    that cannot be had, so the report is written with nothing to warn about."""
+    """The first PR of a project has no baseline yet. The report is of the run alone,
+    and there is no warning."""
     url = str(tmp_path / "repo")
     monkeypatch.setenv("EVALTRACK_REMOTE", url)
     run_id = seed_run_in_repo(url)
@@ -182,8 +182,8 @@ def test_report_before_there_is_a_baseline_is_of_the_run_alone(
 def test_report_of_the_baseline_run_has_nothing_to_compare_against(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A run compared against itself shows nothing, which the dashboard does
-    not offer either."""
+    """A comparison of a run against itself shows nothing, so the report does not make
+    one."""
     url = str(tmp_path / "repo")
     monkeypatch.setenv("EVALTRACK_REMOTE", url)
     run_id = seed_run_in_repo(url)
@@ -202,9 +202,8 @@ def test_report_of_the_baseline_run_has_nothing_to_compare_against(
 def test_report_with_a_baseline_in_another_stored_format_is_of_the_run_alone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """During a rolling upgrade a newer evaltrack promotes `baseline`, and an
-    older one reports a pull request. The run itself is readable, and it is
-    what the report is for."""
+    """A newer evaltrack can promote a `baseline` that an older one cannot read. The
+    report is then of the run alone."""
     url = str(tmp_path / "repo")
     monkeypatch.setenv("EVALTRACK_REMOTE", url)
     promoted = seed_run_in_repo(url)
@@ -229,8 +228,8 @@ def test_report_with_a_baseline_in_another_stored_format_is_of_the_run_alone(
 def test_report_defaults_to_the_configured_remote(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The documented use is a CI job, which names the remote once in the
-    environment, so the command defaults there like `push` and `promote`."""
+    """A CI job names the remote once in the environment. So the command reads the
+    remote by default, like `push` and `promote`."""
     repos = configure_repositories(tmp_path)
     monkeypatch.chdir(tmp_path)
     run_id = seed_run(repos.remote)
@@ -246,8 +245,8 @@ def test_report_defaults_to_the_configured_remote(
 def test_report_without_a_built_template_says_what_to_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An editable install has no built frontend until `just frontend_build`
-    has run. The failure has to name that, not a missing file."""
+    """An editable install has no built frontend until `just frontend_build` has run.
+    The failure must name that command, not a missing file."""
     monkeypatch.setattr(report_module, "TEMPLATE_PATH", tmp_path / "missing.html")
     url = str(tmp_path / "repo")
     run_id = seed_run_in_repo(url)
@@ -271,8 +270,7 @@ def test_report_needs_exactly_one_way_of_naming_the_run(
 def test_report_of_a_local_run_measures_history_over_the_remote(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The team's baseline lives on the remote, so a run held locally is
-    still drawn over it, as the dashboard draws it."""
+    """The baseline is on the remote. The history of a local run is measured over it."""
     repos = configure_repositories(tmp_path)
     monkeypatch.chdir(tmp_path)
     promoted = seed_run_in_repo(repos.remote)
@@ -293,9 +291,8 @@ def test_report_of_a_local_run_measures_history_over_the_remote(
 def test_report_without_a_remote_has_no_history_and_no_comparison(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The mainline is the remote and nothing else. A `baseline` in the named
-    repository is not it, so the page neither draws over it nor compares
-    against it."""
+    """The mainline is on the remote only. Without a remote, a local `baseline` gives no
+    history and no comparison."""
     url = str(tmp_path / "repo")
     configure_local(tmp_path, url)
     monkeypatch.chdir(tmp_path)
@@ -338,8 +335,8 @@ def test_report_carries_the_configured_pr_link_template(
 def test_report_of_a_local_run_with_the_remote_down_has_no_history(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Offline, a developer can still share a local run. The warning names
-    the remote and the page carries the run without history."""
+    """A developer can share a local run when the remote is down. The warning names the
+    remote, and the page has the run without history."""
     url = str(tmp_path / "local")
     configure_local(tmp_path, url)
     remote = mount_fake_azure(
@@ -362,8 +359,8 @@ def test_report_of_a_local_run_with_the_remote_down_has_no_history(
 def test_report_of_a_local_run_compares_against_the_remote_baseline(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The team's baseline lives on the remote and never in the local
-    repository, so that is the run a local run is compared against."""
+    """The baseline is on the remote, never in the local repository. A local run is
+    compared against that run."""
     repos = configure_repositories(tmp_path)
     monkeypatch.chdir(tmp_path)
     promoted = seed_run_in_repo(repos.remote)
@@ -382,9 +379,8 @@ def test_report_of_a_local_run_compares_against_the_remote_baseline(
 def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A remote whose backend is not installed, or whose URL is malformed,
-    is as far out of reach as one that is down, and the local run is still
-    the report's subject."""
+    """A remote can fail to open, for example when its backend is not installed. The
+    report is then of the local run alone, as when the remote is down."""
     url = str(tmp_path / "local")
     configure_local(tmp_path, url)
     remote = "nosuchscheme://team/evals"

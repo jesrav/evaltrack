@@ -22,16 +22,13 @@ class Mainline:
 
 
 class ReportData(BaseModel):
-    """What the single-file report embeds: the run, and what the mainline says
-    about it. The shapes are the ones the API serves, so the page reads them
-    as the dashboard does.
+    """What a report embeds. It is the run, and what the mainline says about it.
 
-    `via_ref` is the ref the report was asked for by, when it was asked for
-    by one. `refs` are the refs pointing at the run in its own repository. `history`,
-    `mainline` and `baseline` come from the mainline. `baseline` is the run
-    the `baseline` ref points at, for the page to compare against, and None
-    when there is none or it is the run itself. `mainline_error` says why,
-    when the mainline could not be read, and the three are then empty.
+    `via_ref` is the ref that the report was asked for by, if any. `refs` are the refs
+    that point at the run in its own repository. `history`, `mainline` and `baseline`
+    come from the mainline. `baseline` is the run that the `baseline` ref points at. It
+    is None when there is no such run, or when it is the run itself. When the mainline
+    cannot be read, `mainline_error` says why and those three are empty.
     """
 
     run: RunRecord

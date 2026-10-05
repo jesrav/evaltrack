@@ -21,7 +21,7 @@ from evaltrack.views.models import MainlineEntry, RunHistory
 from evaltrack.views.refs import refs_pointing_at
 from evaltrack.views.run_view import INLINE_VALUE_BYTES, build_run_view
 
-# Written by the frontend build, one self-contained page.
+# The frontend build writes this file.
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
 
 # The element the page reads. The build leaves it empty, and the report fills it.
@@ -37,17 +37,13 @@ def collect_report_data(
     via_ref: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
-    """The report's data for `run`, held by `repository`: the run, and what
-    `mainline` says about it. That is its history and promotion over the
-    `baseline` reflog, and the `baseline` run to compare against. The two
-    repositories differ when the run is a developer's own and the team's
-    mainline lives elsewhere. `via_ref` is the ref the report was asked for by,
-    which titles the page.
+    """The data of a report for `run`, which `repository` holds. It is the run and what
+    `mainline` says about it. That is the history and the promotion of the run, and the
+    `baseline` run to compare against. `via_ref` is the ref that the report was asked
+    for by.
 
-    A mainline that is missing, cannot be reached, or holds a `baseline`
-    reflog that does not parse leaves the report with the run alone and says
-    why, as the dashboard drops the column, since the run itself is what the
-    report is for.
+    If the mainline is missing, cannot be reached, or holds a `baseline` reflog that
+    does not parse, the report has the run alone and `mainline_error` says why.
     """
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
@@ -76,13 +72,11 @@ def collect_report_data(
 
 
 def escape_json_for_html(json_text: str) -> str:
-    """Rewrite `json_text` so it can sit inside a `<script>` element whatever it
-    holds. The parser ends the element at the first `</script` and knows no
-    escaping inside it, so every `<`, `>` and `&` becomes its JSON escape,
-    which decodes back to the same character. The two Unicode line
-    terminators go the same way, since a page is read as JavaScript source by
-    some tools and they end a line there.
-    """
+    """Rewrite `json_text` so that it can sit inside a `<script>` element, whatever it
+    holds. The HTML parser ends the element at the first `</script` and knows no
+    escaping inside it. So every `<`, `>` and `&` becomes its JSON escape, which decodes
+    back to the same character. The two Unicode line terminators become escapes too,
+    because some tools read a page as JavaScript source, where they end a line."""
     return (
         json_text.replace("&", "\\u0026")
         .replace("<", "\\u003c")
@@ -94,9 +88,9 @@ def escape_json_for_html(json_text: str) -> str:
 
 @cache
 def _load_template(path: Path) -> tuple[str, str]:
-    """The template split at its data slot. Cached, because the built page is
-    fixed for the life of the process and the dashboard renders it per download.
-    A failure is not cached, so a build that lands later is picked up."""
+    """The template, split at its data slot. It is cached, because the built page does
+    not change while the process runs. A failure is not cached, so a later build is
+    picked up."""
     try:
         template = path.read_text(encoding="utf-8")
     except FileNotFoundError:
@@ -114,9 +108,9 @@ def _load_template(path: Path) -> tuple[str, str]:
 
 
 def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
-    """The report as compact JSON. Each run is embedded as the dashboard opens
-    it, with every value over `inline_limit` bytes replaced by its preview and
-    size, so a report of a large run stays a file worth sending."""
+    """The report as compact JSON. Each run is embedded as its run view. A value over
+    `inline_limit` bytes is replaced by its preview and size, so the report of a large
+    run stays small."""
     # The runs are dumped once, as their views, and not also whole.
     runs: dict[str, Any] = {
         "run": build_run_view(data.run, limit=inline_limit),
@@ -133,14 +127,13 @@ def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
 def render_report(
     data: ReportData, *, inline_limit: int | None = INLINE_VALUE_BYTES
 ) -> str:
-    """The report page for `data`, as one self-contained HTML document. A value
-    over `inline_limit` bytes is left out, as the dashboard leaves it out of a
-    first load, and None embeds every value whole.
+    """The report page for `data`, as one self-contained HTML document. A value over
+    `inline_limit` bytes is left out. None embeds every value whole.
 
     Raises:
         FileNotFoundError: when the page template is not built.
-        ValueError: when the template carries no data slot, so it is not the
-            template this version writes into.
+        ValueError: when the template has no data slot, so it is not the template
+            that this version writes into.
     """
     head, tail = _load_template(TEMPLATE_PATH)
     payload = escape_json_for_html(_dump_report_json(data, inline_limit=inline_limit))
