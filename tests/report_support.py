@@ -26,9 +26,15 @@ def embedded_report_json(html: str) -> dict[str, object]:
     return json.loads(matches[0])
 
 
-def named_run(data: dict[str, object], side: str = "run") -> dict[str, Any]:
-    """One side of the embedded report, `run` or `against`, as the page reads
-    it: the run and the ref it was reached by."""
-    named = data[side]
-    assert isinstance(named, dict), f"the page carries no {side!r} side"
+def named_run(data: dict[str, object]) -> dict[str, Any]:
+    """The reported run as the page reads it: the run and the ref it was
+    reached by."""
+    named = data["run"]
+    assert isinstance(named, dict), "the page carries no run"
     return named  # pyright: ignore[reportUnknownVariableType]
+
+
+def recorded_output(data: dict[str, object]) -> object:
+    """The output of the one case the report's fixture run records."""
+    run = named_run(data)["run"]
+    return run["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]

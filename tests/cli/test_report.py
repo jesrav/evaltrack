@@ -14,7 +14,7 @@ from evaltrack.repositories import open_repository
 
 from ..factories import make_attempt, make_round
 from ..fakes import RaisingStore, mount_fake_azure
-from ..report_support import embedded_report_json, named_run
+from ..report_support import embedded_report_json, named_run, recorded_output
 from .helpers import (
     configure_local,
     configure_repositories,
@@ -413,11 +413,6 @@ def seed_run_with_a_large_output(url: str) -> tuple[str, str]:
     return run.id, big
 
 
-def recorded_output(html: str) -> object:
-    run = named_run(embedded_report_json(html))["run"]
-    return run["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
-
-
 def test_report_leaves_a_large_value_out_unless_asked_for_it_whole(
     tmp_path: Path,
 ) -> None:
@@ -447,7 +442,9 @@ def test_report_leaves_a_large_value_out_unless_asked_for_it_whole(
         == 0
     )
 
-    left_out = recorded_output(small.read_text(encoding="utf-8"))
+    left_out = recorded_output(embedded_report_json(small.read_text(encoding="utf-8")))
     assert isinstance(left_out, dict) and "$deferred" in left_out
-    assert recorded_output(full.read_text(encoding="utf-8")) == big
+    assert (
+        recorded_output(embedded_report_json(full.read_text(encoding="utf-8"))) == big
+    )
     assert small.stat().st_size < full.stat().st_size - 30_000

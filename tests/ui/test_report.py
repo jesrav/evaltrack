@@ -22,7 +22,7 @@ from evaltrack.ui.report import collect_report_data, render_report
 
 from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore
-from ..report_support import embedded_report_json, named_run
+from ..report_support import embedded_report_json, named_run, recorded_output
 from .conftest import make_recorded_run
 
 GENERATED_AT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
@@ -40,12 +40,6 @@ def make_data(
         generated_at=GENERATED_AT,
         generated_by="0.0.0",
     )
-
-
-def recorded_output(embedded: dict[str, object]) -> object:
-    """The output of the one case the fixture run records."""
-    run = named_run(embedded)["run"]
-    return run["tests"]["test_x"]["cases"]["test_case"]["attempts"][0]["output"]
 
 
 def test_the_page_carries_the_run_as_the_api_serves_it(report_template: Path) -> None:
@@ -320,3 +314,23 @@ def test_every_value_is_embedded_on_request(report_template: Path) -> None:
     embedded = embedded_report_json(render_report(make_data(run), inline_limit=None))
 
     assert recorded_output(embedded) == big
+
+
+def test_a_baseline_reflog_that_does_not_parse_leaves_the_run_alone() -> None:
+    """A torn reflog on the mainline is as far out of reach as a remote that
+    is down. The run is still what the report is for."""
+    store = MemoryStore()
+    mainline = RunRepository(store)
+    promoted = make_recorded_run(make_round(), commit="c0")
+    mainline.save_run(promoted)
+    mainline.move_ref("baseline", promoted.id, commit="main-0")
+    store.append(b'{"run_id": "01KXB8', "refs/baseline.log.jsonl")
+    repo = RunRepository(MemoryStore())
+    run = make_recorded_run(make_round(), commit="c1")
+    repo.save_run(run)
+
+    data = collect_report_data(repo, NamedRun(run=run), mainline=Mainline(mainline))
+
+    assert data.run.run.id == run.id
+    assert data.history.reliability == {} and data.baseline is None
+    assert data.mainline_error is not None

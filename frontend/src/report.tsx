@@ -38,8 +38,8 @@ function Report({ data }: { data: ReportData }) {
     setNotice(
       first
         ? `This pane shows only the first characters of ${formatBytes(deferredBytes(deferred))} ` +
-            `that the report left out. Open run ${first.run} in the dashboard to see it whole, ` +
-            `or write the report with --full.`
+            `that the report left out. Open run ${first.run} in the dashboard to see it whole. ` +
+            "`evaltrack report --full` writes a report with every value in it."
         : null,
     );
     setDrawer(showPreviewsOfValuesLeftOut(content));

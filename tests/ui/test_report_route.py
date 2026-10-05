@@ -158,3 +158,18 @@ def test_report_of_a_local_run_survives_an_unreachable_remote() -> None:
     assert data["history"] == {"reliability": {}, "score_history": {}}
     error = data["mainline_error"]
     assert isinstance(error, str) and "expired login" in error
+
+
+def test_report_from_a_dashboard_with_no_remote_says_why_it_has_no_history() -> None:
+    """A reader of the file never saw the dashboard, so the page has to say
+    that there was no mainline to read."""
+    repo = RunRepository(MemoryStore())
+    run = make_recorded_run(make_round(), commit="c0")
+    repo.save_run(run)
+
+    with make_client(make_repo_app(repo, role="local")) as client:
+        r = client.get(f"/api/repositories/main/runs/{run.id}/report")
+
+    assert r.status_code == 200
+    error = embedded_report_json(r.text)["mainline_error"]
+    assert isinstance(error, str) and "remote" in error

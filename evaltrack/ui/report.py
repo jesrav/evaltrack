@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from evaltrack.config import PrUrlTemplate
-from evaltrack.core.errors import RepositoryUnavailableError
+from evaltrack.core.errors import CorruptRecordError, RepositoryUnavailableError
 from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.ui.models import (
@@ -47,12 +47,10 @@ def collect_report_data(
     repositories differ when the run is a developer's own and the team's
     mainline lives elsewhere.
 
-    A mainline that is missing or cannot be reached leaves the report with
-    the run alone and says why, as the dashboard drops the column, since the
-    run itself is what the report is for.
-
-    Raises:
-        CorruptRecordError: when the `baseline` reflog does not parse.
+    A mainline that is missing, cannot be reached, or holds a `baseline`
+    reflog that does not parse leaves the report with the run alone and says
+    why, as the dashboard drops the column, since the run itself is what the
+    report is for.
     """
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
@@ -63,7 +61,7 @@ def collect_report_data(
             history = load_run_history(mainline.repository, viewed=run.run)
             mainline_entry = find_mainline_entry(mainline.repository, run.run.id)
             baseline = load_baseline_run(mainline.repository, other_than=run.run.id)
-        except RepositoryUnavailableError as exc:
+        except (RepositoryUnavailableError, CorruptRecordError) as exc:
             history, mainline_entry, baseline = RunHistory(), None, None
             mainline_error = str(exc)
     return ReportData(

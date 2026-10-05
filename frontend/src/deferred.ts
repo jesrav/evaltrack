@@ -105,20 +105,16 @@ export function pickDeferredValue(
   return record[address.field];
 }
 
-/** `value` with every envelope replaced by the value it stands for, taken from
- *  `cases`, keyed by `caseKeyOf`. An envelope whose case is not there stays as
- *  it is. Returns the same reference when nothing was replaced. */
-export function resolveDeferred<T>(
+/** `value` with every envelope replaced by what `replace` gives for it.
+ *  Returns the same reference when nothing was replaced. */
+export function mapDeferred<T>(
   value: T,
-  cases: ReadonlyMap<string, CaseRecord>,
+  replace: (envelope: DeferredEnvelope, original: unknown) => unknown,
 ): T {
   const walk = (v: unknown): unknown => {
     if (typeof v !== "object" || v === null) return v;
     const env = readDeferredEnvelope(v);
-    if (env) {
-      const record = cases.get(caseKeyOf(env));
-      return record ? pickDeferredValue(env, record) : v;
-    }
+    if (env) return replace(env, v);
     if (Array.isArray(v)) {
       const items = v.map(walk);
       return items.every((item, i) => item === v[i]) ? v : items;
@@ -134,6 +130,19 @@ export function resolveDeferred<T>(
     return changed ? out : v;
   };
   return walk(value) as T;
+}
+
+/** `value` with every envelope replaced by the value it stands for, taken from
+ *  `cases`, keyed by `caseKeyOf`. An envelope whose case is not there stays as
+ *  it is. */
+export function resolveDeferred<T>(
+  value: T,
+  cases: ReadonlyMap<string, CaseRecord>,
+): T {
+  return mapDeferred(value, (env, original) => {
+    const record = cases.get(caseKeyOf(env));
+    return record ? pickDeferredValue(env, record) : original;
+  });
 }
 
 /** The total bytes the envelopes stand for, for a loading message. */

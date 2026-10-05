@@ -123,7 +123,12 @@ def build_runs_router(
         data = collect_report_data(
             resolve(slug),
             run,
-            mainline=Mainline(mainline),
+            mainline=Mainline(
+                mainline,
+                None
+                if mainline is not None
+                else "no remote is mounted, and the mainline lives there",
+            ),
             pr_url_template=pr_url_template,
         )
         if data.mainline_error is not None:
