@@ -38,11 +38,11 @@ pr_url_template = "https://github.com/OWNER/REPO/pull/{pr}"
 # pr_url_template = "https://dev.azure.com/ORG/PROJECT/_git/REPO/pullrequest/{pr}"
 ```
 
-| key               | default        | meaning                                                                                      |
-| ----------------- | -------------- | -------------------------------------------------------------------------------------------- |
-| `local`           | `./.evaltrack` | the plugin's save target and the dashboard's **Local** mount                                 |
-| `remote`          | unset          | the shared repository: default target for `push`/`promote`, the dashboard's **Remote** mount |
-| `pr_url_template` | unset          | `http(s)` URL template with a `{pr}` placeholder, used as a PR ref's link target             |
+| key               | default        | meaning                                                                                                                               |
+| ----------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `local`           | `./.evaltrack` | the plugin's save target and the dashboard's **Local** mount                                                                          |
+| `remote`          | unset          | the shared repository, which holds `baseline` and the mainline: default target for `push`/`promote`, the dashboard's **Remote** mount |
+| `pr_url_template` | unset          | `http(s)` URL template with a `{pr}` placeholder, used as a PR ref's link target                                                      |
 
 ## Pytest options
 

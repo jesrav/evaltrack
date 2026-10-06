@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the mainline is the configured `remote` and nothing else. A dashboard with only a
+  local repository mounted no longer measures reliability history over the local `baseline`. Point
+  `remote` at a second local directory to keep that history when working alone. `promote` and
+  `push --ref baseline` into the local repository now exit `2`. To tell the local repository apart,
+  both read `pyproject.toml`, so an invalid `[tool.evaltrack]` table now stops them with
+  `--repository` too.
+
 ## [0.3.0] - 2026-09-26
 
 ### Added

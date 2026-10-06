@@ -1,4 +1,5 @@
 import type { ReflogEntry, Ref, RepositoryRole, RunSummary } from "../types";
+import { splitMainline } from "../baseline";
 import { formatBytes, formatPlural } from "../format";
 import { buildRunOutcomeChip } from "../runOutcome";
 import { shortenUrl } from "../shortenUrl";
@@ -199,13 +200,14 @@ function RepositoryBody({
 }: RepoBlockProps) {
   const hasAnyRefs =
     repo.baseline !== null || repo.prs.length > 0 || repo.otherRefs.length > 0;
+  const { mainline, otherRefs } = splitMainline(repo);
 
   return (
     <>
-      {repo.baseline && (
+      {mainline && (
         <MainlineSection
           repo={repo}
-          baseline={repo.baseline}
+          baseline={mainline}
           selA={selA}
           selB={selB}
           prUrlTemplate={prUrlTemplate}
@@ -229,7 +231,7 @@ function RepositoryBody({
 
       <RefSection
         title="Other refs"
-        refs={repo.otherRefs}
+        refs={otherRefs}
         repo={repo}
         selA={selA}
         selB={selB}

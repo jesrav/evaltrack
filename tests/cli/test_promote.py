@@ -7,7 +7,7 @@ import pytest
 from evaltrack.cli import main
 from evaltrack.repositories import open_repository
 
-from .helpers import run_cli, write_run_file
+from .helpers import configure_local, configure_repositories, run_cli, write_run_file
 
 
 def test_promote_moves_baseline(tmp_path: Path) -> None:
@@ -183,3 +183,39 @@ def test_promote_prints_a_commit_without_its_control_characters(
     assert result.code == 0
     assert "\x1b" not in result.out, "an escape sequence reached the terminal"
     assert "?[31mdeadbeef" in result.out
+
+
+@pytest.mark.parametrize("named_by", ["--local", "--repository"])
+def test_promote_into_the_local_repository_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, named_by: str
+) -> None:
+    """`baseline` lives on the remote. A local one has no meaning, so the
+    command does not create it, however the local repository is named."""
+    url = str(tmp_path / "local")
+    configure_local(tmp_path, url)
+    monkeypatch.chdir(tmp_path)
+    run_file = write_run_file(tmp_path)
+    main(["push", "--run-file", str(run_file.path), "--local", "--ref", "pr/7"])
+    target = ["--local"] if named_by == "--local" else ["--repository", url]
+
+    result = run_cli(["promote", "pr/7", *target])
+
+    assert result.code == 2, "a baseline in the local repository is refused"
+    assert "remote" in result.err and "[tool.evaltrack]" in result.err
+    assert open_repository(url).get_ref("baseline") is None
+
+
+def test_promote_into_a_remote_that_is_a_directory_works(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The refusal is about the role, not the kind of storage. A solo project
+    points `remote` at a second local directory."""
+    repos = configure_repositories(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    run_file = write_run_file(tmp_path)
+    main(["push", "--run-file", str(run_file.path), "--ref", "pr/7"])
+
+    result = run_cli(["promote", "pr/7", "--repository", repos.remote])
+
+    assert result.code == 0
+    assert open_repository(repos.remote).get_ref("baseline") is not None

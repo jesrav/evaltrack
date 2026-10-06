@@ -13,7 +13,8 @@ already points at the run. See
 
 ## evaltrack promote
 
-See [Repositories › Promote](./repositories.md#promote) and
+`promote` writes `baseline` to the remote. If the target is the local repository, the command exits
+`2`. See [Repositories › Promote](./repositories.md#promote) and
 [Cleaning up runs](./repositories.md#cleaning-up-runs).
 
 ## evaltrack runs

@@ -36,25 +36,29 @@ the target run and, optionally, a commit, a PR number, and a PR title. Past move
 The dashboard uses that history to compare a run against past PRs and releases.
 
 A ref name is lowercase and can be `/`-separated, as in `pr/123` or `my-experiment`. `baseline` is
-reserved.
+reserved for the ref on the remote that the mainline is read from.
 
 A ref is treated as a pull request when its latest reflog entry carries a PR number (recorded by
 `evaltrack push --pr`), not because of its name.
 
 ## Baseline and mainline
 
-**`baseline` is the ref.** The **mainline is the history of runs that ref has pointed at.**
+**`baseline` is a ref on the remote.** The **mainline is the history of runs that ref has pointed
+at.** The local repository has no mainline.
 
 `baseline` points at the most recently promoted run. Its reflog records every promoted run before
 that one, with its commit and time, and that history is the mainline: what reliability rates and
 score histories are measured over. You decide what "promoted" means (merged, deployed, released).
 See [Adapting the flow].
 
+The dashboard measures every run, local runs too, over the remote's `baseline`. Without a remote
+there is no history. A solo project gets one by pointing `remote` at a second local directory.
+
 ## Promote
 
-`evaltrack promote pr/123 --commit <sha>` moves `baseline` onto the run that `pr/123` already points
-at. Nothing is copied and nothing is re-evaluated. The recorded run, with the same ULID, becomes the
-newest mainline run.
+`evaltrack promote pr/123 --commit <sha>` writes to the remote. It moves `baseline` onto the run
+that `pr/123` already points at. Nothing is copied and nothing is re-evaluated. The recorded run,
+with the same ULID, becomes the newest mainline run.
 
 ### Moving a ref is idempotent
 
@@ -80,8 +84,8 @@ How a relative path resolves is in
 
 Declare them once in the `[tool.evaltrack]` table of `pyproject.toml`: `local` is where the pytest
 plugin saves, `remote` the shared one CI pushes to, holding the `baseline` and `pr/{n}` refs. Both
-are optional, and `evaltrack ui` mounts whichever exist. See
-[Configuration](./configuration.md#toolevaltrack-in-pyprojecttoml).
+are optional, and `evaltrack ui` mounts whichever exist, but only the remote's `baseline` gives
+history. See [Configuration](./configuration.md#toolevaltrack-in-pyprojecttoml).
 
 ## Azure Blob Storage
 
