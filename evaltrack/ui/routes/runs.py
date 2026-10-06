@@ -15,8 +15,12 @@ from evaltrack.core.run_record import (
     dump_run_json,
     ensure_run_id,
 )
-from evaltrack.report.models import Mainline
-from evaltrack.report.page import collect_report_data, render_report
+from evaltrack.report.page import (
+    NO_REMOTE,
+    Mainline,
+    collect_report_data,
+    render_report,
+)
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
@@ -125,21 +129,9 @@ def build_runs_router(
             resolve(slug),
             load_run_or_404(slug, run_id),
             via_ref=via_ref,
-            mainline=Mainline(
-                mainline,
-                None
-                if mainline is not None
-                else "no remote is mounted, and the mainline lives there",
-            ),
+            mainline=Mainline(mainline) if mainline is not None else NO_REMOTE,
             pr_url_template=pr_url_template,
         )
-        if data.mainline_error is not None:
-            _logger.warning(
-                "report of run %s has no history or comparison, the mainline is "
-                "unreachable: %s",
-                run_id,
-                data.mainline_error,
-            )
         try:
             html = render_report(data)
         except (FileNotFoundError, ValueError) as exc:

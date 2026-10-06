@@ -31,6 +31,8 @@ def build_history_router(
             if run_id is not None
             else None
         )
+        if mainline is None:
+            return RunHistory()
         return load_run_history(mainline, viewed=viewed)
 
     return router

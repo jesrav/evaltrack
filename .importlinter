@@ -17,8 +17,9 @@ exhaustive = True
 layers =
     cli | pytest_plugin
     ui
-    report | marked_test
+    report
     views
+    marked_test
     history | repositories | translators | context | converters | failure
     config | core
 

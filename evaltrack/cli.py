@@ -36,8 +36,13 @@ from evaltrack.core.run_record import (
     dump_run_json,
     parse_run_json,
 )
-from evaltrack.report.models import Mainline
-from evaltrack.report.page import collect_report_data, render_report
+from evaltrack.report.page import (
+    NO_REMOTE,
+    REMOTE_DID_NOT_OPEN,
+    Mainline,
+    collect_report_data,
+    render_report,
+)
 from evaltrack.repositories import (
     RunRepository,
     RunSummary,
@@ -589,24 +594,22 @@ def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecor
 
 def _open_mainline(
     target: _OpenedRepository, config: EvaltrackConfig
-) -> tuple[_OpenedRepository | None, str | None]:
-    """The configured remote, or None and the reason it cannot be used. The mainline is
-    read from the remote, whichever repository holds the run. A report can be written
-    without it."""
+) -> tuple[Mainline, str | None]:
+    """The mainline, read from the configured remote whichever repository holds the
+    run, and the detail of a failure to open it, for stderr. A report can be written
+    without a mainline. The URL is printed only after a successful open, since one
+    that is turned away can hold a credential."""
     remote = resolve_remote(config)
     if remote is None:
-        return None, (
-            f"no remote configured, and the mainline lives there. Set ${REMOTE_ENV} "
-            "or [tool.evaltrack].remote"
-        )
+        return NO_REMOTE, None
     if _same_location(remote.url, target.url):
-        return target, None
-    print(f"reading the mainline from {remote.url}", file=sys.stderr)
+        return Mainline(target.repository), None
     try:
         repository = open_repository(remote.url)
     except (ValueError, ImportError) as exc:
-        return None, f"could not open the remote {remote.url}: {_first_line(exc)}"
-    return _OpenedRepository(repository, remote.url), None
+        return REMOTE_DID_NOT_OPEN, f"{remote.source}: {_first_line(exc)}"
+    print(f"reading the mainline from {remote.url}", file=sys.stderr)
+    return Mainline(repository), None
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
@@ -622,19 +625,20 @@ def _cmd_report(args: argparse.Namespace) -> int:
         # A missing run is a defined outcome, so the exit code is 1.
         print(f"report: {exc}", file=sys.stderr)
         return 1
-    remote, remote_error = _open_mainline(target, config)
+    mainline, detail = _open_mainline(target, config)
     data = collect_report_data(
         target.repository,
         subject,
-        mainline=Mainline(remote.repository if remote else None, remote_error),
+        mainline=mainline,
         via_ref=args.ref,
         pr_url_template=config.pr_url_template,
     )
     if data.mainline_error is not None:
         # The page carries the same reason, for a reader who never sees stderr.
+        # The detail stays here, since it can name a host or a path.
         print(
             "warning: the report has no history and no comparison against the "
-            f"mainline: {data.mainline_error}",
+            f"mainline: {data.mainline_error}" + (f" ({detail})" if detail else ""),
             file=sys.stderr,
         )
     html = render_report(data, inline_limit=None if args.full else INLINE_VALUE_BYTES)

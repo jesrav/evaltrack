@@ -16,8 +16,13 @@ from evaltrack.core.run_record import (
     dump_run_json,
     parse_run_json,
 )
-from evaltrack.report.models import Mainline, ReportData
-from evaltrack.report.page import collect_report_data, render_report
+from evaltrack.report.page import (
+    REMOTE_DID_NOT_OPEN,
+    Mainline,
+    ReportData,
+    collect_report_data,
+    render_report,
+)
 from evaltrack.repositories import RunRepository
 
 from ..factories import make_attempt, make_round
@@ -242,7 +247,7 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
 
     assert data.history.reliability == {}
     assert data.mainline is None
-    assert data.mainline_error is not None and "no route" in data.mainline_error
+    assert data.mainline_error == "the remote was not reached"
     assert data.run.id == run.id
 
 
@@ -256,12 +261,12 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     data = collect_report_data(
         repo,
         run,
-        mainline=Mainline(None, "the azure extra is not installed"),
+        mainline=REMOTE_DID_NOT_OPEN,
     )
 
     assert data.history.reliability == {}
     assert data.mainline is None
-    assert data.mainline_error == "the azure extra is not installed"
+    assert data.mainline_error == "the remote did not open"
 
 
 def test_the_page_leaves_out_the_raw_results_an_old_run_carries(

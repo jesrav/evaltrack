@@ -77,20 +77,18 @@ def _load_mainline_history(
 
 
 def load_run_history(
-    mainline: RunRepository | None,
+    mainline: RunRepository,
     *,
     viewed: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
     """The reliability and score history over `mainline`'s promoted runs, with
-    `viewed` drawn over them when it is not itself one of them. Empty without
-    a mainline, or when it holds no history.
+    `viewed` drawn over them when it is not itself one of them. Empty when the
+    mainline holds no history.
 
     Raises:
         CorruptRecordError: when the mainline's reflog does not parse.
     """
-    if mainline is None:
-        return RunHistory()
     reflog = list(mainline.get_reflog(BASELINE_REF))
     history = _load_mainline_history(mainline, reflog, window=window)
     if history and viewed is not None and all(h.run.id != viewed.id for h in history):

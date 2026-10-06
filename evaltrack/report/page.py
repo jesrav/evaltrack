@@ -2,15 +2,18 @@
 so it opens anywhere with no server and no network."""
 
 import importlib.metadata
+import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from functools import cache
 from pathlib import Path
 from typing import Any
 
+from pydantic import AwareDatetime, BaseModel
+
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import CorruptRecordError, RepositoryUnavailableError
+from evaltrack.core.refs import Ref
 from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
-from evaltrack.report.models import Mainline, ReportData
 from evaltrack.repositories import RunRepository
 from evaltrack.views.mainline import (
     find_mainline_entry,
@@ -21,12 +24,55 @@ from evaltrack.views.models import MainlineEntry, RunHistory
 from evaltrack.views.refs import refs_pointing_at
 from evaltrack.views.run_view import INLINE_VALUE_BYTES, build_run_view
 
+_logger = logging.getLogger(__name__)
+
 # The frontend build writes this file.
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
 
 # The element the page reads. The build leaves it empty, and the report fills it.
 _SLOT_OPEN = '<script type="application/json" id="evaltrack-data">'
 _SLOT_CLOSE = "</script>"
+
+
+@dataclass(frozen=True)
+class Mainline:
+    """The repository the mainline is read from, or None and a short reason there
+    is none. The reason goes into the page, so it names no host, path or error
+    text."""
+
+    repository: RunRepository | None
+    reason: str | None = None
+
+
+NO_REMOTE = Mainline(None, "no remote is configured")
+REMOTE_DID_NOT_OPEN = Mainline(None, "the remote did not open")
+
+# The reasons found while the mainline is read.
+_REMOTE_NOT_REACHED = "the remote was not reached"
+_REFLOG_DID_NOT_PARSE = "the baseline reflog did not parse"
+
+
+class ReportData(BaseModel):
+    """What a report embeds. It is the run, and what the mainline says about it.
+
+    `via_ref` is the ref that the report was asked for by, if any. `refs` are the refs
+    that point at the run in its own repository. `history`, `mainline` and `baseline`
+    come from the mainline. `baseline` is the run that the `baseline` ref points at. It
+    is None when there is no such run, or when it is the run itself. When the mainline
+    is not read, `mainline_error` says why in a few fixed words and those three are
+    empty.
+    """
+
+    run: RunRecord
+    via_ref: str | None = None
+    baseline: RunRecord | None = None
+    refs: list[Ref] = []
+    history: RunHistory = RunHistory()
+    mainline: MainlineEntry | None = None
+    mainline_error: str | None = None
+    pr_url_template: PrUrlTemplate | None = None
+    generated_at: AwareDatetime
+    generated_by: str
 
 
 def collect_report_data(
@@ -48,15 +94,21 @@ def collect_report_data(
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
     baseline: RunRecord | None = None
-    mainline_error = mainline.error
+    mainline_error = mainline.reason
     if mainline.repository is not None:
         try:
             history = load_run_history(mainline.repository, viewed=run)
             mainline_entry = find_mainline_entry(mainline.repository, run.id)
             baseline = load_baseline_run(mainline.repository, other_than=run.id)
         except (RepositoryUnavailableError, CorruptRecordError) as exc:
+            # The detail stays out of the page, which is handed around.
+            _logger.warning("the mainline was not read: %s", exc)
             history, mainline_entry, baseline = RunHistory(), None, None
-            mainline_error = str(exc)
+            mainline_error = (
+                _REMOTE_NOT_REACHED
+                if isinstance(exc, RepositoryUnavailableError)
+                else _REFLOG_DID_NOT_PARSE
+            )
     return ReportData(
         run=run,
         via_ref=via_ref,
@@ -86,11 +138,9 @@ def escape_json_for_html(json_text: str) -> str:
     )
 
 
-@cache
 def _load_template(path: Path) -> tuple[str, str]:
-    """The template, split at its data slot. It is cached, because the built page does
-    not change while the process runs. A failure is not cached, so a later build is
-    picked up."""
+    """The template, split at its data slot. Read on each call, so a new build is
+    picked up by a running process."""
     try:
         template = path.read_text(encoding="utf-8")
     except FileNotFoundError:

@@ -155,8 +155,8 @@ def test_report_of_a_local_run_survives_an_unreachable_remote() -> None:
     assert r.status_code == 200, "the run is what the report is for"
     data = embedded_report_json(r.text)
     assert data["history"] == {"reliability": {}, "score_history": {}}
-    error = data["mainline_error"]
-    assert isinstance(error, str) and "expired login" in error
+    assert data["mainline_error"] == "the remote was not reached"
+    assert "expired login" not in r.text, "the detail stays out of the page"
 
 
 def test_report_from_a_dashboard_with_no_remote_says_why_it_has_no_history() -> None:

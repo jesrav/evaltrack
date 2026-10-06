@@ -305,7 +305,7 @@ def test_report_without_a_remote_has_no_history_and_no_comparison(
 
     assert result.code == 0, "no remote is not a failure of the report"
     assert result.err.count("warning") == 1, "one cause, told once"
-    assert "no remote configured" in result.err
+    assert "no remote is configured" in result.err
     data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["baseline"] is None
@@ -392,7 +392,9 @@ def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
     result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
 
     assert result.code == 0, "an unopenable mainline does not fail the report"
-    assert result.err.count("warning") == 1 and remote in result.err
+    assert result.err.count("warning") == 1
+    assert "EVALTRACK_REMOTE" in result.err, "the source is named, not the URL"
+    assert remote not in result.err, "a URL the open turned away is not printed"
     data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["mainline_error"] is not None
@@ -444,3 +446,50 @@ def test_report_leaves_a_large_value_out_unless_asked_for_it_whole(
         recorded_output(embedded_report_json(full.read_text(encoding="utf-8"))) == big
     )
     assert small.stat().st_size < full.stat().st_size - 30_000
+
+
+def test_report_never_prints_a_credential_in_a_rejected_remote_url(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A remote URL that the open turns away can hold a credential. It must
+    reach neither stderr nor the page, which is handed around."""
+    url = str(tmp_path / "local")
+    configure_local(tmp_path, url)
+    monkeypatch.setenv("EVALTRACK_REMOTE", "azure://acct/c?sig=SUPERSECRETSIG=")
+    monkeypatch.chdir(tmp_path)
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
+
+    assert result.code == 0
+    page = output.read_text(encoding="utf-8")
+    assert "SUPERSECRETSIG" not in result.out + result.err + page, (
+        "the credential in the rejected URL must never be printed or embedded"
+    )
+    assert "warning" in result.err and "EVALTRACK_REMOTE" in result.err
+    assert embedded_report_json(page)["mainline_error"] == "the remote did not open"
+
+
+def test_report_keeps_the_storage_error_out_of_the_page(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A storage error can name a host or a path. The page gets a few fixed
+    words, and the detail goes to the log."""
+    url = str(tmp_path / "local")
+    configure_local(tmp_path, url)
+    remote = mount_fake_azure(
+        monkeypatch, RaisingStore(RepositoryUnavailableError("no route to host10"))
+    )
+    monkeypatch.setenv("EVALTRACK_REMOTE", remote)
+    monkeypatch.chdir(tmp_path)
+    run_id = seed_run_in_repo(url)
+    output = tmp_path / "report.html"
+
+    result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
+
+    assert result.code == 0
+    page = output.read_text(encoding="utf-8")
+    assert "host10" not in page
+    assert "host10" in caplog.text, "the detail is logged"
+    assert embedded_report_json(page)["mainline_error"] == "the remote was not reached"
