@@ -39,12 +39,23 @@ interface Props {
   b: RunRecord;
   viaA?: string;
   viaB?: string;
+  /** Goes back from the comparison to the run. A page with no sidebar sets
+   *  it. */
+  onBack?: () => void;
   onSwap: () => void;
   onOpenDrawer: (content: DrawerContent) => void;
 }
 
 /** One test's marker score bars, kept apart per side of the diff. */
-export function RunDiff({ a, b, viaA, viaB, onSwap, onOpenDrawer }: Props) {
+export function RunDiff({
+  a,
+  b,
+  viaA,
+  viaB,
+  onBack,
+  onSwap,
+  onOpenDrawer,
+}: Props) {
   const diff = useMemo(() => diffRuns(a, b), [a, b]);
 
   // Merge the two runs' test records so grouping can resolve a module path for
@@ -76,11 +87,24 @@ export function RunDiff({ a, b, viaA, viaB, onSwap, onOpenDrawer }: Props) {
 
   return (
     <div>
+      {onBack && (
+        <div className="page-actions">
+          <button
+            type="button"
+            className="page-action"
+            title="Back to the run on its own"
+            onClick={onBack}
+          >
+            ← Back to the run
+          </button>
+        </div>
+      )}
       <header className="view-title">
         <h1>Eval run comparison</h1>
         <p className="hint">
-          Showing what changed from base (left) to compare (right). Pick a
-          single run in the sidebar to leave this view.
+          Showing what changed from base (left) to compare (right).
+          {/* A page with its own way back has no sidebar. */}
+          {!onBack && " Pick a single run in the sidebar to leave this view."}
         </p>
       </header>
       <div className="run-pickers">

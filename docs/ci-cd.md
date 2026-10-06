@@ -91,6 +91,21 @@ That is the whole integration. What the job around it has to get right:
 `--pr` and `--title` record the PR number and title on the ref, so the dashboard shows which PR a
 ref represents. With `pr_url_template` set, it links the number to the PR.
 
+### A report as a job artifact
+
+A reviewer without the dashboard can still see the run, if it is saved as a `.html` file. After the
+push, write the report and upload the file as the job's artifact:
+
+```bash
+evaltrack report --ref "pr/$PR_NUMBER" --output evaltrack-report.html
+```
+
+The page opens from disk, with no server and no network. It shows the run, its history over the
+mainline, and the changes from `baseline` to the run. It holds every input and output the run
+recorded, so keep the artifact as private as the run. On the first pull request of a project there
+is no `baseline` yet, and the report is then of the run alone. See
+[CLI › report](./cli.md#evaltrack-report).
+
 ## Promote pipeline
 
 When the PR merges, point `baseline` at its run:

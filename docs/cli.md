@@ -50,8 +50,38 @@ Prints a recorded run as JSON. Use it to inspect a run or archive one outside th
 same data is available in Python. See [Reading runs from Python].
 
 **Exit codes:** `0` when the run was exported. `1` when the named repository does not hold the run,
-and the error names that repository. `2` when no repository is named. No other command exits
+and the error names that repository. `2` when no repository is named. Only `report` shares
 [`1`](#exit-codes), so a script can act on the missing run alone.
+
+## evaltrack report
+
+Writes a recorded run as one HTML file, with the run embedded in the page. The page shows the run as
+the dashboard does. It opens from disk with no server, so you can attach it to a CI job or a
+release. Name the run with `--run-id`, or with `--ref` to take the run that a ref points at.
+
+```bash
+evaltrack report --ref pr/482 --output evaltrack-report.html
+```
+
+The page also holds what the mainline says about the run. It shows the run's history over the
+remote's [`baseline`][baseline]. When `baseline` points at another run, the page holds that run too,
+and **Compare to mainline** shows the changes from it to the reported run. You do not need a flag
+for either. The command reads them from the remote, whichever repository holds the reported run.
+Without a remote, or when it cannot be reached, the page shows the run alone, and the page and a
+warning both say why.
+
+The page holds the inputs and outputs that the run recorded. Share it with the same care as the run.
+A value over 16 KB is left out, so a report of a large run stays small. Its first 200 characters and
+its size take its place. Open the run in the dashboard to see such a value, or pass `--full` to
+embed every value whole.
+
+`--output` defaults to `evaltrack-report.html`. `-` writes the page to stdout. Like `push` and
+`promote`, the command reads the remote unless a repository flag names another.
+
+The dashboard offers the same page as **Report** on a run.
+
+**Exit codes:** `0` when the report was written. `1` when the repository does not hold the run or
+the ref. Nothing is written then. `2` when no repository is named.
 
 ## evaltrack ui
 
@@ -75,8 +105,9 @@ carries an **Exit codes** note.
 | `2`  | You or the environment has something to fix, and the message says what |
 | `70` | A bug in evaltrack, printed with its traceback                         |
 
-Only [`export`](#evaltrack-export) exits `1` today, for a run the repository does not hold. Please
-[report a `70`](https://github.com/jesrav/evaltrack/issues) with the traceback.
+Only [`export`](#evaltrack-export) and [`report`](#evaltrack-report) exit `1` today, for a run or
+ref the repository does not hold. Please [report a `70`](https://github.com/jesrav/evaltrack/issues)
+with the traceback.
 
 ---
 

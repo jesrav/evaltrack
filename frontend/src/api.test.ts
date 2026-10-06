@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { readJsonWithProgress, type Progress } from "./api";
+import { api, readJsonWithProgress, type Progress } from "./api";
 
 function chunkedResponse(
   chunks: string[],
@@ -40,5 +40,19 @@ describe("readJsonWithProgress", () => {
     );
     expect(data).toBe(42);
     expect(seen).toEqual([{ loaded: 2, total: null }]);
+  });
+});
+
+describe("runReportUrl", () => {
+  it("names the ref the run was reached by in the query", () => {
+    expect(api.runReportUrl("local", "01B", "pr/7")).toBe(
+      "/api/repositories/local/runs/01B/report?via_ref=pr%2F7",
+    );
+  });
+
+  it("carries no query for a run reached by its id", () => {
+    expect(api.runReportUrl("local", "01B")).toBe(
+      "/api/repositories/local/runs/01B/report",
+    );
   });
 });

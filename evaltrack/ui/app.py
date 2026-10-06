@@ -23,11 +23,7 @@ from evaltrack.core.errors import (
     UnsupportedSchemaError,
 )
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import (
-    MountedRepository,
-    ProjectConfig,
-    RepositoryInfo,
-)
+from evaltrack.ui.models import MountedRepository, ProjectConfig, RepositoryInfo
 from evaltrack.ui.routes import static as static_routes
 from evaltrack.ui.routes.history import build_history_router
 from evaltrack.ui.routes.meta import build_meta_router
@@ -155,7 +151,11 @@ def create_app(
     # One cache for both routers, so that a delete in one clears what the
     # other read.
     run_cache = RunCache()
-    app.include_router(build_runs_router(resolve, mainline, run_cache=run_cache))
+    app.include_router(
+        build_runs_router(
+            resolve, mainline, run_cache=run_cache, pr_url_template=pr_url_template
+        )
+    )
     app.include_router(build_refs_router(resolve, run_cache=run_cache))
     app.include_router(build_history_router(resolve, mainline))
 

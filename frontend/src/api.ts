@@ -160,6 +160,16 @@ export const api = {
       id,
     )}/download`;
   },
+  /** URL of the run as the single-file HTML report, served as a file. `viaRef`
+   *  is the ref the run was reached by. The report uses it as its title. */
+  runReportUrl(slug: string, id: string, viaRef?: string): string {
+    const query = viaRef
+      ? `?${new URLSearchParams({ via_ref: viaRef }).toString()}`
+      : "";
+    return `/api/repositories/${encodePath(slug)}/runs/${encodePath(
+      id,
+    )}/report${query}`;
+  },
   /** Pooled reliability and per-case score history over the mainline, with the
    *  viewed run as the newest point. One request, because the server measures
    *  both over the same history. */

@@ -13,7 +13,7 @@ import evaltrack.ui.app as ui_app
 from evaltrack.cli import main
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RepositoryUnavailableError
-from evaltrack.ui import MountedRepository
+from evaltrack.ui.app import MountedRepository
 
 from ..fakes import MemoryStore, mount_fake_azure
 from .helpers import configure_local, configure_repositories, run_cli

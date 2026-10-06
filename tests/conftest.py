@@ -1,8 +1,13 @@
 """Shared fixtures. Report builders live in `factories.py`, fakes in `fakes.py`."""
 
 import os
+from pathlib import Path
 
 import pytest
+
+import evaltrack.report.page as report_module
+
+from .report_support import TEMPLATE
 
 
 @pytest.fixture(autouse=True)
@@ -19,3 +24,15 @@ def _clear_evaltrack_env(  # pyright: ignore[reportUnusedFunction]
     for key in list(os.environ):
         if key.startswith("EVALTRACK_"):
             monkeypatch.delenv(key)
+
+
+@pytest.fixture
+def report_template(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the report at a temporary template, so that the tests run without a
+    frontend build. The template has its own directory, apart from the files that a test
+    writes."""
+    path = tmp_path / "report-template" / "report.html"
+    path.parent.mkdir()
+    path.write_text(TEMPLATE, encoding="utf-8")
+    monkeypatch.setattr(report_module, "TEMPLATE_PATH", path)
+    return path

@@ -30,7 +30,8 @@ That one marker gives you three things:
   only the evals that fail and tracks each case's pass-rate over time. See
   [Flakiness & reliability](./flakiness.md).
 - **Keep every run.** Runs land in a repository you own, local files or Azure Blob Storage or Amazon
-  S3, with a dashboard you run locally to inspect them and compare them across PRs and releases. See
+  S3, with a dashboard you run locally to inspect them and compare them across PRs and releases. Any
+  run can be saved as a single HTML file that opens anywhere, to share or attach to a CI job. See
   [Repositories and storage](./repositories.md) and [CI/CD](./ci-cd.md).
 
 ![Animated demo: a failing eval run in the dashboard, with per-case verdicts, scores against their bars, reliability history, and a comparison against the baseline](./images/dashboard-demo.gif)

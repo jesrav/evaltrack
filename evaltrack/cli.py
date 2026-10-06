@@ -31,19 +31,33 @@ from evaltrack.core.errors import (
     RepositoryUnavailableError,
 )
 from evaltrack.core.refs import BASELINE_REF, Ref, RefKind, ReflogEntry
-from evaltrack.core.run_record import dump_run_json, parse_run_json
+from evaltrack.core.run_record import (
+    RunRecord,
+    dump_run_json,
+    parse_run_json,
+)
+from evaltrack.report.page import (
+    NO_REMOTE,
+    REMOTE_DID_NOT_OPEN,
+    Mainline,
+    collect_report_data,
+    render_report,
+)
 from evaltrack.repositories import (
     RunRepository,
     RunSummary,
     open_repository,
     promote,
 )
+from evaltrack.views.run_view import INLINE_VALUE_BYTES
 
 # The dashboard is unauthenticated, so it binds loopback only.
 _UI_HOST = "127.0.0.1"
 
 # sysexits.h EX_SOFTWARE, clear of the command exit codes.
 _EXIT_INTERNAL_ERROR = 70
+
+DEFAULT_REPORT_PATH = "evaltrack-report.html"
 
 _ISSUES_URL = "https://github.com/jesrav/evaltrack/issues"
 
@@ -256,6 +270,49 @@ def _build_parser() -> argparse.ArgumentParser:
     export.add_argument("run_id", help="The run id (ULID) to export.")
     _add_repository_flags(
         export, required=True, url_help="Repository path or URL the run lives in."
+    )
+
+    report = sub.add_parser(
+        "report",
+        help="Write a single-file HTML report of a recorded run.",
+        allow_abbrev=False,
+        description=(
+            "Write one HTML file that shows a recorded run the way the "
+            "dashboard does, with the run embedded, so it opens anywhere "
+            "with no server and no network. When the remote has a baseline, "
+            "the page also carries the run's history over the mainline and "
+            "the baseline run to compare against."
+        ),
+    )
+    report.set_defaults(func=_cmd_report)
+    subject = report.add_mutually_exclusive_group(required=True)
+    subject.add_argument(
+        "--run-id",
+        dest="run_id",
+        help="The run id (ULID) to report.",
+    )
+    subject.add_argument(
+        "--ref",
+        default=None,
+        help="Report the run this ref points at, for example pr/123 or baseline.",
+    )
+    _add_repository_flags(
+        report,
+        required=False,
+        url_help="Repository path or URL. Defaults to the configured remote.",
+    )
+    report.add_argument(
+        "--full",
+        action="store_true",
+        default=False,
+        help="Embed every value whole. Without it, a value over 16 KB is left "
+        "out of the page and its preview and size stand in, so the file "
+        "stays small.",
+    )
+    report.add_argument(
+        "--output",
+        default=DEFAULT_REPORT_PATH,
+        help=f"The file to write, or - for stdout (default {DEFAULT_REPORT_PATH}).",
     )
 
     ui = sub.add_parser(
@@ -508,6 +565,91 @@ def _cmd_export(args: argparse.Namespace) -> int:
         print(f"export: run {args.run_id!r} not found in {target.url}", file=sys.stderr)
         return 1
     print(dump_run_json(run).decode())
+    return 0
+
+
+class _RunNotFound(Exception):
+    """The repository does not hold the run a name picks. The message says
+    which name, and where it was looked for."""
+
+
+def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecord:
+    """The run that `name` picks. It is the tip of that ref, or the run with that id.
+
+    Raises:
+        _RunNotFound: when the repository does not hold it.
+    """
+    run_id = name
+    if as_ref:
+        tip = target.repository.get_ref(name)
+        if tip is None:
+            raise _RunNotFound(f"ref {name!r} not found in {target.url}")
+        run_id = tip.run_id
+    run = target.repository.load_run(run_id)
+    if run is None:
+        held_by = f" (the tip of ref {name!r})" if as_ref else ""
+        raise _RunNotFound(f"run {run_id!r} not found in {target.url}{held_by}")
+    return run
+
+
+def _open_mainline(
+    target: _OpenedRepository, config: EvaltrackConfig
+) -> tuple[Mainline, str | None]:
+    """The mainline, read from the configured remote whichever repository holds the
+    run, and the detail of a failure to open it, for stderr. A report can be written
+    without a mainline. The URL is printed only after a successful open, since one
+    that is turned away can hold a credential."""
+    remote = resolve_remote(config)
+    if remote is None:
+        return NO_REMOTE, None
+    if _same_location(remote.url, target.url):
+        return Mainline(target.repository), None
+    try:
+        repository = open_repository(remote.url)
+    except (ValueError, ImportError) as exc:
+        return REMOTE_DID_NOT_OPEN, f"{remote.source}: {_first_line(exc)}"
+    print(f"reading the mainline from {remote.url}", file=sys.stderr)
+    return Mainline(repository), None
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    # Read up front, since the mainline needs it whichever repository is named.
+    config = load_config()
+    target = _open_resolved_repository(args, config=config)
+    try:
+        if args.run_id is not None:
+            subject = _load_run(target, args.run_id, as_ref=False)
+        else:
+            subject = _load_run(target, args.ref, as_ref=True)
+    except _RunNotFound as exc:
+        # A missing run is a defined outcome, so the exit code is 1.
+        print(f"report: {exc}", file=sys.stderr)
+        return 1
+    mainline, detail = _open_mainline(target, config)
+    data = collect_report_data(
+        target.repository,
+        subject,
+        mainline=mainline,
+        via_ref=args.ref,
+        pr_url_template=config.pr_url_template,
+    )
+    if data.mainline_error is not None:
+        # The page carries the same reason, for a reader who never sees stderr.
+        # The detail stays here, since it can name a host or a path.
+        print(
+            "warning: the report has no history and no comparison against the "
+            f"mainline: {data.mainline_error}" + (f" ({detail})" if detail else ""),
+            file=sys.stderr,
+        )
+    html = render_report(data, inline_limit=None if args.full else INLINE_VALUE_BYTES)
+    if args.output == "-":
+        sys.stdout.write(html)
+        return 0
+    Path(args.output).write_text(html, encoding="utf-8")
+    what = f"run {subject.id}"
+    if data.baseline is not None:
+        what += f", with baseline run {data.baseline.id} to compare against,"
+    print(f"wrote report of {what} to {args.output}")
     return 0
 
 

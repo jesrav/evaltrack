@@ -8,8 +8,6 @@ This is directional and priorities and scope will change.
 
 ## Sharing results
 
-- A single-file HTML report of a run, or of a run against the baseline, that opens anywhere with no
-  server. Meant for CI artifacts and release notes.
 - A Markdown summary of a run against the baseline, for posting on a pull request.
 
 ## CI integration
