@@ -44,8 +44,8 @@ That one marker gives you three things:
   Amazon S3 as the remote), with a dashboard you run locally to inspect them and compare them across
   PRs and releases. Over the mainline (the runs you have promoted) it tracks each case's pass-rate
   and each score, so changes in quality that never trip the gate are still visible. You can save any
-  run as one HTML file that opens anywhere, to share or attach to a CI job. See [Repositories and
-  storage] and [CI/CD].
+  run as a standalone HTML file that opens anywhere, to share or attach to a CI job. See
+  [Repositories and storage] and [CI/CD].
 
 ![Animated demo: a failing eval run in the dashboard, with per-case verdicts, scores against their bars, reliability history, and a comparison against the baseline][dashboard-demo]
 
