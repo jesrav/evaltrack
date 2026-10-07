@@ -52,8 +52,7 @@ score histories are measured over. You decide what "promoted" means (merged, dep
 See [Adapting the flow].
 
 The dashboard and `evaltrack report` measure every run, local runs too, over the remote's
-`baseline`. Without a remote there is no history. A solo project gets one by pointing `remote` at a
-second local directory.
+`baseline`. Without a remote there is no history.
 
 ## Promote
 

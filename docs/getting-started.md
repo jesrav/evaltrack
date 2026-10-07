@@ -117,11 +117,10 @@ screen as a single HTML file that opens anywhere, to share with someone without 
 
 ### 5. Track a shared remote (optional)
 
-The mainline, **Compare to mainline** and comparison reports need a remote. Declare your
+The mainline, **Compare to mainline** and the comparison in a report need a remote. Declare your
 repositories in `pyproject.toml`. `local` is where the plugin saves runs. `remote` is a shared
 repository that your CI writes to (Azure Blob Storage or Amazon S3). It stores `baseline` (the ref
-for the run of what is currently deployed) and the PR history. If you work alone, point `remote` at
-a second local directory.
+for the run of what is currently deployed) and the PR history.
 
 ```toml
 [tool.evaltrack]

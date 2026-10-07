@@ -427,8 +427,7 @@ def _refuse_baseline_in_local(
         f"error: {BASELINE_REF!r} lives on the remote, and {target.url} is the "
         "local repository. Add a remote to [tool.evaltrack] in pyproject.toml "
         "and write there:\n"
-        '    remote = "<path-or-url>"\n'
-        "A second local directory works when you work alone.",
+        '    remote = "<path-or-url>"',
         file=sys.stderr,
     )
     return True
@@ -482,11 +481,9 @@ def _cmd_push(args: argparse.Namespace) -> int:
         )
         return 2
 
-    # Read only for `baseline`, so any other push to a named repository still
-    # costs no read.
-    config = load_config() if args.ref == BASELINE_REF else None
+    config = load_config()
     target = _open_resolved_repository(args, config=config)
-    if config is not None and _refuse_baseline_in_local(target, config):
+    if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, config):
         return 2
     if args.ref is not None:
         # Before the save, so an invalid name cannot leave an orphan run behind.
