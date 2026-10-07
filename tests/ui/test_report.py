@@ -17,6 +17,7 @@ from evaltrack.core.run_record import (
     parse_run_json,
 )
 from evaltrack.report.page import (
+    NO_REMOTE,
     REMOTE_DID_NOT_OPEN,
     Mainline,
     ReportData,
@@ -228,7 +229,7 @@ def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
     repo.move_ref("pr/8", other.id, pr=8)
     repo.move_ref("baseline", run.id)
 
-    data = collect_report_data(repo, run, mainline=Mainline(None))
+    data = collect_report_data(repo, run, mainline=Mainline(reason=NO_REMOTE))
 
     assert [r.name for r in data.refs] == ["baseline", "pr/7"]
     pr = data.refs[1].tip
@@ -261,7 +262,7 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     data = collect_report_data(
         repo,
         run,
-        mainline=REMOTE_DID_NOT_OPEN,
+        mainline=Mainline(reason=REMOTE_DID_NOT_OPEN),
     )
 
     assert data.history.reliability == {}
@@ -336,3 +337,61 @@ def test_a_baseline_reflog_that_does_not_parse_leaves_the_run_alone() -> None:
     assert data.run.id == run.id
     assert data.history.reliability == {} and data.baseline is None
     assert data.mainline_error is not None
+
+
+class _CountingStore(MemoryStore):
+    """A store that counts how often each path is read."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads: dict[str, int] = {}
+
+    def read(self, path: str) -> bytes:
+        self.reads[path] = self.reads.get(path, 0) + 1
+        return super().read(path)
+
+
+def test_the_baseline_reflog_is_read_once_per_report() -> None:
+    """The history, the mainline entry and the baseline run all come from the
+    reflog. On a blob store each read is a round trip."""
+    store = _CountingStore()
+    mainline = RunRepository(store)
+    base = make_recorded_run(make_round(), commit="c0")
+    mainline.save_run(base)
+    mainline.move_ref("baseline", base.id, commit="main-0")
+    local = RunRepository(MemoryStore())
+    viewed = make_recorded_run(make_round(), commit="c1")
+    local.save_run(viewed)
+    store.reads.clear()
+
+    data = collect_report_data(local, viewed, mainline=Mainline(mainline))
+
+    assert data.baseline is not None and data.mainline_error is None
+    assert store.reads["refs/baseline.log.jsonl"] == 1
+
+
+def test_a_promoted_run_that_does_not_parse_is_left_out_of_the_history() -> None:
+    """One damaged run body on the mainline costs that run, not the history,
+    and it is not blamed on the reflog."""
+    store = MemoryStore()
+    repo = RunRepository(store)
+    runs = [make_recorded_run(make_round(), commit=f"c{i}") for i in range(3)]
+    for i, promoted in enumerate(runs):
+        repo.save_run(promoted)
+        repo.move_ref("baseline", promoted.id, commit=f"main-{i}")
+    store.write(b"{not json", f"runs/{runs[0].id}.json")
+    viewed = make_recorded_run(make_round(), commit="pr")
+    repo.save_run(viewed)
+
+    data = collect_report_data(repo, viewed, mainline=Mainline(repo))
+
+    assert data.mainline_error is None
+    assert data.history.reliability["test_x"]["test_case"].pooled_runs == 2
+    assert data.baseline is not None and data.baseline.id == runs[2].id
+
+
+def test_a_mainline_is_a_repository_or_a_reason() -> None:
+    with pytest.raises(ValueError):
+        Mainline()
+    with pytest.raises(ValueError):
+        Mainline(RunRepository(MemoryStore()), "and a reason")

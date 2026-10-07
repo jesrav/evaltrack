@@ -12,13 +12,13 @@ from pydantic import AwareDatetime, BaseModel
 
 from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import CorruptRecordError, RepositoryUnavailableError
-from evaltrack.core.refs import Ref
+from evaltrack.core.refs import BASELINE_REF, Ref
 from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.views.mainline import (
-    find_mainline_entry,
-    load_baseline_run,
-    load_run_history,
+    baseline_run_in,
+    mainline_entry_in,
+    run_history_over,
 )
 from evaltrack.views.models import MainlineEntry, RunHistory
 from evaltrack.views.refs import refs_pointing_at
@@ -34,22 +34,25 @@ _SLOT_OPEN = '<script type="application/json" id="evaltrack-data">'
 _SLOT_CLOSE = "</script>"
 
 
+# Why a report has no mainline. One of these goes into the page, so none names
+# a host, a path or an error text.
+NO_REMOTE = "no remote is configured"
+REMOTE_DID_NOT_OPEN = "the remote did not open"
+REMOTE_NOT_REACHED = "the remote was not reached"
+REFLOG_DID_NOT_PARSE = "the baseline reflog did not parse"
+
+
 @dataclass(frozen=True)
 class Mainline:
-    """The repository the mainline is read from, or None and a short reason there
-    is none. The reason goes into the page, so it names no host, path or error
-    text."""
+    """The repository the mainline is read from, or the reason there is none.
+    One of the two, never both or neither."""
 
-    repository: RunRepository | None
+    repository: RunRepository | None = None
     reason: str | None = None
 
-
-NO_REMOTE = Mainline(None, "no remote is configured")
-REMOTE_DID_NOT_OPEN = Mainline(None, "the remote did not open")
-
-# The reasons found while the mainline is read.
-_REMOTE_NOT_REACHED = "the remote was not reached"
-_REFLOG_DID_NOT_PARSE = "the baseline reflog did not parse"
+    def __post_init__(self) -> None:
+        if (self.repository is None) == (self.reason is None):
+            raise ValueError("a Mainline is a repository, or a reason there is none")
 
 
 class ReportData(BaseModel):
@@ -89,7 +92,8 @@ def collect_report_data(
     for by.
 
     If the mainline is missing, cannot be reached, or holds a `baseline` reflog that
-    does not parse, the report has the run alone and `mainline_error` says why.
+    does not parse, the report has the run alone and `mainline_error` says why. A
+    promoted run this evaltrack cannot read is left out of the history.
     """
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
@@ -97,17 +101,20 @@ def collect_report_data(
     mainline_error = mainline.reason
     if mainline.repository is not None:
         try:
-            history = load_run_history(mainline.repository, viewed=run)
-            mainline_entry = find_mainline_entry(mainline.repository, run.id)
-            baseline = load_baseline_run(mainline.repository, other_than=run.id)
+            # One read of the reflog serves the three views. On a blob store
+            # each read is a round trip.
+            reflog = list(mainline.repository.get_reflog(BASELINE_REF))
+            history = run_history_over(mainline.repository, reflog, viewed=run)
+            mainline_entry = mainline_entry_in(reflog, run.id)
+            baseline = baseline_run_in(mainline.repository, reflog, other_than=run.id)
         except (RepositoryUnavailableError, CorruptRecordError) as exc:
             # The detail stays out of the page, which is handed around.
             _logger.warning("the mainline was not read: %s", exc)
             history, mainline_entry, baseline = RunHistory(), None, None
             mainline_error = (
-                _REMOTE_NOT_REACHED
+                REMOTE_NOT_REACHED
                 if isinstance(exc, RepositoryUnavailableError)
-                else _REFLOG_DID_NOT_PARSE
+                else REFLOG_DID_NOT_PARSE
             )
     return ReportData(
         run=run,

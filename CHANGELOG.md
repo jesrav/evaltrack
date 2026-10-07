@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ### Changed
 
+- `evaltrack.ui` no longer re-exports `create_app` and `MountedRepository`. Import them from
+  `evaltrack.ui.app`.
 - **Breaking:** the mainline is the configured `remote` and nothing else. A dashboard with only a
   local repository mounted no longer measures reliability history over the local `baseline`.
   `promote` and `push --ref baseline` into the local repository now exit `2`. To tell the local

@@ -6,8 +6,8 @@ from fastapi import APIRouter
 
 from evaltrack.repositories import RunRepository
 from evaltrack.views.mainline import (
+    load_readable_run,
     load_run_history,
-    load_run_tolerating_another_schema,
 )
 from evaltrack.views.models import RunHistory
 
@@ -26,13 +26,9 @@ def build_history_router(
         # `run_id` draws the viewed run over the history without folding it
         # into the rate.
         repo = resolve(slug)
-        viewed = (
-            load_run_tolerating_another_schema(repo, run_id)
-            if run_id is not None
-            else None
-        )
         if mainline is None:
             return RunHistory()
+        viewed = load_readable_run(repo, run_id) if run_id is not None else None
         return load_run_history(mainline, viewed=viewed)
 
     return router

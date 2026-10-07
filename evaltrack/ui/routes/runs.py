@@ -129,7 +129,7 @@ def build_runs_router(
             resolve(slug),
             load_run_or_404(slug, run_id),
             via_ref=via_ref,
-            mainline=Mainline(mainline) if mainline is not None else NO_REMOTE,
+            mainline=Mainline(mainline) if mainline else Mainline(reason=NO_REMOTE),
             pr_url_template=pr_url_template,
         )
         try:

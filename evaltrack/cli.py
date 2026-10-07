@@ -598,13 +598,15 @@ def _open_mainline(
     that is turned away can hold a credential."""
     remote = resolve_remote(config)
     if remote is None:
-        return NO_REMOTE, None
+        return Mainline(reason=NO_REMOTE), None
     if _same_location(remote.url, target.url):
         return Mainline(target.repository), None
     try:
         repository = open_repository(remote.url)
     except (ValueError, ImportError) as exc:
-        return REMOTE_DID_NOT_OPEN, f"{remote.source}: {_first_line(exc)}"
+        return Mainline(
+            reason=REMOTE_DID_NOT_OPEN
+        ), f"{remote.source}: {_first_line(exc)}"
     print(f"reading the mainline from {remote.url}", file=sys.stderr)
     return Mainline(repository), None
 
