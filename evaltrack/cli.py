@@ -425,8 +425,9 @@ def _cmd_push(args: argparse.Namespace) -> int:
         )
         return 2
 
-    target = _open_resolved_repository(args)
-    if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, load_config()):
+    config = load_config()
+    target = _open_resolved_repository(args, config=config)
+    if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, config):
         return 2
     if args.ref is not None:
         # Before the save, so an invalid name cannot leave an orphan run behind.
