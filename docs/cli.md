@@ -67,8 +67,8 @@ The page also holds what the mainline says about the run. It shows the run's his
 remote's [`baseline`][baseline]. When `baseline` points at another run, the page holds that run too,
 and **Compare to mainline** shows the changes from it to the reported run. You do not need a flag
 for either. The command reads them from the remote, whichever repository holds the reported run.
-Without a remote, or when it cannot be reached, the page shows the run alone, and the page and a
-warning both say why.
+Without a remote, or when it is out of reach, the page shows the run alone. The page and a warning
+on stderr both say why.
 
 The page holds the inputs and outputs that the run recorded. Share it with the same care as the run.
 A value over 16 KB is left out, so a report of a large run stays small. Its first 200 characters and

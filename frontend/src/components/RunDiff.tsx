@@ -39,8 +39,8 @@ interface Props {
   b: RunRecord;
   viaA?: string;
   viaB?: string;
-  /** Goes back from the comparison to the run. A page with no sidebar sets
-   *  it. */
+  /** Goes back from the comparison to the run. Without it, there is no back
+   *  button. */
   onBack?: () => void;
   onSwap: () => void;
   onOpenDrawer: (content: DrawerContent) => void;

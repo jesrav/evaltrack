@@ -58,12 +58,11 @@ class Mainline:
 class ReportData(BaseModel):
     """What a report embeds. It is the run, and what the mainline says about it.
 
-    `via_ref` is the ref that the report was asked for by, if any. `refs` are the refs
-    that point at the run in its own repository. `history`, `mainline` and `baseline`
-    come from the mainline. `baseline` is the run that the `baseline` ref points at. It
-    is None when there is no such run, or when it is the run itself. When the mainline
-    is not read, `mainline_error` says why in a few fixed words and those three are
-    empty.
+    `via_ref` is the ref that named the run, when a ref did. `refs` are the refs that
+    point at the run in its own repository. `history`, `mainline` and `baseline` come
+    from the mainline. `baseline` is the run that the `baseline` ref points at, or None
+    when there is no such run or it is the run itself. When the mainline was not read,
+    `mainline_error` says why in a few fixed words, and those three are empty.
     """
 
     run: RunRecord
@@ -87,9 +86,8 @@ def collect_report_data(
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
     """The data of a report for `run`, which `repository` holds. It is the run and what
-    `mainline` says about it. That is the history and the promotion of the run, and the
-    `baseline` run to compare against. `via_ref` is the ref that the report was asked
-    for by.
+    `mainline` says about it. That is the history, where the run landed on the mainline,
+    and the `baseline` run to compare against. `via_ref` is the ref that named the run.
 
     If the mainline is missing, cannot be reached, or holds a `baseline` reflog that
     does not parse, the report has the run alone and `mainline_error` says why. A
@@ -101,8 +99,8 @@ def collect_report_data(
     mainline_error = mainline.reason
     if mainline.repository is not None:
         try:
-            # One read of the reflog serves the three views. On a blob store
-            # each read is a round trip.
+            # One read of the reflog serves all three. On a blob store each
+            # read is a round trip.
             reflog = list(mainline.repository.get_reflog(BASELINE_REF))
             history = run_history_over(mainline.repository, reflog, viewed=run)
             mainline_entry = mainline_entry_in(reflog, run.id)
@@ -146,8 +144,8 @@ def escape_json_for_html(json_text: str) -> str:
 
 
 def _load_template(path: Path) -> tuple[str, str]:
-    """The template, split at its data slot. Read on each call, so a new build is
-    picked up by a running process."""
+    """The template, split at its data slot. Read on each call, so a running process
+    picks up a new build."""
     try:
         template = path.read_text(encoding="utf-8")
     except FileNotFoundError:

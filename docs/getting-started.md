@@ -106,7 +106,7 @@ evaltrack ui
 This serves the dashboard at `http://127.0.0.1:8765` and prints the link. Browse scores and
 pass-rates per case, and diff any two runs. Open a case to see each score against its bar. With a
 remote (step 5), the case also shows its history over the mainline. **Report** saves the run on
-screen as a single HTML file that opens anywhere, to share with someone without the dashboard.
+screen as one HTML file that opens anywhere, to share with someone without the dashboard.
 `evaltrack report` writes the same file from a CI job, for an artifact or a release note. See
 [CLI › report](./cli.md#evaltrack-report).
 

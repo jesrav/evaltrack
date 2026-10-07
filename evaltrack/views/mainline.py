@@ -22,8 +22,8 @@ _LOAD_WORKERS = 10
 
 def load_readable_run(repo: RunRepository, run_id: str) -> RunRecord | None:
     """`load_run` that returns None, and logs, for a run this evaltrack cannot
-    read: one recorded by another evaltrack, or one whose body does not parse.
-    One such run must not lose a pooled view."""
+    read. That is a run recorded by another evaltrack, or one whose body does
+    not parse. One such run must not lose a pooled view."""
     try:
         return repo.load_run(run_id)
     except UnsupportedSchemaError as exc:
@@ -85,9 +85,10 @@ def run_history_over(
     viewed: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
-    """The reliability and score history over the promoted runs that `reflog`,
-    `mainline`'s oldest-first `baseline` reflog, names. `viewed` is drawn over
-    them when it is not itself one of them. Empty when there is no history."""
+    """The reliability and score history over the promoted runs that `reflog`
+    names. `reflog` is the oldest-first `baseline` reflog of `mainline`. `viewed`
+    is drawn over those runs when it is not one of them. Empty when there is no
+    history."""
     history = _load_mainline_history(mainline, reflog, window=window)
     if history and viewed is not None and all(h.run.id != viewed.id for h in history):
         history = [
@@ -108,7 +109,7 @@ def load_run_history(
     viewed: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
-    """`run_history_over` the `baseline` reflog, read here.
+    """`run_history_over` the `baseline` reflog, which this reads from `mainline`.
 
     Raises:
         CorruptRecordError: when the reflog does not parse.
@@ -118,9 +119,9 @@ def load_run_history(
 
 
 def mainline_entry_in(reflog: list[ReflogEntry], run_id: str) -> MainlineEntry | None:
-    """Where the run landed on the mainline, from the newest entry of the
-    oldest-first `baseline` `reflog` pointing at it. None for a run never
-    promoted."""
+    """Where the run landed on the mainline. It is taken from the newest entry
+    in the oldest-first `baseline` `reflog` that points at the run. None for a
+    run never promoted."""
     match: ReflogEntry | None = None
     for entry in reflog:
         if entry.run_id == run_id:
@@ -136,7 +137,7 @@ def mainline_entry_in(reflog: list[ReflogEntry], run_id: str) -> MainlineEntry |
 
 
 def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry | None:
-    """`mainline_entry_in` the `baseline` reflog, read here.
+    """`mainline_entry_in` the `baseline` reflog, which this reads from `mainline`.
 
     Raises:
         CorruptRecordError: when the reflog does not parse.
@@ -148,9 +149,8 @@ def baseline_run_in(
     mainline: RunRepository, reflog: list[ReflogEntry], *, other_than: str
 ) -> RunRecord | None:
     """The run that the newest entry of the `baseline` `reflog` points at, to
-    compare the run `other_than` against. None when the reflog is empty, when
-    the newest entry points at that run itself, or when this evaltrack cannot
-    read the run."""
+    compare the run `other_than` against. None when the reflog is empty or
+    points at that run itself, or when this evaltrack cannot read the run."""
     if not reflog or reflog[-1].run_id == other_than:
         return None
     return load_readable_run(mainline, reflog[-1].run_id)

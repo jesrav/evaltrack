@@ -277,11 +277,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Write a single-file HTML report of a recorded run.",
         allow_abbrev=False,
         description=(
-            "Write one HTML file that shows a recorded run the way the "
-            "dashboard does, with the run embedded, so it opens anywhere "
-            "with no server and no network. When the remote has a baseline, "
-            "the page also carries the run's history over the mainline and "
-            "the baseline run to compare against."
+            "Write one HTML file that shows a recorded run as the dashboard "
+            "does. The run is embedded, so the page opens anywhere with no "
+            "server and no network. When the remote has a baseline, the page "
+            "also holds the run's history over the mainline and the baseline "
+            "run to compare against."
         ),
     )
     report.set_defaults(func=_cmd_report)
@@ -593,9 +593,9 @@ def _open_mainline(
     target: _OpenedRepository, config: EvaltrackConfig
 ) -> tuple[Mainline, str | None]:
     """The mainline, read from the configured remote whichever repository holds the
-    run, and the detail of a failure to open it, for stderr. A report can be written
-    without a mainline. The URL is printed only after a successful open, since one
-    that is turned away can hold a credential."""
+    run, with the detail of a failed open, for stderr. A report is written without a
+    mainline too. The URL is printed only after the open succeeds, since a URL that is
+    turned away can hold a credential."""
     remote = resolve_remote(config)
     if remote is None:
         return Mainline(reason=NO_REMOTE), None

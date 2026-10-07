@@ -93,8 +93,8 @@ ref represents. With `pr_url_template` set, it links the number to the PR.
 
 ### A report as a job artifact
 
-A reviewer without the dashboard can still see the run, if it is saved as a `.html` file. After the
-push, write the report and upload the file as the job's artifact:
+If you save the run as one HTML file, a reviewer without the dashboard can see it. After the push,
+write the report and upload the file as the job's artifact:
 
 ```bash
 evaltrack report --ref "pr/$PR_NUMBER" --output evaltrack-report.html

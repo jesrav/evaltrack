@@ -12,8 +12,7 @@ export const REPORT_DATA_ID = "evaltrack-data";
  *  Mirrors the backend `ReportData`. */
 export interface ReportData {
   run: RunRecord;
-  /** The ref the report was asked for by, when it was asked for by one. It
-   *  titles the page. */
+  /** The ref that named the run, when a ref did. It titles the page. */
   via_ref: string | null;
   /** The run the mainline's `baseline` points at, to compare against. Null
    *  when there is none, or it is the run itself. */

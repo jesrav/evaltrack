@@ -30,8 +30,8 @@ function Report({ data }: { data: ReportData }) {
   }, []);
   const dismissNotice = useCallback(() => setNotice(null), []);
   // A value the report left out has nowhere to be fetched from. The pane
-  // opens anyway, since the rest of it is there, with the first characters
-  // standing in for the value and a banner saying so.
+  // opens anyway, since the rest of it is there. The first characters stand
+  // in for the value, and a banner says so.
   const openDrawer = useCallback((content: DrawerContent) => {
     const deferred = collectDeferred(content);
     const first = deferred[0];
@@ -109,8 +109,8 @@ function Report({ data }: { data: ReportData }) {
         {data.mainline_error && (
           <div className="notice-banner" role="alert">
             <span className="notice-text">
-              This report has no history and no comparison against the mainline,
-              which could not be read when the report was written (
+              This report has no history and no comparison against the mainline.
+              The mainline was not read when the report was written (
               {data.mainline_error}).
             </span>
           </div>

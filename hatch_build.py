@@ -35,9 +35,8 @@ class RequireFrontendHook(BuildHookInterface):  # pyright: ignore[reportMissingT
         ]
         if missing:
             raise RuntimeError(
-                f"{' and '.join(missing)} missing: the "
-                "frontend has not been built, so the resulting distribution "
-                "would ship without the dashboard or the report page. Build it "
+                f"{' and '.join(missing)} missing. The frontend is not built, "
+                "so the distribution has no dashboard or report page. Build it "
                 "first with `just frontend_build` (or `cd frontend && npm "
                 "install && npm run build`), then rebuild."
             )
