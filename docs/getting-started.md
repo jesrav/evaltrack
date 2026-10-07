@@ -105,10 +105,7 @@ evaltrack ui
 
 This serves the dashboard at `http://127.0.0.1:8765` and prints the link. Browse scores and
 pass-rates per case, and diff any two runs. Open a case to see each score against its bar. With a
-remote (step 5), the case also shows its history over the mainline. **Report** saves the run on
-screen as one HTML file that opens anywhere, to share with someone without the dashboard.
-`evaltrack report` writes the same file from a CI job, for an artifact or a release note. See
-[CLI › report](./cli.md#evaltrack-report).
+remote (step 5), the case also shows its history over the mainline.
 
 !!! note
 
@@ -117,10 +114,10 @@ screen as one HTML file that opens anywhere, to share with someone without the d
 
 ### 5. Track a shared remote (optional)
 
-The mainline, **Compare to mainline** and the comparison in a report need a remote. Declare your
-repositories in `pyproject.toml`. `local` is where the plugin saves runs. `remote` is a shared
-repository that your CI writes to (Azure Blob Storage or Amazon S3). It stores `baseline` (the ref
-for the run of what is currently deployed) and the PR history.
+The mainline and **Compare to mainline** need a remote. Declare your repositories in
+`pyproject.toml`. `local` is where the plugin saves runs. `remote` is a shared repository that your
+CI writes to (Azure Blob Storage or Amazon S3). It stores `baseline` (the ref for the run of what is
+currently deployed) and the PR history.
 
 ```toml
 [tool.evaltrack]
