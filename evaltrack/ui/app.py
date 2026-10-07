@@ -123,8 +123,6 @@ def create_app(
         s: RepositoryInfo(slug=s, url=m.url, role=m.role)
         for s, m in repositories.items()
     }
-    # The mainline lives on the remote and nowhere else. A local `baseline` is
-    # a developer's own promotion, not the team's, so no view reads it.
     mainline: RunRepository | None = next(
         (m.repository for m in repositories.values() if m.role == "remote"), None
     )
