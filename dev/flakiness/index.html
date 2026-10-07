@@ -1144,9 +1144,9 @@ eval as stable as I expect over time". An errored attempt never feeds the rate. 
 the test, and it is not a flakiness sample.</p>
 <p><img alt="Dashboard: a case's pooled pass-rate against its target, with the note giving the sample size and the lower bound behind it" src=".././images/reliability-trend.png" /></p>
 <h3 id="which-runs-pool">Which runs pool<a class="headerlink" href="#which-runs-pool" title="Permanent link">&para;</a></h3>
-<p>The pooled runs are the <strong>mainline</strong>, the runs <a href=".././repositories/#baseline-and-mainline"><code>baseline</code></a> has pointed at, in a window of
-the 50 most recent entries in its <a href=".././repositories/#ref">reflog</a>. Runs from assorted PR tips and
-local branches do not pool.</p>
+<p>The pooled runs are the <strong>mainline</strong>, the runs the remote's <a href=".././repositories/#baseline-and-mainline"><code>baseline</code></a> has pointed at.
+The window is the 50 most recent entries in its <a href=".././repositories/#ref">reflog</a>. Runs from assorted
+PR tips and local branches do not pool.</p>
 <p>The pooled rate is always the mainline's (your deploy history). The run you view (a PR run or a
 local run) is <em>not</em> folded into it, so the number keeps its meaning of "how reliable is this eval on
 mainline". Its own attempts are still drawn on the trend, set apart from the pooled ones.</p>

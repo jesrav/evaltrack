@@ -1108,17 +1108,18 @@ and the test's name identifies that eval everywhere. If you want two evals, writ
 <div class="highlight"><pre><span></span><code>evaltrack<span class="w"> </span>ui
 </code></pre></div>
 <p>This serves the dashboard at <code>http://127.0.0.1:8765</code> and prints the link. Browse scores and
-pass-rates per case, and diff any two runs. Open a case to see each score against its bar and its
-history over the mainline.</p>
+pass-rates per case, and diff any two runs. Open a case to see each score against its bar. With a
+remote (step 5), the case also shows its history over the mainline.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The dashboard's React frontend is beta, written largely by AI coding agents. The security notes
 are in the <a href="https://github.com/jesrav/evaltrack/blob/main/SECURITY.md#dashboard-trust-model">security policy</a>.</p>
 </div>
 <h3 id="5-track-a-shared-remote-optional">5. Track a shared remote (optional)<a class="headerlink" href="#5-track-a-shared-remote-optional" title="Permanent link">&para;</a></h3>
-<p>Declare your repositories in <code>pyproject.toml</code>. <code>local</code> is where the plugin saves runs. <code>remote</code> is a
-shared repository that your CI writes to (Azure Blob Storage or Amazon S3). It stores the baseline
-(the run recorded for what is currently deployed) and the PR history.</p>
+<p>The mainline and <strong>Compare to mainline</strong> need a remote. Declare your repositories in
+<code>pyproject.toml</code>. <code>local</code> is where the plugin saves runs. <code>remote</code> is a shared repository that your
+CI writes to (Azure Blob Storage or Amazon S3). It stores <code>baseline</code> (the ref for the run of what is
+currently deployed) and the PR history.</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.evaltrack]</span>
 <span class="n">local</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"./.evaltrack"</span>
 <span class="n">remote</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"azure://account/evals"</span>

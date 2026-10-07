@@ -1076,7 +1076,8 @@ The ref is separate. A re-push does not update the <code>--commit</code>, <code>
 already points at the run. See
 <a href=".././repositories/#moving-a-ref-is-idempotent">Moving a ref is idempotent</a>.</p>
 <h2 id="evaltrack-promote">evaltrack promote<a class="headerlink" href="#evaltrack-promote" title="Permanent link">&para;</a></h2>
-<p>See <a href=".././repositories/#promote">Repositories › Promote</a> and
+<p><code>promote</code> writes <code>baseline</code> to the remote. If the target is the local repository, the command exits
+<code>2</code>. See <a href=".././repositories/#promote">Repositories › Promote</a> and
 <a href=".././repositories/#cleaning-up-runs">Cleaning up runs</a>.</p>
 <h2 id="evaltrack-runs">evaltrack runs<a class="headerlink" href="#evaltrack-runs" title="Permanent link">&para;</a></h2>
 <p>Lists recorded runs, newest first, one per line: the run id, the recording time in UTC, the short

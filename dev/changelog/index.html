@@ -801,6 +801,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -827,7 +844,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
+  <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Changed
@@ -1001,6 +1018,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1027,7 +1061,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
+  <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Changed
@@ -1114,6 +1148,14 @@
 <p>All notable changes to this project are documented here.</p>
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <h2 id="unreleased"><a href="https://github.com/jesrav/evaltrack/compare/v0.3.0...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Breaking:</strong> the mainline is the configured <code>remote</code> and nothing else. A dashboard with only a
+  local repository mounted no longer measures reliability history over the local <code>baseline</code>.
+  <code>promote</code> and <code>push --ref baseline</code> into the local repository now exit <code>2</code>. To tell the local
+  repository apart, both read <code>pyproject.toml</code>, so an invalid <code>[tool.evaltrack]</code> table now stops
+  them with <code>--repository</code> too.</li>
+</ul>
 <h2 id="030-2026-09-26"><a href="https://github.com/jesrav/evaltrack/releases/tag/v0.3.0">0.3.0</a> - 2026-09-26<a class="headerlink" href="#030-2026-09-26" title="Permanent link">&para;</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
@@ -1137,7 +1179,7 @@
 <li>While a run loads, the dashboard shows how much of it has arrived. The run list shows the stored
   size of each run, which the summary sidecar now records.</li>
 </ul>
-<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Breaking:</strong> evaltrack stores a dataclass without its private fields, the fields whose name
   starts with <code>_</code>. A library often keeps its internal state in such fields, for example the message

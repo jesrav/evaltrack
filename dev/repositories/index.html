@@ -1294,19 +1294,22 @@ time.</p>
 the target run and, optionally, a commit, a PR number, and a PR title. Past moves are never lost.
 The dashboard uses that history to compare a run against past PRs and releases.</p>
 <p>A ref name is lowercase and can be <code>/</code>-separated, as in <code>pr/123</code> or <code>my-experiment</code>. <code>baseline</code> is
-reserved.</p>
+reserved for the ref on the remote that the mainline is read from.</p>
 <p>A ref is treated as a pull request when its latest reflog entry carries a PR number (recorded by
 <code>evaltrack push --pr</code>), not because of its name.</p>
 <h2 id="baseline-and-mainline">Baseline and mainline<a class="headerlink" href="#baseline-and-mainline" title="Permanent link">&para;</a></h2>
-<p><strong><code>baseline</code> is the ref.</strong> The <strong>mainline is the history of runs that ref has pointed at.</strong></p>
+<p><strong><code>baseline</code> is a ref on the remote.</strong> The <strong>mainline is the history of runs that ref has pointed
+at.</strong> The local repository has no mainline.</p>
 <p><code>baseline</code> points at the most recently promoted run. Its reflog records every promoted run before
 that one, with its commit and time, and that history is the mainline: what reliability rates and
 score histories are measured over. You decide what "promoted" means (merged, deployed, released).
 See <a href=".././ci-cd/#adapting-the-flow-to-your-delivery-process">Adapting the flow</a>.</p>
+<p>The dashboard measures every run, local runs too, over the remote's <code>baseline</code>. Without a remote
+there is no history.</p>
 <h2 id="promote">Promote<a class="headerlink" href="#promote" title="Permanent link">&para;</a></h2>
-<p><code>evaltrack promote pr/123 --commit &lt;sha&gt;</code> moves <code>baseline</code> onto the run that <code>pr/123</code> already points
-at. Nothing is copied and nothing is re-evaluated. The recorded run, with the same ULID, becomes the
-newest mainline run.</p>
+<p><code>evaltrack promote pr/123 --commit &lt;sha&gt;</code> writes to the remote. It moves <code>baseline</code> onto the run
+that <code>pr/123</code> already points at. Nothing is copied and nothing is re-evaluated. The recorded run,
+with the same ULID, becomes the newest mainline run.</p>
 <h3 id="moving-a-ref-is-idempotent">Moving a ref is idempotent<a class="headerlink" href="#moving-a-ref-is-idempotent" title="Permanent link">&para;</a></h3>
 <p>A move onto the run a ref already points at records nothing. No reflog entry is appended, and the
 commit, PR number and title passed with the move are dropped. A retried CI job is therefore safe.
@@ -1341,8 +1344,8 @@ different <code>--commit</code>, the first commit stays.</p>
 <h2 id="configuring-repositories">Configuring repositories<a class="headerlink" href="#configuring-repositories" title="Permanent link">&para;</a></h2>
 <p>Declare them once in the <code>[tool.evaltrack]</code> table of <code>pyproject.toml</code>: <code>local</code> is where the pytest
 plugin saves, <code>remote</code> the shared one CI pushes to, holding the <code>baseline</code> and <code>pr/{n}</code> refs. Both
-are optional, and <code>evaltrack ui</code> mounts whichever exist. See
-<a href=".././configuration/#toolevaltrack-in-pyprojecttoml">Configuration</a>.</p>
+are optional, and <code>evaltrack ui</code> mounts whichever exist, but only the remote's <code>baseline</code> gives
+history. See <a href=".././configuration/#toolevaltrack-in-pyprojecttoml">Configuration</a>.</p>
 <h2 id="azure-blob-storage">Azure Blob Storage<a class="headerlink" href="#azure-blob-storage" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p>Requires the <code>[azure]</code> extra: <code>uv add "evaltrack[azure]"</code>.</p>
