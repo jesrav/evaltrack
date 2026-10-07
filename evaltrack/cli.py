@@ -373,7 +373,7 @@ def _open_resolved_repository(
 ) -> _OpenedRepository:
     """Open the repository the flags name, or the remote, echoed to stderr.
     `config` is read here only when it is needed and not given, so a named
-    repository costs no read at all."""
+    repository does does not cost a read."""
     source: str | None = None
     if args.repository_url is not None:
         url = args.repository_url
