@@ -55,30 +55,19 @@ and the error names that repository. `2` when no repository is named. Only `repo
 
 ## evaltrack report
 
-Writes a recorded run as one HTML file, with the run embedded in the page. The page shows the run as
-the dashboard does. It opens from disk with no server, so you can attach it to a CI job or a
-release. Name the run with `--run-id`, or with `--ref` to take the run that a ref points at.
+Writes a recorded run as one HTML file that opens from disk, with no server and no network.
 
 ```bash
 evaltrack report --ref pr/482 --output evaltrack-report.html
 ```
 
-The page also holds what the mainline says about the run. It shows the run's history over the
-remote's [`baseline`][baseline]. When `baseline` points at another run, the page holds that run too,
-and **Compare to mainline** shows the changes from it to the reported run. You do not need a flag
-for either. The command reads them from the remote, whichever repository holds the reported run.
-Without a remote, or when it is out of reach, the page shows the run alone. The page and a warning
-on stderr both say why.
+The page also shows the run's history over the remote's [`baseline`][baseline], and **Compare to
+mainline** against the run that `baseline` points at. Both come from the remote, whichever
+repository holds the run. Without a remote, the page shows the run alone and says why.
 
 The page holds the inputs and outputs that the run recorded. Share it with the same care as the run.
-A value over 16 KB is left out, so a report of a large run stays small. Its first 200 characters and
-its size take its place. Open the run in the dashboard to see such a value, or pass `--full` to
-embed every value whole.
-
-`--output` defaults to `evaltrack-report.html`. `-` writes the page to stdout. Like `push` and
-`promote`, the command reads the remote unless a repository flag names another.
-
-The dashboard offers the same page as **Report** on a run.
+A value over 16 KB is left out, so a report of a large run stays small. Pass `--full` to embed every
+value whole.
 
 **Exit codes:** `0` when the report was written. `1` when the repository does not hold the run or
 the ref. Nothing is written then. `2` when no repository is named.
