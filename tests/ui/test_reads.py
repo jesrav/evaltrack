@@ -26,7 +26,7 @@ from .conftest import (
 
 def test_list_repositories(client_factory: TestClient) -> None:
     data = client_factory.get("/api/repositories").json()
-    assert data == [{"slug": "main", "url": "/x", "role": "local"}]
+    assert data == [{"slug": "main", "url": "/x", "role": "remote"}]
 
 
 def test_list_runs_returns_summaries(client_factory: TestClient) -> None:

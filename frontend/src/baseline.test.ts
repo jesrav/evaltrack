@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-import { resolveBaseline, type BaselineSource } from "./baseline";
+import {
+  resolveBaseline,
+  splitMainline,
+  type BaselineSource,
+} from "./baseline";
 import type { Ref, RepositoryRole } from "./types";
 
 function baselineRef(runId: string | null): Ref {
@@ -65,10 +69,8 @@ describe("resolveBaseline", () => {
     ).toBeNull();
   });
 
-  it("takes the sole repository's baseline when no remote is mounted", () => {
-    const repos = [repo("local", "local", "run-l")];
-
-    expect(resolveBaseline(repos)?.repository).toBe("local");
+  it("is null without a remote, whatever the local repository holds", () => {
+    expect(resolveBaseline([repo("local", "local", "run-l")])).toBeNull();
   });
 
   it("is null when the baseline tip points at nothing", () => {
@@ -91,5 +93,25 @@ describe("resolveBaseline", () => {
     ];
 
     expect(resolveBaseline(repos)).toBeNull();
+  });
+});
+
+describe("splitMainline", () => {
+  const other: Ref = { name: "nightly", kind: "other", tip: null };
+
+  it("gives the remote's baseline as the mainline", () => {
+    const baseline = baselineRef("run-r");
+
+    expect(
+      splitMainline({ role: "remote", baseline, otherRefs: [other] }),
+    ).toEqual({ mainline: baseline, otherRefs: [other] });
+  });
+
+  it("lists a local baseline as an ordinary ref, with no mainline", () => {
+    const baseline = baselineRef("run-l");
+
+    expect(
+      splitMainline({ role: "local", baseline, otherRefs: [other] }),
+    ).toEqual({ mainline: null, otherRefs: [baseline, other] });
   });
 });

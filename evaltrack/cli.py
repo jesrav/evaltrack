@@ -20,6 +20,7 @@ from evaltrack.config import (
     EvaltrackConfig,
     RepositoryRole,
     load_config,
+    names_a_url,
     resolve_local,
     resolve_remote,
 )
@@ -310,8 +311,12 @@ class _OpenedRepository:
     url: str
 
 
-def _open_resolved_repository(args: argparse.Namespace) -> _OpenedRepository:
-    """Open the repository the flags name, or the remote, echoed to stderr."""
+def _open_resolved_repository(
+    args: argparse.Namespace, *, config: EvaltrackConfig | None = None
+) -> _OpenedRepository:
+    """Open the repository the flags name, or the remote, echoed to stderr.
+    `config` is read here only when it is needed and not given, so a named
+    repository costs no read at all."""
     source: str | None = None
     if args.repository_url is not None:
         url = args.repository_url
@@ -324,8 +329,8 @@ def _open_resolved_repository(args: argparse.Namespace) -> _OpenedRepository:
                 "expands to an empty string, so check the value you passed."
             )
     else:
-        # Read once here, so a named repository costs no read at all.
-        config = load_config()
+        if config is None:
+            config = load_config()
         if args.local:
             url = resolve_local(config)
         elif args.remote:
@@ -339,6 +344,36 @@ def _open_resolved_repository(args: argparse.Namespace) -> _OpenedRepository:
     if source is not None:
         print(f"using repository {url} (from {source})", file=sys.stderr)
     return _OpenedRepository(repository, url)
+
+
+def _same_location(one: str, other: str) -> bool:
+    """Whether two repository locations name the same place. A directory is
+    compared by its absolute path, a URL as written."""
+    if names_a_url(one) or names_a_url(other):
+        return one == other
+    return os.path.abspath(os.path.expanduser(one)) == os.path.abspath(
+        os.path.expanduser(other)
+    )
+
+
+def _refuse_baseline_in_local(
+    target: _OpenedRepository, config: EvaltrackConfig
+) -> bool:
+    """If `target` is the local repository, print why `baseline` cannot be written there
+    and return True. The role decides, so a remote that is a directory passes."""
+    remote = resolve_remote(config)
+    if remote is not None and _same_location(target.url, remote.url):
+        return False
+    if not _same_location(target.url, resolve_local(config)):
+        return False
+    print(
+        f"error: {BASELINE_REF!r} lives on the remote, and {target.url} is the "
+        "local repository. Add a remote to [tool.evaltrack] in pyproject.toml "
+        "and write there:\n"
+        '    remote = "<path-or-url>"',
+        file=sys.stderr,
+    )
+    return True
 
 
 # --- the commands ---
@@ -389,7 +424,10 @@ def _cmd_push(args: argparse.Namespace) -> int:
         )
         return 2
 
-    target = _open_resolved_repository(args)
+    config = load_config()
+    target = _open_resolved_repository(args, config=config)
+    if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, config):
+        return 2
     if args.ref is not None:
         # Before the save, so an invalid name cannot leave an orphan run behind.
         target.repository.validate_ref_name(args.ref)
@@ -418,7 +456,10 @@ def _cmd_promote(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    target = _open_resolved_repository(args)
+    config = load_config()
+    target = _open_resolved_repository(args, config=config)
+    if _refuse_baseline_in_local(target, config):
+        return 2
     result = promote(
         target.repository, args.ref, commit=args.commit, cleanup=args.cleanup
     )

@@ -8,20 +8,15 @@ export interface BaselineSource {
   baseline: Ref | null;
 }
 
-/** The mainline run to diff against, as a selection, or null when the
- *  mainline repository has no baseline tip with a readable run.
+/** The mainline run to diff against, as a selection, or null when no remote
+ *  is mounted or its baseline has no tip with a readable run.
  *
- *  The mainline lives on the remote. Without one, the sole repository is it.
- *  The server picks the mainline for reliability and score history by the same
- *  rule, so a local-only setup that promotes with `--local` gets the compare
- *  button as well as the trend panels, and a local baseline beside a remote is
- *  nobody's mainline. */
+ *  The mainline lives on the remote and nowhere else. A `baseline` in the
+ *  local repository is not it, with or without a remote beside it. */
 export function resolveBaseline(
   repositories: readonly BaselineSource[],
 ): Selection | null {
-  const mainlineRepository =
-    repositories.find((r) => r.role === "remote") ??
-    (repositories.length === 1 ? repositories[0] : undefined);
+  const mainlineRepository = repositories.find((r) => r.role === "remote");
   const baseline = mainlineRepository?.baseline;
   // The server nulls `tip_run` when the tip's run cannot be read, so the tip
   // alone does not prove there is a run to compare against.
@@ -31,4 +26,17 @@ export function resolveBaseline(
     runId: baseline.tip.run_id,
     via: baseline.name,
   };
+}
+
+/** How a repository's refs are listed. Only the remote has a mainline, so a
+ *  `baseline` anywhere else is listed as an ordinary ref, first among them. */
+export function splitMainline(repo: {
+  role: RepositoryRole;
+  baseline: Ref | null;
+  otherRefs: Ref[];
+}): { mainline: Ref | null; otherRefs: Ref[] } {
+  if (repo.role === "remote" || repo.baseline === null) {
+    return { mainline: repo.baseline, otherRefs: repo.otherRefs };
+  }
+  return { mainline: null, otherRefs: [repo.baseline, ...repo.otherRefs] };
 }

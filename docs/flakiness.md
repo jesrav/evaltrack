@@ -93,9 +93,9 @@ the test, and it is not a flakiness sample.
 
 ### Which runs pool
 
-The pooled runs are the **mainline**, the runs [`baseline`][baseline] has pointed at, in a window of
-the 50 most recent entries in its [reflog](./repositories.md#ref). Runs from assorted PR tips and
-local branches do not pool.
+The pooled runs are the **mainline**, the runs the remote's [`baseline`][baseline] has pointed at.
+The window is the 50 most recent entries in its [reflog](./repositories.md#ref). Runs from assorted
+PR tips and local branches do not pool.
 
 The pooled rate is always the mainline's (your deploy history). The run you view (a PR run or a
 local run) is _not_ folded into it, so the number keeps its meaning of "how reliable is this eval on
