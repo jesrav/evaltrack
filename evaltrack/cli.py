@@ -425,11 +425,8 @@ def _cmd_push(args: argparse.Namespace) -> int:
         )
         return 2
 
-    # Read only for `baseline`, so any other push to a named repository still
-    # costs no read.
-    config = load_config() if args.ref == BASELINE_REF else None
-    target = _open_resolved_repository(args, config=config)
-    if config is not None and _refuse_baseline_in_local(target, config):
+    target = _open_resolved_repository(args)
+    if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, load_config()):
         return 2
     if args.ref is not None:
         # Before the save, so an invalid name cannot leave an orphan run behind.
