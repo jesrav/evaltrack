@@ -117,8 +117,7 @@ remote (step 5), the case also shows its history over the mainline.
 The mainline and **Compare to mainline** need a remote. Declare your repositories in
 `pyproject.toml`. `local` is where the plugin saves runs. `remote` is a shared repository that your
 CI writes to (Azure Blob Storage or Amazon S3). It stores `baseline` (the ref for the run of what is
-currently deployed) and the PR history. If you work alone, point `remote` at a second local
-directory.
+currently deployed) and the PR history.
 
 ```toml
 [tool.evaltrack]
