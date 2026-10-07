@@ -370,8 +370,7 @@ def _refuse_baseline_in_local(
         f"error: {BASELINE_REF!r} lives on the remote, and {target.url} is the "
         "local repository. Add a remote to [tool.evaltrack] in pyproject.toml "
         "and write there:\n"
-        '    remote = "<path-or-url>"\n'
-        "A second local directory works when you work alone.",
+        '    remote = "<path-or-url>"',
         file=sys.stderr,
     )
     return True
