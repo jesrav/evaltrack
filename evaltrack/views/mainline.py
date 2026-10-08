@@ -4,6 +4,7 @@ it against."""
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from enum import StrEnum
 
 from evaltrack.core.errors import CorruptRecordError, UnsupportedSchemaError
 from evaltrack.core.refs import BASELINE_REF, ReflogEntry
@@ -15,6 +16,18 @@ from evaltrack.repositories import RunRepository
 from evaltrack.views.models import MainlineEntry, RunHistory
 
 _logger = logging.getLogger(__name__)
+
+
+class NoMainline(StrEnum):
+    """Why there is no mainline to read. A reason is shown to a reader, and a
+    page that shows it can be handed around, so each is fixed words, never a
+    host, a path or an error's own text."""
+
+    NO_REMOTE = "no remote is configured"
+    REMOTE_DID_NOT_OPEN = "the remote did not open"
+    REMOTE_NOT_REACHED = "the remote was not reached"
+    REFLOG_DID_NOT_PARSE = "the baseline reflog did not parse"
+
 
 # Bounded so a pooled view never opens more connections than the store keeps.
 _LOAD_WORKERS = 10

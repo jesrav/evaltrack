@@ -17,14 +17,12 @@ from evaltrack.core.run_record import (
     parse_run_json,
 )
 from evaltrack.report.page import (
-    NO_REMOTE,
-    REMOTE_DID_NOT_OPEN,
-    Mainline,
     ReportData,
     collect_report_data,
     render_report,
 )
 from evaltrack.repositories import RunRepository
+from evaltrack.views.mainline import NoMainline
 
 from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore
@@ -132,7 +130,7 @@ def test_collected_data_finds_the_mainline() -> None:
     repo.save_run(run)
     repo.move_ref("baseline", run.id, commit="main-0", pr=3, title="Land it")
 
-    data = collect_report_data(repo, run, mainline=Mainline(repo), via_ref="baseline")
+    data = collect_report_data(repo, run, mainline=repo, via_ref="baseline")
 
     assert data.mainline is not None
     assert (data.mainline.commit, data.mainline.pr) == ("main-0", 3)
@@ -155,7 +153,7 @@ def test_collected_history_is_measured_over_the_repository_baseline() -> None:
     viewed = make_recorded_run(make_round(), commit="pr", reliability_target=0.9)
     repo.save_run(viewed)
 
-    data = collect_report_data(repo, viewed, mainline=Mainline(repo))
+    data = collect_report_data(repo, viewed, mainline=repo)
 
     reliability = data.history.reliability["test_x"]["test_case"]
     assert reliability.pooled_runs == 3
@@ -174,7 +172,7 @@ def test_collected_data_carries_the_baseline_to_compare_against() -> None:
     repo.save_run(viewed)
     repo.move_ref("pr/9", viewed.id, pr=9)
 
-    data = collect_report_data(repo, viewed, mainline=Mainline(repo))
+    data = collect_report_data(repo, viewed, mainline=repo)
 
     assert data.baseline is not None and data.baseline.id == base.id
     assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
@@ -195,7 +193,7 @@ def test_a_baseline_this_version_cannot_read_is_left_out() -> None:
     viewed = make_recorded_run(make_round(), commit="c1")
     repo.save_run(viewed)
 
-    data = collect_report_data(repo, viewed, mainline=Mainline(repo))
+    data = collect_report_data(repo, viewed, mainline=repo)
 
     assert data.baseline is None
     assert data.mainline_error is None, "the mainline itself was read"
@@ -211,7 +209,7 @@ def test_collected_history_is_measured_over_the_given_mainline() -> None:
     viewed = make_recorded_run(make_round(), commit="wip", reliability_target=0.9)
     local.save_run(viewed)
 
-    data = collect_report_data(local, viewed, mainline=Mainline(remote))
+    data = collect_report_data(local, viewed, mainline=remote)
 
     assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
     assert data.mainline is None
@@ -229,7 +227,7 @@ def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
     repo.move_ref("pr/8", other.id, pr=8)
     repo.move_ref("baseline", run.id)
 
-    data = collect_report_data(repo, run, mainline=Mainline(reason=NO_REMOTE))
+    data = collect_report_data(repo, run, mainline=NoMainline.NO_REMOTE)
 
     assert [r.name for r in data.refs] == ["baseline", "pr/7"]
     pr = data.refs[1].tip
@@ -244,7 +242,7 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
     repo.save_run(run)
     down = RunRepository(RaisingStore(RepositoryUnavailableError("no route to host")))
 
-    data = collect_report_data(repo, run, mainline=Mainline(down))
+    data = collect_report_data(repo, run, mainline=down)
 
     assert data.history.reliability == {}
     assert data.mainline is None
@@ -262,7 +260,7 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     data = collect_report_data(
         repo,
         run,
-        mainline=Mainline(reason=REMOTE_DID_NOT_OPEN),
+        mainline=NoMainline.REMOTE_DID_NOT_OPEN,
     )
 
     assert data.history.reliability == {}
@@ -332,7 +330,7 @@ def test_a_baseline_reflog_that_does_not_parse_leaves_the_run_alone() -> None:
     run = make_recorded_run(make_round(), commit="c1")
     repo.save_run(run)
 
-    data = collect_report_data(repo, run, mainline=Mainline(mainline))
+    data = collect_report_data(repo, run, mainline=mainline)
 
     assert data.run.id == run.id
     assert data.history.reliability == {} and data.baseline is None
@@ -364,7 +362,7 @@ def test_the_baseline_reflog_is_read_once_per_report() -> None:
     local.save_run(viewed)
     store.reads.clear()
 
-    data = collect_report_data(local, viewed, mainline=Mainline(mainline))
+    data = collect_report_data(local, viewed, mainline=mainline)
 
     assert data.baseline is not None and data.mainline_error is None
     assert store.reads["refs/baseline.log.jsonl"] == 1
@@ -383,15 +381,8 @@ def test_a_promoted_run_that_does_not_parse_is_left_out_of_the_history() -> None
     viewed = make_recorded_run(make_round(), commit="pr")
     repo.save_run(viewed)
 
-    data = collect_report_data(repo, viewed, mainline=Mainline(repo))
+    data = collect_report_data(repo, viewed, mainline=repo)
 
     assert data.mainline_error is None
     assert data.history.reliability["test_x"]["test_case"].pooled_runs == 2
     assert data.baseline is not None and data.baseline.id == runs[2].id
-
-
-def test_a_mainline_is_a_repository_or_a_reason() -> None:
-    with pytest.raises(ValueError):
-        Mainline()
-    with pytest.raises(ValueError):
-        Mainline(RunRepository(MemoryStore()), "and a reason")

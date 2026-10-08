@@ -392,8 +392,10 @@ def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
     result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
 
     assert result.code == 0, "an unopenable mainline does not fail the report"
-    assert result.err.count("warning") == 1
-    assert "EVALTRACK_REMOTE" in result.err, "the source is named, not the URL"
+    assert "warning: the remote in $EVALTRACK_REMOTE did not open: " in result.err, (
+        "the source is named, not the URL"
+    )
+    assert "warning: the report has no history" in result.err
     assert remote not in result.err, "a URL the open turned away is not printed"
     data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}

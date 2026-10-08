@@ -3,7 +3,6 @@ so it opens anywhere with no server and no network."""
 
 import importlib.metadata
 import logging
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -16,6 +15,7 @@ from evaltrack.core.refs import BASELINE_REF, Ref
 from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.views.mainline import (
+    NoMainline,
     baseline_run_in,
     mainline_entry_in,
     run_history_over,
@@ -29,30 +29,10 @@ _logger = logging.getLogger(__name__)
 # The frontend build writes this file.
 TEMPLATE_PATH = Path(__file__).parent / "static" / "report.html"
 
-# The element the page reads. The build leaves it empty, and the report fills it.
+# The empty script element in the template, as the build writes it. The report
+# puts its JSON between these two tags, and the page reads the element by id.
 _SLOT_OPEN = '<script type="application/json" id="evaltrack-data">'
 _SLOT_CLOSE = "</script>"
-
-
-# Why a report has no mainline. One of these goes into the page, so none names
-# a host, a path or an error text.
-NO_REMOTE = "no remote is configured"
-REMOTE_DID_NOT_OPEN = "the remote did not open"
-REMOTE_NOT_REACHED = "the remote was not reached"
-REFLOG_DID_NOT_PARSE = "the baseline reflog did not parse"
-
-
-@dataclass(frozen=True)
-class Mainline:
-    """The repository the mainline is read from, or the reason there is none.
-    One of the two, never both or neither."""
-
-    repository: RunRepository | None = None
-    reason: str | None = None
-
-    def __post_init__(self) -> None:
-        if (self.repository is None) == (self.reason is None):
-            raise ValueError("a Mainline is a repository, or a reason there is none")
 
 
 class ReportData(BaseModel):
@@ -81,7 +61,7 @@ def collect_report_data(
     repository: RunRepository,
     run: RunRecord,
     *,
-    mainline: Mainline,
+    mainline: RunRepository | NoMainline,
     via_ref: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
@@ -96,23 +76,25 @@ def collect_report_data(
     history = RunHistory()
     mainline_entry: MainlineEntry | None = None
     baseline: RunRecord | None = None
-    mainline_error = mainline.reason
-    if mainline.repository is not None:
+    mainline_error: str | None = None
+    if isinstance(mainline, NoMainline):
+        mainline_error = mainline
+    else:
         try:
             # One read of the reflog serves all three. On a blob store each
             # read is a round trip.
-            reflog = list(mainline.repository.get_reflog(BASELINE_REF))
-            history = run_history_over(mainline.repository, reflog, viewed=run)
+            reflog = list(mainline.get_reflog(BASELINE_REF))
+            history = run_history_over(mainline, reflog, viewed=run)
             mainline_entry = mainline_entry_in(reflog, run.id)
-            baseline = baseline_run_in(mainline.repository, reflog, other_than=run.id)
+            baseline = baseline_run_in(mainline, reflog, other_than=run.id)
         except (RepositoryUnavailableError, CorruptRecordError) as exc:
             # The detail stays out of the page, which is handed around.
             _logger.warning("the mainline was not read: %s", exc)
             history, mainline_entry, baseline = RunHistory(), None, None
             mainline_error = (
-                REMOTE_NOT_REACHED
+                NoMainline.REMOTE_NOT_REACHED
                 if isinstance(exc, RepositoryUnavailableError)
-                else REFLOG_DID_NOT_PARSE
+                else NoMainline.REFLOG_DID_NOT_PARSE
             )
     return ReportData(
         run=run,

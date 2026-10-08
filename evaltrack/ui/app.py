@@ -35,6 +35,7 @@ from evaltrack.ui.security import (
     LOOPBACK_ALLOWED_HOSTS,
     SECURITY_HEADERS,
 )
+from evaltrack.views.mainline import NoMainline
 
 
 def _handle_storage_unavailable(
@@ -119,8 +120,9 @@ def create_app(
         s: RepositoryInfo(slug=s, url=m.url, role=m.role)
         for s, m in repositories.items()
     }
-    mainline: RunRepository | None = next(
-        (m.repository for m in repositories.values() if m.role == "remote"), None
+    mainline: RunRepository | NoMainline = next(
+        (m.repository for m in repositories.values() if m.role == "remote"),
+        NoMainline.NO_REMOTE,
     )
 
     def resolve(slug: str) -> RunRepository:

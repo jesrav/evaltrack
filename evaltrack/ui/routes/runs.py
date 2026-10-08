@@ -15,17 +15,12 @@ from evaltrack.core.run_record import (
     dump_run_json,
     ensure_run_id,
 )
-from evaltrack.report.page import (
-    NO_REMOTE,
-    Mainline,
-    collect_report_data,
-    render_report,
-)
+from evaltrack.report.page import collect_report_data, render_report
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
 from evaltrack.ui.security import reject_cross_origin_write
-from evaltrack.views.mainline import find_mainline_entry
+from evaltrack.views.mainline import NoMainline, find_mainline_entry
 from evaltrack.views.models import MainlineEntry
 from evaltrack.views.run_view import dump_case_json, dump_run_view_json
 
@@ -42,14 +37,14 @@ def _load_case_or_404(run: RunRecord, *, test: str, case: str) -> CaseRecord:
 
 def build_runs_router(
     resolve: Callable[[str], RunRepository],
-    mainline: RunRepository | None,
+    mainline: RunRepository | NoMainline,
     *,
     run_cache: RunCache,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> APIRouter:
-    """`mainline` is the repository the promote history lives in, None when no
-    mount supplies one. `pr_url_template` goes into the report, so its PR
-    numbers link as the dashboard's do."""
+    """`mainline` is the repository the promote history lives in, or why no mount
+    supplies one. `pr_url_template` goes into the report, so its PR numbers link
+    as the dashboard's do."""
     router = APIRouter(prefix="/api/repositories/{slug}/runs")
 
     def load_run_or_404(slug: str, run_id: str) -> RunRecord:
@@ -103,7 +98,7 @@ def build_runs_router(
         # Nothing here reaches storage. The check stops a malformed id from
         # reading as a run that was never promoted.
         ensure_run_id(run_id)
-        if mainline is None:
+        if isinstance(mainline, NoMainline):
             return None
         return find_mainline_entry(mainline, run_id)
 
@@ -129,7 +124,7 @@ def build_runs_router(
             resolve(slug),
             load_run_or_404(slug, run_id),
             via_ref=via_ref,
-            mainline=Mainline(mainline) if mainline else Mainline(reason=NO_REMOTE),
+            mainline=mainline,
             pr_url_template=pr_url_template,
         )
         try:
