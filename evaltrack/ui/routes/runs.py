@@ -117,8 +117,8 @@ def build_runs_router(
     def download_report(  # pyright: ignore[reportUnusedFunction]
         slug: str, run_id: str, *, via_ref: str | None = None
     ) -> Response:
-        """The run as the single-file report, to hand to someone without the
-        dashboard. `via_ref` is the ref the dashboard reached the run by, which
+        """The run as a standalone single-file report.
+        `via_ref` is the ref the dashboard reached the run by, which
         titles the page."""
         data = collect_report_data(
             resolve(slug),
