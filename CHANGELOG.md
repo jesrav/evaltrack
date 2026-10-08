@@ -9,8 +9,23 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+### Added
+
+- `evaltrack report`, which writes a recorded run as one HTML file with the run embedded. It shows
+  the run as the dashboard does and opens anywhere with no server and no network, for CI artifacts
+  and sharing results. The page also holds the run's history over the mainline and the `baseline`
+  run, so **Compare to mainline** works in it. A value over 16 KB is left out of the page unless
+  `--full` is passed, so a report of a large run stays small. See
+  [CLI › report](https://evaltrack.jesravnbol.dk/latest/cli/#evaltrack-report).
+- **Report** in the dashboard, on a run, which saves the same page for the run on screen, to share
+  with someone without the dashboard.
+
 ### Changed
 
+- The dashboard's history leaves out a promoted run whose body does not parse, and logs it, instead
+  of failing the whole history. A damaged `baseline` reflog still fails it.
+- `evaltrack.ui` no longer re-exports `create_app` and `MountedRepository`. Import them from
+  `evaltrack.ui.app`.
 - **Breaking:** the mainline is the configured `remote` and nothing else. A dashboard with only a
   local repository mounted no longer measures reliability history over the local `baseline`.
   `promote` and `push --ref baseline` into the local repository now exit `2`. To tell the local

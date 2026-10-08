@@ -1043,12 +1043,12 @@ export function App() {
             </div>
           </div>
         )}
-        {!error && runA && runB && (
+        {!error && runA && runB && selA && selB && (
           <RunDiff
             a={runA}
             b={runB}
-            viaA={selA?.via}
-            viaB={selB?.via}
+            viaA={selA.via}
+            viaB={selB.via}
             onSwap={swap}
             onOpenDrawer={openDrawer}
           />
@@ -1058,14 +1058,18 @@ export function App() {
             run={runA}
             via={selA.via}
             refs={refsForA}
-            slug={selA.repository}
+            actions={{
+              downloadHref: api.runDownloadUrl(selA.repository, runA.id),
+              reportHref: api.runReportUrl(selA.repository, runA.id, selA.via),
+              onDeleteRun: (runId) => handleDeleteRun(selA.repository, runId),
+              onDeleteRef: (name) => handleDeleteRef(selA.repository, name),
+            }}
             history={extrasA?.history}
             mainline={extrasA?.mainline}
             prUrlTemplate={prUrlTemplate}
-            canCompareToBaseline={baselineForCompare !== null}
-            onCompareToBaseline={compareToBaseline}
-            onDeleteRun={handleDeleteRun}
-            onDeleteRef={handleDeleteRef}
+            onCompareToBaseline={
+              baselineForCompare !== null ? compareToBaseline : undefined
+            }
             onOpenDrawer={openDrawer}
             attemptSel={attemptSel}
             onSelectAttempt={selectAttempt}

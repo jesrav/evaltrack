@@ -23,11 +23,7 @@ from evaltrack.core.errors import (
     UnsupportedSchemaError,
 )
 from evaltrack.repositories import RunRepository
-from evaltrack.ui.models import (
-    MountedRepository,
-    ProjectConfig,
-    RepositoryInfo,
-)
+from evaltrack.ui.models import MountedRepository, ProjectConfig, RepositoryInfo
 from evaltrack.ui.routes import static as static_routes
 from evaltrack.ui.routes.history import build_history_router
 from evaltrack.ui.routes.meta import build_meta_router
@@ -39,6 +35,7 @@ from evaltrack.ui.security import (
     LOOPBACK_ALLOWED_HOSTS,
     SECURITY_HEADERS,
 )
+from evaltrack.views.mainline import NoRemote
 
 
 def _handle_storage_unavailable(
@@ -123,8 +120,9 @@ def create_app(
         s: RepositoryInfo(slug=s, url=m.url, role=m.role)
         for s, m in repositories.items()
     }
-    mainline: RunRepository | None = next(
-        (m.repository for m in repositories.values() if m.role == "remote"), None
+    remote: RunRepository | NoRemote = next(
+        (m.repository for m in repositories.values() if m.role == "remote"),
+        NoRemote.NOT_CONFIGURED,
     )
 
     def resolve(slug: str) -> RunRepository:
@@ -153,9 +151,13 @@ def create_app(
     # One cache for both routers, so that a delete in one clears what the
     # other read.
     run_cache = RunCache()
-    app.include_router(build_runs_router(resolve, mainline, run_cache=run_cache))
+    app.include_router(
+        build_runs_router(
+            resolve, remote, run_cache=run_cache, pr_url_template=pr_url_template
+        )
+    )
     app.include_router(build_refs_router(resolve, run_cache=run_cache))
-    app.include_router(build_history_router(resolve, mainline))
+    app.include_router(build_history_router(resolve, remote))
 
     # Absent in development (Vite run separately) and in tests.
     assets_dir = static_routes.STATIC_DIR / "assets"

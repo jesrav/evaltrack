@@ -50,8 +50,27 @@ Prints a recorded run as JSON. Use it to inspect a run or archive one outside th
 same data is available in Python. See [Reading runs from Python].
 
 **Exit codes:** `0` when the run was exported. `1` when the named repository does not hold the run,
-and the error names that repository. `2` when no repository is named. No other command exits
+and the error names that repository. `2` when no repository is named. Only `report` shares
 [`1`](#exit-codes), so a script can act on the missing run alone.
+
+## evaltrack report
+
+Writes a recorded run as one HTML file that opens from disk, with no server and no network.
+
+```bash
+evaltrack report --ref pr/482 --output evaltrack-report.html
+```
+
+The page also shows the run's history over the remote's [`baseline`][baseline], and **Compare to
+mainline** against the run that `baseline` points at. Both come from the remote, whichever
+repository holds the run. Without a remote, the page shows the run alone and says why.
+
+The page holds the inputs and outputs that the run recorded. Share it with the same care as the run.
+A value over 16 KB is left out, so a report of a large run stays small. Pass `--full` to embed every
+value whole.
+
+**Exit codes:** `0` when the report was written. `1` when the repository does not hold the run or
+the ref. Nothing is written then. `2` when no repository is named.
 
 ## evaltrack ui
 
@@ -75,8 +94,9 @@ carries an **Exit codes** note.
 | `2`  | You or the environment has something to fix, and the message says what |
 | `70` | A bug in evaltrack, printed with its traceback                         |
 
-Only [`export`](#evaltrack-export) exits `1` today, for a run the repository does not hold. Please
-[report a `70`](https://github.com/jesrav/evaltrack/issues) with the traceback.
+Only [`export`](#evaltrack-export) and [`report`](#evaltrack-report) exit `1` today, for a run or
+ref the repository does not hold. Please [report a `70`](https://github.com/jesrav/evaltrack/issues)
+with the traceback.
 
 ---
 

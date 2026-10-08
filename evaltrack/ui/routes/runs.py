@@ -1,25 +1,30 @@
 """Reading, downloading and deleting one repository's runs."""
 
+import logging
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
+from evaltrack.config import PrUrlTemplate
 from evaltrack.core.errors import RunReferencedError
-from evaltrack.core.refs import BASELINE_REF, ReflogEntry
 from evaltrack.core.run_record import (
     CaseRecord,
     RunRecord,
     dump_run_json,
     ensure_run_id,
 )
+from evaltrack.report.page import collect_report_data, render_report
 from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unreferenced
-from evaltrack.ui.models import MainlineEntry
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
-from evaltrack.ui.run_view import dump_case_json, dump_run_view_json
 from evaltrack.ui.security import reject_cross_origin_write
+from evaltrack.views.mainline import NoRemote, load_mainline_entry
+from evaltrack.views.models import MainlineEntry
+from evaltrack.views.run_view import dump_case_json, dump_run_view_json
+
+_logger = logging.getLogger(__name__)
 
 
 def _load_case_or_404(run: RunRecord, *, test: str, case: str) -> CaseRecord:
@@ -32,12 +37,14 @@ def _load_case_or_404(run: RunRecord, *, test: str, case: str) -> CaseRecord:
 
 def build_runs_router(
     resolve: Callable[[str], RunRepository],
-    mainline: RunRepository | None,
+    remote: RunRepository | NoRemote,
     *,
     run_cache: RunCache,
+    pr_url_template: PrUrlTemplate | None = None,
 ) -> APIRouter:
-    """`mainline` is the repository the promote history lives in, None when no
-    mount supplies one."""
+    """`remote` is the repository whose `baseline` history is the mainline, or why no
+    mount supplies one. `pr_url_template` goes into the report, so its PR numbers link
+    as the dashboard's do."""
     router = APIRouter(prefix="/api/repositories/{slug}/runs")
 
     def load_run_or_404(slug: str, run_id: str) -> RunRecord:
@@ -91,20 +98,9 @@ def build_runs_router(
         # Nothing here reaches storage. The check stops a malformed id from
         # reading as a run that was never promoted.
         ensure_run_id(run_id)
-        if mainline is None:
+        if isinstance(remote, NoRemote):
             return None
-        match: ReflogEntry | None = None
-        for entry in mainline.get_reflog(BASELINE_REF):  # oldest-first
-            if entry.run_id == run_id:
-                match = entry
-        if match is None:
-            return None
-        return MainlineEntry(
-            commit=match.commit,
-            pr=match.pr,
-            title=match.title,
-            moved_at=match.moved_at,
-        )
+        return load_mainline_entry(remote, run_id)
 
     @router.get("/{run_id}/download")
     def download_run(slug: str, run_id: str) -> Response:  # pyright: ignore[reportUnusedFunction]
@@ -115,6 +111,34 @@ def build_runs_router(
             content=dump_run_json(run),
             media_type="application/json",
             headers={"Content-Disposition": f'attachment; filename="{run_id}.json"'},
+        )
+
+    @router.get("/{run_id}/report")
+    def download_report(  # pyright: ignore[reportUnusedFunction]
+        slug: str, run_id: str, *, via_ref: str | None = None
+    ) -> Response:
+        """The run as a standalone single-file report.
+        `via_ref` is the ref the dashboard reached the run by, which
+        titles the page."""
+        data = collect_report_data(
+            resolve(slug),
+            load_run_or_404(slug, run_id),
+            via_ref=via_ref,
+            remote=remote,
+            pr_url_template=pr_url_template,
+        )
+        try:
+            html = render_report(data)
+        except (FileNotFoundError, ValueError) as exc:
+            # An editable install before `just frontend_build`, not a fault
+            # of the request.
+            raise HTTPException(HTTPStatus.SERVICE_UNAVAILABLE, str(exc)) from exc
+        # An attachment, so the page never runs in the dashboard's origin.
+        filename = f"evaltrack-report-{run_id}.html"
+        return Response(
+            content=html,
+            media_type="text/html",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
     @router.delete("/{run_id}")

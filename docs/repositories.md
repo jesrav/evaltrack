@@ -51,8 +51,8 @@ that one, with its commit and time, and that history is the mainline: what relia
 score histories are measured over. You decide what "promoted" means (merged, deployed, released).
 See [Adapting the flow].
 
-The dashboard measures every run, local runs too, over the remote's `baseline`. Without a remote
-there is no history.
+The dashboard and `evaltrack report` measure every run, local runs too, over the remote's
+`baseline`. Without a remote there is no history.
 
 ## Promote
 
