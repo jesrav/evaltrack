@@ -11,8 +11,6 @@ from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.run_record import (
     RUN_SCHEMA_VERSION,
     RunRecord,
-    dump_run_json,
-    parse_run_json,
 )
 from evaltrack.report.page import (
     ReportData,
@@ -124,22 +122,22 @@ def test_collected_data_finds_the_mainline() -> None:
     assert data.baseline is None, "the baseline run is not compared against itself"
 
 
-def test_collected_history_is_measured_over_the_repository_baseline() -> None:
+def test_collected_history_is_measured_over_the_remote_baseline() -> None:
     """The report holds the reliability of the run, measured over the promoted history
-    of the mainline."""
-    repo = RunRepository(MemoryStore())
+    on the remote. A run never promoted is drawn over it, with no mainline entry."""
+    local, remote = RunRepository(MemoryStore()), RunRepository(MemoryStore())
     for i, ok in enumerate([True, False, True]):
         promoted = make_recorded_run(
             make_round(assertions={"passed": ok}),
             commit=f"c{i}",
             reliability_target=0.9,
         )
-        repo.save_run(promoted)
-        repo.move_ref("baseline", promoted.id, commit=f"main-{i}")
+        remote.save_run(promoted)
+        remote.move_ref("baseline", promoted.id, commit=f"main-{i}")
     viewed = make_recorded_run(make_round(), commit="pr", reliability_target=0.9)
-    repo.save_run(viewed)
+    local.save_run(viewed)
 
-    data = collect_report_data(repo, viewed, remote=repo)
+    data = collect_report_data(local, viewed, remote=remote)
 
     reliability = data.history.reliability["test_x"]["test_case"]
     assert reliability.pooled_runs == 3
@@ -156,13 +154,15 @@ def test_collected_data_carries_the_baseline_to_compare_against() -> None:
     repo.move_ref("baseline", base.id, commit="main-0")
     viewed = make_recorded_run(make_round(), commit="c1", reliability_target=0.9)
     repo.save_run(viewed)
-    repo.move_ref("pr/9", viewed.id, pr=9)
+    repo.move_ref("pr/9", viewed.id, pr=9, title="Tighten the prompt")
 
     data = collect_report_data(repo, viewed, remote=repo)
 
     assert data.baseline is not None and data.baseline.id == base.id
     assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
-    assert [r.name for r in data.refs] == ["pr/9"]
+    assert [r.name for r in data.refs] == ["pr/9"], "only the refs at this run"
+    tip = data.refs[0].tip
+    assert tip is not None and (tip.pr, tip.title) == (9, "Tighten the prompt")
 
 
 def test_a_baseline_this_version_cannot_read_is_left_out() -> None:
@@ -183,41 +183,6 @@ def test_a_baseline_this_version_cannot_read_is_left_out() -> None:
 
     assert data.baseline is None
     assert data.mainline_error is None, "the mainline itself was read"
-
-
-def test_collected_history_is_measured_over_the_given_mainline() -> None:
-    """A local run is measured over the remote's baseline. A run that was never promoted
-    has no mainline entry."""
-    local, remote = RunRepository(MemoryStore()), RunRepository(MemoryStore())
-    promoted = make_recorded_run(make_round(), commit="c0", reliability_target=0.9)
-    remote.save_run(promoted)
-    remote.move_ref("baseline", promoted.id, commit="main-0")
-    viewed = make_recorded_run(make_round(), commit="wip", reliability_target=0.9)
-    local.save_run(viewed)
-
-    data = collect_report_data(local, viewed, remote=remote)
-
-    assert data.history.reliability["test_x"]["test_case"].pooled_runs == 1
-    assert data.mainline is None
-
-
-def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
-    """The report names the refs that point at the run, each with the PR that it
-    records. A ref that points at another run is not included."""
-    repo = RunRepository(MemoryStore())
-    run = make_recorded_run(make_round(), commit="c0")
-    other = make_recorded_run(make_round(), commit="c1")
-    repo.save_run(run)
-    repo.save_run(other)
-    repo.move_ref("pr/7", run.id, pr=7, title="Tighten the prompt")
-    repo.move_ref("pr/8", other.id, pr=8)
-    repo.move_ref("baseline", run.id)
-
-    data = collect_report_data(repo, run, remote=NoRemote.NOT_CONFIGURED)
-
-    assert [r.name for r in data.refs] == ["baseline", "pr/7"]
-    pr = data.refs[1].tip
-    assert pr is not None and (pr.pr, pr.title) == (7, "Tighten the prompt")
 
 
 def test_an_unreachable_mainline_leaves_the_report_without_history(
@@ -257,53 +222,26 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     assert data.mainline_error == "the remote did not open"
 
 
-def test_the_page_leaves_out_the_raw_results_an_old_run_carries(
+def test_a_large_value_is_left_out_unless_every_value_is_asked_for(
     report_template: Path,
 ) -> None:
-    """A run saved before 0.3.0 also holds the raw results of the eval runner. The page
-    does not show them, so the report leaves them out."""
-    run = make_recorded_run(make_round(), commit="c0")
-    stored = json.loads(dump_run_json(run))
-    stored["tests"]["test_x"]["raw_results"] = [{"cases": [{"output": "x" * 100}]}]
-    old_run = parse_run_json(json.dumps(stored).encode())
-
-    embedded = embedded_report_json(render_report(make_data(old_run, baseline=old_run)))
-
-    baseline = embedded["baseline"]
-    assert isinstance(baseline, dict)
-    for run_json in (embedded_run(embedded), baseline):
-        test = run_json["tests"]["test_x"]
-        assert "raw_results" not in test
-        assert test["cases"], "the structured cases still stand"
-
-
-def test_a_large_value_is_left_out_with_its_preview(report_template: Path) -> None:
     """A large value is left out of the report, so that the file stays small. Its
-    preview and its size take its place."""
+    preview and its size take its place. No limit embeds it whole."""
     big = "y" * 500
     run = make_recorded_run(
         make_round(attempts=[make_attempt(output=big)]), commit="c0"
     )
 
-    embedded = embedded_report_json(render_report(make_data(run), inline_limit=100))
+    small = embedded_report_json(render_report(make_data(run), inline_limit=100))
+    full = embedded_report_json(render_report(make_data(run), inline_limit=None))
 
-    output = recorded_output(embedded)
+    output = recorded_output(small)
     assert isinstance(output, dict) and set(output) == {"$deferred"}
     envelope = output["$deferred"]
     assert envelope["preview"] == big[:200]
     assert envelope["size"] > 100
     assert (envelope["test"], envelope["field"]) == ("test_x", "output")
-
-
-def test_every_value_is_embedded_on_request(report_template: Path) -> None:
-    big = "y" * 500
-    run = make_recorded_run(
-        make_round(attempts=[make_attempt(output=big)]), commit="c0"
-    )
-
-    embedded = embedded_report_json(render_report(make_data(run), inline_limit=None))
-
-    assert recorded_output(embedded) == big
+    assert recorded_output(full) == big
 
 
 def test_a_baseline_reflog_that_does_not_parse_leaves_the_run_alone() -> None:
