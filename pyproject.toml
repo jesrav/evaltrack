@@ -106,6 +106,7 @@ path = "hatch_build.py"
 [tool.hatch.build.targets.sdist]
 exclude = [
     ".github",
+    ".importlinter",
     ".pre-commit-config.yaml",
     "CLAUDE.md",
     "justfile",
@@ -142,6 +143,7 @@ dev = [
     "pytest-rerunfailures>=14.0",
     # So basedpyright can resolve hatch_build.py's imports.
     "hatchling>=1.32.1",
+    "import-linter>=2.15",
 ]
 docs = [
     "mike",
