@@ -265,6 +265,24 @@ def test_remote_view_with_a_torn_baseline_reflog_is_422_not_the_local_numbers() 
     assert "line 2" in r.json()["detail"], "the detail names the torn reflog line"
 
 
+def test_a_promoted_run_that_does_not_parse_is_left_out_of_the_history() -> None:
+    """One damaged run body on the mainline costs that run, not the history. A
+    damaged reflog is another matter, and still fails the history."""
+    store = MemoryStore()
+    repo = RunRepository(store)
+    runs = [make_recorded_run(make_round(), commit=f"c{i}") for i in range(3)]
+    for i, run in enumerate(runs):
+        repo.save_run(run)
+        repo.move_ref("baseline", run.id, commit=f"main-{i}")
+    store.write(b"{not json", f"runs/{runs[0].id}.json")
+
+    with make_repo_client(repo) as client:
+        r = client.get("/api/repositories/main/history")
+
+    assert r.status_code == 200
+    assert r.json()["reliability"]["test_x"]["test_case"]["pooled_runs"] == 2
+
+
 def test_score_history_tracks_the_baseline_history() -> None:
     """The trend answers "is this eval drifting?", which the pass and fail
     history cannot. Every run here passes its bar while the score slides toward

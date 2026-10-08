@@ -52,15 +52,14 @@ import type {
  *  run, and delete the run or a ref that reaches it. A page with no repository
  *  behind it passes none. */
 export interface RunActions {
-  /** The repository the run is addressed in, passed back to the deletes. */
-  slug: string;
   /** The whole stored run, as a file. */
   downloadHref: string;
   /** The run as the single-file report, to share with someone without the
    *  dashboard. */
   reportHref: string;
-  onDeleteRun: (slug: string, runId: string) => void;
-  onDeleteRef: (slug: string, refName: string) => void;
+  /** The deletes already know which repository the run is in. */
+  onDeleteRun: (runId: string) => void;
+  onDeleteRef: (refName: string) => void;
 }
 
 interface Props {
@@ -936,27 +935,27 @@ function RunHeader({
               ⇄ Compare to mainline
             </button>
           )}
-          {actions && referenced && (
-            <button
-              type="button"
-              className="page-delete disabled"
-              aria-disabled="true"
-              title={`Referenced by ${refs.map((r) => r.name).join(", ")}. Delete the ref instead.`}
-              onClick={(e) => e.preventDefault()}
-            >
-              Delete run
-            </button>
-          )}
-          {actions && !referenced && (
-            <button
-              type="button"
-              className="page-delete"
-              title="Delete this run"
-              onClick={() => actions.onDeleteRun(actions.slug, run.id)}
-            >
-              Delete run
-            </button>
-          )}
+          {actions &&
+            (referenced ? (
+              <button
+                type="button"
+                className="page-delete disabled"
+                aria-disabled="true"
+                title={`Referenced by ${refs.map((r) => r.name).join(", ")}. Delete the ref instead.`}
+                onClick={(e) => e.preventDefault()}
+              >
+                Delete run
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="page-delete"
+                title="Delete this run"
+                onClick={() => actions.onDeleteRun(run.id)}
+              >
+                Delete run
+              </button>
+            ))}
         </div>
       )}
       <p className="view-kicker">Eval run</p>
@@ -995,7 +994,7 @@ function RunHeader({
                   className="ref-chip-delete"
                   title={`Delete ref ${r.name} and the runs only it reaches`}
                   aria-label={`Delete ref ${r.name}`}
-                  onClick={() => actions.onDeleteRef(actions.slug, r.name)}
+                  onClick={() => actions.onDeleteRef(r.name)}
                 >
                   ✕
                 </button>

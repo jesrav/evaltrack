@@ -1059,15 +1059,10 @@ export function App() {
             via={selA.via}
             refs={refsForA}
             actions={{
-              slug: selA.repository,
               downloadHref: api.runDownloadUrl(selA.repository, runA.id),
-              reportHref: api.runReportUrl(
-                selA.repository,
-                selA.runId,
-                selA.via,
-              ),
-              onDeleteRun: handleDeleteRun,
-              onDeleteRef: handleDeleteRef,
+              reportHref: api.runReportUrl(selA.repository, runA.id, selA.via),
+              onDeleteRun: (runId) => handleDeleteRun(selA.repository, runId),
+              onDeleteRef: (name) => handleDeleteRef(selA.repository, name),
             }}
             history={extrasA?.history}
             mainline={extrasA?.mainline}

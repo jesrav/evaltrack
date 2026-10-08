@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ### Changed
 
+- The dashboard's history leaves out a promoted run whose body does not parse, and logs it, instead
+  of failing the whole history. A damaged `baseline` reflog still fails it.
 - `evaltrack.ui` no longer re-exports `create_app` and `MountedRepository`. Import them from
   `evaltrack.ui.app`.
 - **Breaking:** the mainline is the configured `remote` and nothing else. A dashboard with only a

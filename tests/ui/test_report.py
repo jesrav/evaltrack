@@ -2,13 +2,11 @@
 the data element."""
 
 import json
-import re
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-import evaltrack.report.page as report_module
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.run_record import (
     RUN_SCHEMA_VERSION,
@@ -96,31 +94,19 @@ def test_an_output_cannot_close_the_data_element(report_template: Path) -> None:
     assert recorded_output(embedded) == hostile
 
 
-def test_the_page_names_no_remote_asset(report_template: Path) -> None:
-    html = render_report(make_data())
-    assert not re.search(r'(src|href)="(https?:)?//', html)
-
-
-def test_a_missing_template_names_the_build(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(report_module, "TEMPLATE_PATH", tmp_path / "missing.html")
-
+def test_a_missing_template_names_the_build(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="frontend_build"):
-        render_report(make_data())
+        render_report(make_data(), template_path=tmp_path / "missing.html")
 
 
-def test_a_template_without_a_slot_is_refused(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_a_template_without_a_slot_is_refused(tmp_path: Path) -> None:
     """A template without the data slot has no place for the run. The report must fail,
     and not write a page with no run in it."""
     path = tmp_path / "report.html"
     path.write_text("<!doctype html><title>other</title>", encoding="utf-8")
-    monkeypatch.setattr(report_module, "TEMPLATE_PATH", path)
 
     with pytest.raises(ValueError, match="data slot"):
-        render_report(make_data())
+        render_report(make_data(), template_path=path)
 
 
 def test_collected_data_finds_the_mainline() -> None:

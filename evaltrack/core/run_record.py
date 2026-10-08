@@ -281,7 +281,12 @@ def _repr_or_stand_in(value: object) -> str:
         return f"<unrepresentable {type(value).__name__}>"
 
 
-def dump_plain(model: BaseModel, *, include: set[str] | None = None) -> Any:
+def dump_plain(
+    model: BaseModel,
+    *,
+    include: set[str] | None = None,
+    exclude: set[str] | None = None,
+) -> Any:
     """The model as plain dicts. This is the first half of `dump_run_json`.
 
     The dump makes plain dicts first, so that the degrade in `dump_plain_json`
@@ -293,7 +298,11 @@ def dump_plain(model: BaseModel, *, include: set[str] | None = None) -> Any:
     its declared type, and under `-W error` that warning alone loses the run.
     """
     return model.model_dump(
-        mode="python", include=include, fallback=_repr_or_stand_in, warnings=False
+        mode="python",
+        include=include,
+        exclude=exclude,
+        fallback=_repr_or_stand_in,
+        warnings=False,
     )
 
 

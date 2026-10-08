@@ -4,7 +4,7 @@ it against. The mainline is the history of the `baseline` ref on the remote."""
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from enum import StrEnum
+from enum import Enum, auto
 
 from evaltrack.core.errors import CorruptRecordError, UnsupportedSchemaError
 from evaltrack.core.refs import BASELINE_REF, ReflogEntry
@@ -18,13 +18,11 @@ from evaltrack.views.models import MainlineEntry, RunHistory
 _logger = logging.getLogger(__name__)
 
 
-class NoRemote(StrEnum):
-    """Why there is no remote to read the mainline from. A reason is shown to a
-    reader, and a page that shows it can be handed around, so each is fixed
-    words, never a host, a path or an error's own text."""
+class NoRemote(Enum):
+    """Why there is no remote to read the mainline from."""
 
-    NOT_CONFIGURED = "no remote is configured"
-    DID_NOT_OPEN = "the remote did not open"
+    NOT_CONFIGURED = auto()
+    DID_NOT_OPEN = auto()
 
 
 # Bounded so a pooled view never opens more connections than the store keeps.

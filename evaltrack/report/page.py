@@ -3,6 +3,7 @@ so it opens anywhere with no server and no network."""
 
 import importlib.metadata
 import logging
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -57,10 +58,45 @@ class ReportData(BaseModel):
     generated_by: str
 
 
-# Why a remote that opened gave no mainline. Shown to a reader, like the
-# reasons there is no remote, so fixed words with no host, path or error text.
+# What the page says when it has no mainline. Shown on a page that is handed
+# around, so fixed words with no host, path or error text.
+_WHY_NO_MAINLINE = {
+    NoRemote.NOT_CONFIGURED: "no remote is configured",
+    NoRemote.DID_NOT_OPEN: "the remote did not open",
+}
 _REMOTE_NOT_REACHED = "the remote was not reached"
 _REFLOG_DID_NOT_PARSE = "the baseline reflog did not parse"
+
+
+@dataclass(frozen=True)
+class _MainlineView:
+    """What the mainline says about one run, or in `error` why it said nothing."""
+
+    history: RunHistory = field(default_factory=RunHistory)
+    entry: MainlineEntry | None = None
+    baseline: RunRecord | None = None
+    error: str | None = None
+
+
+def _read_mainline(remote: RunRepository | NoRemote, run: RunRecord) -> _MainlineView:
+    if isinstance(remote, NoRemote):
+        return _MainlineView(error=_WHY_NO_MAINLINE[remote])
+    try:
+        # One read of the reflog serves all three. On a blob store each read
+        # is a round trip.
+        reflog = list(remote.get_reflog(BASELINE_REF))
+        return _MainlineView(
+            history=run_history_over(remote, reflog, viewed_run=run),
+            entry=mainline_entry_for(reflog, run.id),
+            baseline=baseline_run_for(remote, reflog, run_id=run.id),
+        )
+    except RepositoryUnavailableError as exc:
+        # The detail stays out of the page, which is handed around.
+        _logger.warning("the mainline was not read: %s", exc)
+        return _MainlineView(error=_REMOTE_NOT_REACHED)
+    except CorruptRecordError as exc:
+        _logger.warning("the mainline was not read: %s", exc)
+        return _MainlineView(error=_REFLOG_DID_NOT_PARSE)
 
 
 def collect_report_data(
@@ -80,37 +116,15 @@ def collect_report_data(
     does not parse, the report has the run alone and `mainline_error` says why. A
     promoted run this evaltrack cannot read is left out of the history.
     """
-    history = RunHistory()
-    mainline_entry: MainlineEntry | None = None
-    baseline: RunRecord | None = None
-    mainline_error: str | None = None
-    if isinstance(remote, NoRemote):
-        mainline_error = remote
-    else:
-        try:
-            # One read of the reflog serves all three. On a blob store each
-            # read is a round trip.
-            reflog = list(remote.get_reflog(BASELINE_REF))
-            history = run_history_over(remote, reflog, viewed_run=run)
-            mainline_entry = mainline_entry_for(reflog, run.id)
-            baseline = baseline_run_for(remote, reflog, run_id=run.id)
-        except (RepositoryUnavailableError, CorruptRecordError) as exc:
-            # The detail stays out of the page, which is handed around.
-            _logger.warning("the mainline was not read: %s", exc)
-            history, mainline_entry, baseline = RunHistory(), None, None
-            mainline_error = (
-                _REMOTE_NOT_REACHED
-                if isinstance(exc, RepositoryUnavailableError)
-                else _REFLOG_DID_NOT_PARSE
-            )
+    mainline = _read_mainline(remote, run)
     return ReportData(
         run=run,
         via_ref=via_ref,
-        baseline=baseline,
+        baseline=mainline.baseline,
         refs=refs_pointing_at(repository, run.id),
-        history=history,
-        mainline=mainline_entry,
-        mainline_error=mainline_error,
+        history=mainline.history,
+        mainline=mainline.entry,
+        mainline_error=mainline.error,
         pr_url_template=pr_url_template,
         generated_at=datetime.now(UTC),
         generated_by=importlib.metadata.version("evaltrack"),
@@ -120,9 +134,11 @@ def collect_report_data(
 def escape_json_for_html(json_text: str) -> str:
     """Rewrite `json_text` so that it can sit inside a `<script>` element, whatever it
     holds. The HTML parser ends the element at the first `</script` and knows no
-    escaping inside it. So every `<`, `>` and `&` becomes its JSON escape, which decodes
-    back to the same character. The two Unicode line terminators become escapes too,
-    because some tools read a page as JavaScript source, where they end a line."""
+    escaping inside it, so `<` becomes its JSON escape, which decodes back to the same
+    character. `>` and `&` get the same, which costs nothing and keeps the text safe
+    in a context that does decode entities. The two Unicode line terminators become
+    escapes too, because some tools read a page as JavaScript source, where they end
+    a line."""
     return (
         json_text.replace("&", "\\u0026")
         .replace("<", "\\u003c")
@@ -164,21 +180,25 @@ def _dump_report_json(data: ReportData, *, inline_limit: int | None) -> str:
             else None
         ),
     }
-    rest = dump_plain(data, include=set(ReportData.model_fields) - set(runs))
+    rest = dump_plain(data, exclude=set(runs))
     return dump_plain_json(runs | rest).decode()
 
 
 def render_report(
-    data: ReportData, *, inline_limit: int | None = INLINE_VALUE_BYTES
+    data: ReportData,
+    *,
+    inline_limit: int | None = INLINE_VALUE_BYTES,
+    template_path: Path | None = None,
 ) -> str:
     """The report page for `data`, as one self-contained HTML document. A value over
-    `inline_limit` bytes is left out. None embeds every value whole.
+    `inline_limit` bytes is left out. None embeds every value whole. `template_path`
+    is the built page the data goes into, the shipped one when None.
 
     Raises:
         FileNotFoundError: when the page template is not built.
         ValueError: when the template has no data slot, so it is not the template
             that this version writes into.
     """
-    head, tail = _load_template(TEMPLATE_PATH)
+    head, tail = _load_template(template_path or TEMPLATE_PATH)
     payload = escape_json_for_html(_dump_report_json(data, inline_limit=inline_limit))
     return f"{head}{_SLOT_OPEN}{payload}{_SLOT_CLOSE}{tail}"
