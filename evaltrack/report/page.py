@@ -16,8 +16,8 @@ from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.views.mainline import (
     NoMainline,
-    baseline_run_in,
-    mainline_entry_in,
+    baseline_run_for,
+    mainline_entry_for,
     run_history_over,
 )
 from evaltrack.views.models import MainlineEntry, RunHistory
@@ -61,13 +61,14 @@ def collect_report_data(
     repository: RunRepository,
     run: RunRecord,
     *,
-    mainline: RunRepository | NoMainline,
+    remote: RunRepository | NoMainline,
     via_ref: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
     """The data of a report for `run`, which `repository` holds. It is the run and what
-    `mainline` says about it. That is the history, where the run landed on the mainline,
-    and the `baseline` run to compare against. `via_ref` is the ref that named the run.
+    the mainline on `remote` says about it. That is the history, where the run landed
+    on the mainline, and the `baseline` run to compare against. `via_ref` is the ref
+    that named the run.
 
     If the mainline is missing, cannot be reached, or holds a `baseline` reflog that
     does not parse, the report has the run alone and `mainline_error` says why. A
@@ -77,16 +78,16 @@ def collect_report_data(
     mainline_entry: MainlineEntry | None = None
     baseline: RunRecord | None = None
     mainline_error: str | None = None
-    if isinstance(mainline, NoMainline):
-        mainline_error = mainline
+    if isinstance(remote, NoMainline):
+        mainline_error = remote
     else:
         try:
             # One read of the reflog serves all three. On a blob store each
             # read is a round trip.
-            reflog = list(mainline.get_reflog(BASELINE_REF))
-            history = run_history_over(mainline, reflog, viewed_run=run)
-            mainline_entry = mainline_entry_in(reflog, run.id)
-            baseline = baseline_run_in(mainline, reflog, other_than=run.id)
+            reflog = list(remote.get_reflog(BASELINE_REF))
+            history = run_history_over(remote, reflog, viewed_run=run)
+            mainline_entry = mainline_entry_for(reflog, run.id)
+            baseline = baseline_run_for(remote, reflog, run_id=run.id)
         except (RepositoryUnavailableError, CorruptRecordError) as exc:
             # The detail stays out of the page, which is handed around.
             _logger.warning("the mainline was not read: %s", exc)

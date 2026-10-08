@@ -1,6 +1,6 @@
 """What the mainline says about a run: the pooled reliability and score history
 around it, where it landed on the mainline, and the `baseline` run to compare
-it against."""
+it against. The mainline is the history of the `baseline` ref on the remote."""
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -65,7 +65,7 @@ def _newest_entry_per_run(entries: list[ReflogEntry]) -> list[ReflogEntry]:
 
 
 def _load_mainline_history(
-    mainline: RunRepository, reflog: list[ReflogEntry], *, window: int
+    remote: RunRepository, reflog: list[ReflogEntry], *, window: int
 ) -> list[HistoryRun]:
     """The newest `window` runs on the oldest-first `baseline` reflog, newest-first,
     one per run.
@@ -79,7 +79,7 @@ def _load_mainline_history(
 
     # Each load is one store read, so they overlap well.
     def load(entry: ReflogEntry) -> RunRecord | None:
-        return load_readable_run(mainline, entry.run_id)
+        return load_readable_run(remote, entry.run_id)
 
     workers = min(len(entries), _LOAD_WORKERS)
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -92,19 +92,19 @@ def _load_mainline_history(
 
 
 def run_history_over(
-    mainline: RunRepository,
+    remote: RunRepository,
     reflog: list[ReflogEntry],
     *,
     viewed_run: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
     """The RunHistory (reliability and score history) over the runs on the
-    mainline. `reflog` is the oldest-first `baseline` reflog of `mainline`. Each
+    mainline. `reflog` is the oldest-first `baseline` reflog of `remote`. Each
     of its entries names a promoted run, and gives the commit and PR that promoted
     it, which label the history's points. `viewed_run` is the run on screen. When
     it is not one of the mainline runs, it is added as one more point, so it shows
     next to them without counting in the rates. Empty when there is no history."""
-    history = _load_mainline_history(mainline, reflog, window=window)
+    history = _load_mainline_history(remote, reflog, window=window)
     if (
         history
         and viewed_run is not None
@@ -125,21 +125,21 @@ def run_history_over(
 
 
 def load_run_history(
-    mainline: RunRepository,
+    remote: RunRepository,
     *,
     viewed_run: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
-    """`run_history_over` the `baseline` reflog, which this reads from `mainline`.
+    """`run_history_over` the `baseline` reflog, which this reads from `remote`.
 
     Raises:
         CorruptRecordError: when the reflog does not parse.
     """
-    reflog = list(mainline.get_reflog(BASELINE_REF))
-    return run_history_over(mainline, reflog, viewed_run=viewed_run, window=window)
+    reflog = list(remote.get_reflog(BASELINE_REF))
+    return run_history_over(remote, reflog, viewed_run=viewed_run, window=window)
 
 
-def mainline_entry_in(reflog: list[ReflogEntry], run_id: str) -> MainlineEntry | None:
+def mainline_entry_for(reflog: list[ReflogEntry], run_id: str) -> MainlineEntry | None:
     """Where the run landed on the mainline. It is taken from the newest entry
     in the oldest-first `baseline` `reflog` that points at the run. None for a
     run never promoted."""
@@ -157,21 +157,22 @@ def mainline_entry_in(reflog: list[ReflogEntry], run_id: str) -> MainlineEntry |
     )
 
 
-def find_mainline_entry(mainline: RunRepository, run_id: str) -> MainlineEntry | None:
-    """`mainline_entry_in` the `baseline` reflog, which this reads from `mainline`.
+def load_mainline_entry(remote: RunRepository, run_id: str) -> MainlineEntry | None:
+    """`mainline_entry_for` the `baseline` reflog, which this reads from `remote`.
 
     Raises:
         CorruptRecordError: when the reflog does not parse.
     """
-    return mainline_entry_in(list(mainline.get_reflog(BASELINE_REF)), run_id)
+    return mainline_entry_for(list(remote.get_reflog(BASELINE_REF)), run_id)
 
 
-def baseline_run_in(
-    mainline: RunRepository, reflog: list[ReflogEntry], *, other_than: str
+def baseline_run_for(
+    remote: RunRepository, reflog: list[ReflogEntry], *, run_id: str
 ) -> RunRecord | None:
-    """The run that the newest entry of the `baseline` `reflog` points at, to
-    compare the run `other_than` against. None when the reflog is empty or
-    points at that run itself, or when this evaltrack cannot read the run."""
-    if not reflog or reflog[-1].run_id == other_than:
+    """The baseline run to compare the run `run_id` against. It is the run that the
+    newest entry of the `baseline` `reflog` points at. None when the reflog is
+    empty, when it points at that run itself, or when this evaltrack cannot read
+    the run."""
+    if not reflog or reflog[-1].run_id == run_id:
         return None
-    return load_readable_run(mainline, reflog[-1].run_id)
+    return load_readable_run(remote, reflog[-1].run_id)

@@ -120,7 +120,7 @@ def create_app(
         s: RepositoryInfo(slug=s, url=m.url, role=m.role)
         for s, m in repositories.items()
     }
-    mainline: RunRepository | NoMainline = next(
+    remote: RunRepository | NoMainline = next(
         (m.repository for m in repositories.values() if m.role == "remote"),
         NoMainline.NO_REMOTE,
     )
@@ -153,11 +153,11 @@ def create_app(
     run_cache = RunCache()
     app.include_router(
         build_runs_router(
-            resolve, mainline, run_cache=run_cache, pr_url_template=pr_url_template
+            resolve, remote, run_cache=run_cache, pr_url_template=pr_url_template
         )
     )
     app.include_router(build_refs_router(resolve, run_cache=run_cache))
-    app.include_router(build_history_router(resolve, mainline))
+    app.include_router(build_history_router(resolve, remote))
 
     # Absent in development (Vite run separately) and in tests.
     assets_dir = static_routes.STATIC_DIR / "assets"

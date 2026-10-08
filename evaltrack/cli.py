@@ -584,13 +584,13 @@ def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecor
     return run
 
 
-def _open_mainline(
+def _open_remote(
     target: _OpenedRepository, config: EvaltrackConfig
 ) -> RunRepository | NoMainline:
-    """The mainline, read from the configured remote whichever repository holds the
-    run. A report can be written without a mainline, so a remote that does not open
-    is a warning, not an error. The URL is printed only after the open succeeds,
-    since a URL that is turned away can hold a credential."""
+    """The configured remote, which holds the mainline, whichever repository holds
+    the run. A report can be written without a mainline, so a remote that does not
+    open is a warning, not an error. The URL is printed only after the open
+    succeeds, since a URL that is turned away can hold a credential."""
     remote = resolve_remote(config)
     if remote is None:
         return NoMainline.NO_REMOTE
@@ -626,7 +626,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
     data = collect_report_data(
         target.repository,
         subject,
-        mainline=_open_mainline(target, config),
+        remote=_open_remote(target, config),
         via_ref=args.ref,
         pr_url_template=config.pr_url_template,
     )

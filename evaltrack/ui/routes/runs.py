@@ -20,7 +20,7 @@ from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unre
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
 from evaltrack.ui.security import reject_cross_origin_write
-from evaltrack.views.mainline import NoMainline, find_mainline_entry
+from evaltrack.views.mainline import NoMainline, load_mainline_entry
 from evaltrack.views.models import MainlineEntry
 from evaltrack.views.run_view import dump_case_json, dump_run_view_json
 
@@ -37,13 +37,13 @@ def _load_case_or_404(run: RunRecord, *, test: str, case: str) -> CaseRecord:
 
 def build_runs_router(
     resolve: Callable[[str], RunRepository],
-    mainline: RunRepository | NoMainline,
+    remote: RunRepository | NoMainline,
     *,
     run_cache: RunCache,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> APIRouter:
-    """`mainline` is the repository the promote history lives in, or why no mount
-    supplies one. `pr_url_template` goes into the report, so its PR numbers link
+    """`remote` is the repository whose `baseline` history is the mainline, or why no
+    mount supplies one. `pr_url_template` goes into the report, so its PR numbers link
     as the dashboard's do."""
     router = APIRouter(prefix="/api/repositories/{slug}/runs")
 
@@ -98,9 +98,9 @@ def build_runs_router(
         # Nothing here reaches storage. The check stops a malformed id from
         # reading as a run that was never promoted.
         ensure_run_id(run_id)
-        if isinstance(mainline, NoMainline):
+        if isinstance(remote, NoMainline):
             return None
-        return find_mainline_entry(mainline, run_id)
+        return load_mainline_entry(remote, run_id)
 
     @router.get("/{run_id}/download")
     def download_run(slug: str, run_id: str) -> Response:  # pyright: ignore[reportUnusedFunction]
@@ -124,7 +124,7 @@ def build_runs_router(
             resolve(slug),
             load_run_or_404(slug, run_id),
             via_ref=via_ref,
-            mainline=mainline,
+            remote=remote,
             pr_url_template=pr_url_template,
         )
         try:
