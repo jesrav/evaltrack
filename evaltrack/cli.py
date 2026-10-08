@@ -565,23 +565,31 @@ class _RunNotFound(Exception):
     which name, and where it was looked for."""
 
 
-def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecord:
-    """The run that `name` picks. It is the tip of that ref, or the run with that id.
+def _load_run(
+    target: _OpenedRepository, *, run_id: str | None, ref: str | None
+) -> RunRecord:
+    """The run with `run_id`, or the run that `ref` points at. One of the two names
+    the run, never both.
 
     Raises:
         _RunNotFound: when the repository does not hold it.
     """
-    run_id = name
-    if as_ref:
-        tip = target.repository.get_ref(name)
+    if run_id is not None and ref is None:
+        run = target.repository.load_run(run_id)
+        if run is None:
+            raise _RunNotFound(f"run {run_id!r} not found in {target.url}")
+        return run
+    if ref is not None and run_id is None:
+        tip = target.repository.get_ref(ref)
         if tip is None:
-            raise _RunNotFound(f"ref {name!r} not found in {target.url}")
-        run_id = tip.run_id
-    run = target.repository.load_run(run_id)
-    if run is None:
-        held_by = f" (the tip of ref {name!r})" if as_ref else ""
-        raise _RunNotFound(f"run {run_id!r} not found in {target.url}{held_by}")
-    return run
+            raise _RunNotFound(f"ref {ref!r} not found in {target.url}")
+        run = target.repository.load_run(tip.run_id)
+        if run is None:
+            raise _RunNotFound(
+                f"run {tip.run_id!r} (the tip of ref {ref!r}) not found in {target.url}"
+            )
+        return run
+    raise ValueError("a run is named by its id or by a ref, not both")
 
 
 def _open_remote(
@@ -611,14 +619,10 @@ def _open_remote(
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
-    # Read up front, since the mainline needs it whichever repository is named.
     config = load_config()
     target = _open_resolved_repository(args, config=config)
     try:
-        if args.run_id is not None:
-            subject = _load_run(target, args.run_id, as_ref=False)
-        else:
-            subject = _load_run(target, args.ref, as_ref=True)
+        subject = _load_run(target, run_id=args.run_id, ref=args.ref)
     except _RunNotFound as exc:
         # A missing run is a defined outcome, so the exit code is 1.
         print(f"report: {exc}", file=sys.stderr)
