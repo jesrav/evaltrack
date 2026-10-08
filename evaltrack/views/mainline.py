@@ -34,9 +34,9 @@ _LOAD_WORKERS = 10
 
 
 def load_readable_run(repo: RunRepository, run_id: str) -> RunRecord | None:
-    """`load_run` that returns None, and logs, for a run this evaltrack cannot
-    read. That is a run recorded by another evaltrack, or one whose body does
-    not parse. One such run must not lose a pooled view."""
+    """Load a run, or return None when this evaltrack cannot read it. That could be a
+    run recorded by a newer evaltrack, or one whose body does not parse. The
+    failure is logged. One bad run must not cost a whole history."""
     try:
         return repo.load_run(run_id)
     except UnsupportedSchemaError as exc:
@@ -95,17 +95,25 @@ def run_history_over(
     mainline: RunRepository,
     reflog: list[ReflogEntry],
     *,
-    viewed: RunRecord | None,
+    viewed_run: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
-    """The reliability and score history over the promoted runs that `reflog`
-    names. `reflog` is the oldest-first `baseline` reflog of `mainline`. `viewed`
-    is drawn over those runs when it is not one of them. Empty when there is no
-    history."""
+    """The RunHistory (reliability and score history) over the runs on the
+    mainline. `reflog` is the oldest-first `baseline` reflog of `mainline`. Each
+    of its entries names a promoted run, and gives the commit and PR that promoted
+    it, which label the history's points. `viewed_run` is the run on screen. When
+    it is not one of the mainline runs, it is added as one more point, so it shows
+    next to them without counting in the rates. Empty when there is no history."""
     history = _load_mainline_history(mainline, reflog, window=window)
-    if history and viewed is not None and all(h.run.id != viewed.id for h in history):
+    if (
+        history
+        and viewed_run is not None
+        and all(h.run.id != viewed_run.id for h in history)
+    ):
         history = [
-            HistoryRun(viewed, viewed.commit, viewed.created_at, off_mainline=True),
+            HistoryRun(
+                viewed_run, viewed_run.commit, viewed_run.created_at, off_mainline=True
+            ),
             *history,
         ]
     if not history:
@@ -119,7 +127,7 @@ def run_history_over(
 def load_run_history(
     mainline: RunRepository,
     *,
-    viewed: RunRecord | None,
+    viewed_run: RunRecord | None,
     window: int = DEFAULT_WINDOW,
 ) -> RunHistory:
     """`run_history_over` the `baseline` reflog, which this reads from `mainline`.
@@ -128,7 +136,7 @@ def load_run_history(
         CorruptRecordError: when the reflog does not parse.
     """
     reflog = list(mainline.get_reflog(BASELINE_REF))
-    return run_history_over(mainline, reflog, viewed=viewed, window=window)
+    return run_history_over(mainline, reflog, viewed_run=viewed_run, window=window)
 
 
 def mainline_entry_in(reflog: list[ReflogEntry], run_id: str) -> MainlineEntry | None:

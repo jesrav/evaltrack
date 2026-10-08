@@ -29,7 +29,7 @@ def build_history_router(
         repo = resolve(slug)
         if isinstance(mainline, NoMainline):
             return RunHistory()
-        viewed = load_readable_run(repo, run_id) if run_id is not None else None
-        return load_run_history(mainline, viewed=viewed)
+        viewed_run = load_readable_run(repo, run_id) if run_id is not None else None
+        return load_run_history(mainline, viewed_run=viewed_run)
 
     return router

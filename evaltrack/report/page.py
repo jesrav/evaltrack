@@ -84,7 +84,7 @@ def collect_report_data(
             # One read of the reflog serves all three. On a blob store each
             # read is a round trip.
             reflog = list(mainline.get_reflog(BASELINE_REF))
-            history = run_history_over(mainline, reflog, viewed=run)
+            history = run_history_over(mainline, reflog, viewed_run=run)
             mainline_entry = mainline_entry_in(reflog, run.id)
             baseline = baseline_run_in(mainline, reflog, other_than=run.id)
         except (RepositoryUnavailableError, CorruptRecordError) as exc:
