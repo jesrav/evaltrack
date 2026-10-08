@@ -220,13 +220,15 @@ def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
     assert pr is not None and (pr.pr, pr.title) == (7, "Tighten the prompt")
 
 
-def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
-    """When the remote is down, the report still holds the run. It says why there is no
-    history."""
+def test_an_unreachable_mainline_leaves_the_report_without_history(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """When the remote is down, the report still holds the run. The page says why in
+    fixed words, and the storage error, which can name a host, goes to the log."""
     repo = RunRepository(MemoryStore())
     run = make_recorded_run(make_round(), commit="c0")
     repo.save_run(run)
-    down = RunRepository(RaisingStore(RepositoryUnavailableError("no route to host")))
+    down = RunRepository(RaisingStore(RepositoryUnavailableError("no route to host10")))
 
     data = collect_report_data(repo, run, remote=down)
 
@@ -234,6 +236,7 @@ def test_an_unreachable_mainline_leaves_the_report_without_history() -> None:
     assert data.mainline is None
     assert data.mainline_error == "the remote was not reached"
     assert data.run.id == run.id
+    assert "host10" in caplog.text, "the detail is logged"
 
 
 def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None:

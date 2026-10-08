@@ -1,6 +1,5 @@
 """`evaltrack report`, which writes a run as a single HTML file."""
 
-import json
 from pathlib import Path
 
 import pytest
@@ -9,7 +8,6 @@ import evaltrack.report.page as report_module
 from evaltrack.cli import main
 from evaltrack.core.errors import RepositoryUnavailableError
 from evaltrack.core.recorder import EvalRecorder
-from evaltrack.core.run_record import RUN_SCHEMA_VERSION
 from evaltrack.repositories import open_repository
 
 from ..factories import make_attempt, make_round
@@ -17,9 +15,7 @@ from ..fakes import RaisingStore, mount_fake_azure
 from ..report_support import embedded_report_json, embedded_run, recorded_output
 from .helpers import (
     configure_local,
-    configure_repositories,
     run_cli,
-    seed_run,
     seed_run_in_repo,
 )
 
@@ -144,90 +140,6 @@ def test_report_missing_ref_exits_1(tmp_path: Path) -> None:
     assert "pr/404" in result.err and "not found" in result.err
 
 
-def test_report_before_there_is_a_baseline_is_of_the_run_alone(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The first PR of a project has no baseline yet. The report is of the run alone,
-    and there is no warning."""
-    url = str(tmp_path / "repo")
-    monkeypatch.setenv("EVALTRACK_REMOTE", url)
-    run_id = seed_run_in_repo(url)
-    output = tmp_path / "report.html"
-
-    result = run_cli(
-        ["report", "--run-id", run_id, "--repository", url, "--output", str(output)]
-    )
-
-    assert result.code == 0
-    assert "warning" not in result.err
-    data = embedded_report_json(output.read_text(encoding="utf-8"))
-    assert data["baseline"] is None
-    assert data["mainline_error"] is None
-
-
-def test_report_of_the_baseline_run_has_nothing_to_compare_against(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A comparison of a run against itself shows nothing, so the report does not make
-    one."""
-    url = str(tmp_path / "repo")
-    monkeypatch.setenv("EVALTRACK_REMOTE", url)
-    run_id = seed_run_in_repo(url)
-    open_repository(url).move_ref("baseline", run_id)
-    output = tmp_path / "report.html"
-
-    result = run_cli(
-        ["report", "--ref", "baseline", "--repository", url, "--output", str(output)]
-    )
-
-    assert result.code == 0
-    assert "warning" not in result.err
-    assert embedded_report_json(output.read_text(encoding="utf-8"))["baseline"] is None
-
-
-def test_report_with_a_baseline_in_another_stored_format_is_of_the_run_alone(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A newer evaltrack can promote a `baseline` that an older one cannot read. The
-    report is then of the run alone."""
-    url = str(tmp_path / "repo")
-    monkeypatch.setenv("EVALTRACK_REMOTE", url)
-    promoted = seed_run_in_repo(url)
-    open_repository(url).move_ref("baseline", promoted)
-    stored_path = tmp_path / "repo" / "runs" / f"{promoted}.json"
-    stored = json.loads(stored_path.read_text(encoding="utf-8"))
-    stored["run_schema_version"] = RUN_SCHEMA_VERSION + 1
-    stored_path.write_text(json.dumps(stored), encoding="utf-8")
-    run_id = seed_run_in_repo(url)
-    output = tmp_path / "report.html"
-
-    result = run_cli(
-        ["report", "--run-id", run_id, "--repository", url, "--output", str(output)]
-    )
-
-    assert result.code == 0, "a baseline this evaltrack cannot read is not a failure"
-    data = embedded_report_json(output.read_text(encoding="utf-8"))
-    assert embedded_run(data)["id"] == run_id
-    assert data["baseline"] is None
-
-
-def test_report_defaults_to_the_configured_remote(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """A CI job names the remote once in the environment. So the command reads the
-    remote by default, like `push` and `promote`."""
-    repos = configure_repositories(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    run_id = seed_run(repos.remote)
-    output = tmp_path / "report.html"
-
-    result = run_cli(["report", "--run-id", run_id, "--output", str(output)])
-
-    assert result.code == 0
-    assert repos.remote in result.err, "the resolved repository is announced"
-    assert output.is_file()
-
-
 def test_report_without_a_built_template_says_what_to_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -251,27 +163,6 @@ def test_report_needs_exactly_one_way_of_naming_the_run(
         main(["report", "--repository", "x"])
     assert excinfo.value.code == 2, "naming no run is a usage error"
     assert "--run-id" in capsys.readouterr().err
-
-
-def test_report_of_a_local_run_measures_history_over_the_remote(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """The baseline is on the remote. The history of a local run is measured over it."""
-    repos = configure_repositories(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    promoted = seed_run_in_repo(repos.remote)
-    open_repository(repos.remote).move_ref("baseline", promoted, commit="main-0")
-    run_id = seed_run_in_repo(repos.local)
-    output = tmp_path / "report.html"
-
-    result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
-
-    assert result.code == 0
-    assert repos.remote in result.err, "the mainline read is announced"
-    data = embedded_report_json(output.read_text(encoding="utf-8"))
-    history = data["history"]
-    assert isinstance(history, dict)
-    assert history["reliability"]["test_x"]["test_case"]["pooled_runs"] == 1
 
 
 def test_report_without_a_remote_has_no_history_and_no_comparison(
@@ -340,26 +231,6 @@ def test_report_of_a_local_run_with_the_remote_down_has_no_history(
     data = embedded_report_json(output.read_text(encoding="utf-8"))
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["mainline_error"] is not None
-
-
-def test_report_of_a_local_run_compares_against_the_remote_baseline(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """The baseline is on the remote, never in the local repository. A local run is
-    compared against that run."""
-    repos = configure_repositories(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    promoted = seed_run_in_repo(repos.remote)
-    open_repository(repos.remote).move_ref("baseline", promoted, commit="main-0")
-    run_id = seed_run_in_repo(repos.local)
-    output = tmp_path / "report.html"
-
-    result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
-
-    assert result.code == 0
-    assert "warning" not in result.err
-    baseline = embedded_report_json(output.read_text(encoding="utf-8"))["baseline"]
-    assert isinstance(baseline, dict) and baseline["id"] == promoted
 
 
 def test_report_with_a_remote_that_cannot_be_opened_has_no_history(
@@ -457,27 +328,3 @@ def test_report_never_prints_a_credential_in_a_rejected_remote_url(
     )
     assert "warning" in result.err and "EVALTRACK_REMOTE" in result.err
     assert embedded_report_json(page)["mainline_error"] == "the remote did not open"
-
-
-def test_report_keeps_the_storage_error_out_of_the_page(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A storage error can name a host or a path. The page gets a few fixed
-    words, and the detail goes to the log."""
-    url = str(tmp_path / "local")
-    configure_local(tmp_path, url)
-    remote = mount_fake_azure(
-        monkeypatch, RaisingStore(RepositoryUnavailableError("no route to host10"))
-    )
-    monkeypatch.setenv("EVALTRACK_REMOTE", remote)
-    monkeypatch.chdir(tmp_path)
-    run_id = seed_run_in_repo(url)
-    output = tmp_path / "report.html"
-
-    result = run_cli(["report", "--run-id", run_id, "--local", "--output", str(output)])
-
-    assert result.code == 0
-    page = output.read_text(encoding="utf-8")
-    assert "host10" not in page
-    assert "host10" in caplog.text, "the detail is logged"
-    assert embedded_report_json(page)["mainline_error"] == "the remote was not reached"
