@@ -20,7 +20,7 @@ from evaltrack.repositories import RunRepository, RunSummary, delete_run_if_unre
 from evaltrack.ui.routes import MAX_PAGE
 from evaltrack.ui.run_cache import RunCache
 from evaltrack.ui.security import reject_cross_origin_write
-from evaltrack.views.mainline import NoMainline, load_mainline_entry
+from evaltrack.views.mainline import NoRemote, load_mainline_entry
 from evaltrack.views.models import MainlineEntry
 from evaltrack.views.run_view import dump_case_json, dump_run_view_json
 
@@ -37,7 +37,7 @@ def _load_case_or_404(run: RunRecord, *, test: str, case: str) -> CaseRecord:
 
 def build_runs_router(
     resolve: Callable[[str], RunRepository],
-    remote: RunRepository | NoMainline,
+    remote: RunRepository | NoRemote,
     *,
     run_cache: RunCache,
     pr_url_template: PrUrlTemplate | None = None,
@@ -98,7 +98,7 @@ def build_runs_router(
         # Nothing here reaches storage. The check stops a malformed id from
         # reading as a run that was never promoted.
         ensure_run_id(run_id)
-        if isinstance(remote, NoMainline):
+        if isinstance(remote, NoRemote):
             return None
         return load_mainline_entry(remote, run_id)
 

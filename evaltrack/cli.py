@@ -43,7 +43,7 @@ from evaltrack.repositories import (
     open_repository,
     promote,
 )
-from evaltrack.views.mainline import NoMainline
+from evaltrack.views.mainline import NoRemote
 from evaltrack.views.run_view import INLINE_VALUE_BYTES
 
 # The dashboard is unauthenticated, so it binds loopback only.
@@ -586,14 +586,14 @@ def _load_run(target: _OpenedRepository, name: str, *, as_ref: bool) -> RunRecor
 
 def _open_remote(
     target: _OpenedRepository, config: EvaltrackConfig
-) -> RunRepository | NoMainline:
+) -> RunRepository | NoRemote:
     """The configured remote, which holds the mainline, whichever repository holds
     the run. A report can be written without a mainline, so a remote that does not
     open is a warning, not an error. The URL is printed only after the open
     succeeds, since a URL that is turned away can hold a credential."""
     remote = resolve_remote(config)
     if remote is None:
-        return NoMainline.NO_REMOTE
+        return NoRemote.NOT_CONFIGURED
     if _same_location(remote.url, target.url):
         return target.repository
     try:
@@ -605,7 +605,7 @@ def _open_remote(
             f"warning: the remote in {remote.source} did not open: {_first_line(exc)}",
             file=sys.stderr,
         )
-        return NoMainline.REMOTE_DID_NOT_OPEN
+        return NoRemote.DID_NOT_OPEN
     print(f"reading the mainline from {remote.url}", file=sys.stderr)
     return repository
 

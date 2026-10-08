@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from evaltrack.repositories import RunRepository
 from evaltrack.views.mainline import (
-    NoMainline,
+    NoRemote,
     load_readable_run,
     load_run_history,
 )
@@ -14,7 +14,7 @@ from evaltrack.views.models import RunHistory
 
 
 def build_history_router(
-    resolve: Callable[[str], RunRepository], remote: RunRepository | NoMainline
+    resolve: Callable[[str], RunRepository], remote: RunRepository | NoRemote
 ) -> APIRouter:
     """`remote` is the repository whose `baseline` history is the mainline, or why no
     mount supplies one. Without it there is nothing to measure over."""
@@ -27,7 +27,7 @@ def build_history_router(
         # `run_id` draws the viewed run over the history without folding it
         # into the rate.
         repo = resolve(slug)
-        if isinstance(remote, NoMainline):
+        if isinstance(remote, NoRemote):
             return RunHistory()
         viewed_run = load_readable_run(repo, run_id) if run_id is not None else None
         return load_run_history(remote, viewed_run=viewed_run)

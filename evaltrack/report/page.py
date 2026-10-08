@@ -15,7 +15,7 @@ from evaltrack.core.refs import BASELINE_REF, Ref
 from evaltrack.core.run_record import RunRecord, dump_plain, dump_plain_json
 from evaltrack.repositories import RunRepository
 from evaltrack.views.mainline import (
-    NoMainline,
+    NoRemote,
     baseline_run_for,
     mainline_entry_for,
     run_history_over,
@@ -57,11 +57,17 @@ class ReportData(BaseModel):
     generated_by: str
 
 
+# Why a remote that opened gave no mainline. Shown to a reader, like the
+# reasons there is no remote, so fixed words with no host, path or error text.
+_REMOTE_NOT_REACHED = "the remote was not reached"
+_REFLOG_DID_NOT_PARSE = "the baseline reflog did not parse"
+
+
 def collect_report_data(
     repository: RunRepository,
     run: RunRecord,
     *,
-    remote: RunRepository | NoMainline,
+    remote: RunRepository | NoRemote,
     via_ref: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
@@ -78,7 +84,7 @@ def collect_report_data(
     mainline_entry: MainlineEntry | None = None
     baseline: RunRecord | None = None
     mainline_error: str | None = None
-    if isinstance(remote, NoMainline):
+    if isinstance(remote, NoRemote):
         mainline_error = remote
     else:
         try:
@@ -93,9 +99,9 @@ def collect_report_data(
             _logger.warning("the mainline was not read: %s", exc)
             history, mainline_entry, baseline = RunHistory(), None, None
             mainline_error = (
-                NoMainline.REMOTE_NOT_REACHED
+                _REMOTE_NOT_REACHED
                 if isinstance(exc, RepositoryUnavailableError)
-                else NoMainline.REFLOG_DID_NOT_PARSE
+                else _REFLOG_DID_NOT_PARSE
             )
     return ReportData(
         run=run,

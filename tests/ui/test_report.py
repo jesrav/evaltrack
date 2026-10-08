@@ -22,7 +22,7 @@ from evaltrack.report.page import (
     render_report,
 )
 from evaltrack.repositories import RunRepository
-from evaltrack.views.mainline import NoMainline
+from evaltrack.views.mainline import NoRemote
 
 from ..factories import make_attempt, make_round
 from ..fakes import MemoryStore, RaisingStore
@@ -227,7 +227,7 @@ def test_collected_data_names_the_refs_pointing_at_the_run() -> None:
     repo.move_ref("pr/8", other.id, pr=8)
     repo.move_ref("baseline", run.id)
 
-    data = collect_report_data(repo, run, remote=NoMainline.NO_REMOTE)
+    data = collect_report_data(repo, run, remote=NoRemote.NOT_CONFIGURED)
 
     assert [r.name for r in data.refs] == ["baseline", "pr/7"]
     pr = data.refs[1].tip
@@ -260,7 +260,7 @@ def test_a_mainline_the_caller_could_not_open_is_explained_in_the_page() -> None
     data = collect_report_data(
         repo,
         run,
-        remote=NoMainline.REMOTE_DID_NOT_OPEN,
+        remote=NoRemote.DID_NOT_OPEN,
     )
 
     assert data.history.reliability == {}
