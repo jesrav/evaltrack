@@ -1033,7 +1033,7 @@ just<span class="w"> </span>frontend_dev<span class="w">      </span><span class
 <p>An editable install serves a fallback page at <code>evaltrack ui</code> until <code>just frontend_build</code> has run.</p>
 <h2 id="tests-and-linting">Tests and linting<a class="headerlink" href="#tests-and-linting" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>just<span class="w"> </span><span class="nb">test</span><span class="w">          </span><span class="c1"># run the test suite</span>
-just<span class="w"> </span>lint<span class="w">          </span><span class="c1"># ruff, basedpyright (strict), bandit, prettier (via pre-commit)</span>
+just<span class="w"> </span>lint<span class="w">          </span><span class="c1"># ruff, basedpyright (strict), import-linter, bandit, prettier (via pre-commit)</span>
 </code></pre></div>
 <p>The justfile has the rest: the frontend checks, the runnable examples, and the live cloud
 integration tests. Run what matches your change (for the frontend, also <code>npm run lint</code>, which
@@ -1061,6 +1061,8 @@ just<span class="w"> </span>docs_fallback<span class="w">    </span><span class=
 <li>Add tests for new behavior and for bug fixes.</li>
 <li>Prefer dependency injection with fakes over mocking. Test what a caller can observe, not internal
   behavior.</li>
+<li>The package's layers are set out in <code>.importlinter</code>, and <code>just lint</code> checks them. If a new import
+  breaks a rule, move the code, or change the rule there and say why.</li>
 <li>If you change the stored run format, bump <code>RUN_SCHEMA_VERSION</code>. Its docstring in
   <code>evaltrack/core/run_record.py</code> says what else a bump needs.</li>
 </ul>
