@@ -1,0 +1,161 @@
+# The package's architecture, checked by `just lint`. import-linter reads every
+# import statement, so an import inside a function counts like one at the top.
+
+[importlinter]
+root_package = evaltrack
+include_external_packages = True
+
+# A module imports only from the layers under its own, at any depth. Modules
+# joined by `|` share a layer and do not import each other. `exhaustive` makes
+# a new top-level module fail until it is given a layer. `core` and `config`
+# are the bottom, so `core` imports nothing else from the package.
+[importlinter:contract:layers]
+name = Layers
+type = layers
+containers = evaltrack
+exhaustive = True
+layers =
+    cli | pytest_plugin
+    ui
+    report
+    views
+    marked_test
+    history | repositories | translators | context | converters | failure
+    config | core
+
+# The layers are one stack, but the package has two sides on a shared base.
+# One side records runs in a test session. The other reads them back, in the
+# dashboard and the report. A test session loads nothing of the reading side.
+[importlinter:contract:recording-does-not-read]
+name = Recording a run needs nothing that shows one
+type = forbidden
+source_modules =
+    evaltrack.pytest_plugin
+    evaltrack.marked_test
+    evaltrack.translators
+    evaltrack.converters
+    evaltrack.context
+    evaltrack.failure
+forbidden_modules =
+    evaltrack.ui
+    evaltrack.report
+    evaltrack.views
+    evaltrack.history
+
+# `core` is the model of a run and its rules. It knows no test runner, no eval
+# runner, no storage SDK and no web framework.
+[importlinter:contract:core]
+name = core is plain Python and pydantic
+type = forbidden
+source_modules =
+    evaltrack.core
+forbidden_modules =
+    pytest
+    pydantic_evals
+    pydantic_ai
+    deepeval
+    azure
+    boto3
+    botocore
+    fastapi
+    starlette
+    uvicorn
+
+# The `[ui]` extra. Every command but `evaltrack ui` must work without it, so
+# nothing outside `ui` imports it or its web framework. The two exceptions are
+# the imports inside the `ui` command.
+[importlinter:contract:ui-extra]
+name = Only the dashboard needs the ui extra
+type = forbidden
+source_modules =
+    evaltrack.cli
+    evaltrack.pytest_plugin
+    evaltrack.report
+    evaltrack.views
+    evaltrack.marked_test
+    evaltrack.history
+    evaltrack.repositories
+    evaltrack.translators
+    evaltrack.context
+    evaltrack.converters
+    evaltrack.failure
+    evaltrack.config
+    evaltrack.core
+forbidden_modules =
+    evaltrack.ui
+    fastapi
+    starlette
+    uvicorn
+ignore_imports =
+    evaltrack.cli -> evaltrack.ui.app
+    evaltrack.cli -> uvicorn
+
+# Each of the other optional dependencies is imported by one module, which is
+# loaded only when it is used.
+[importlinter:contract:azure]
+name = The Azure SDK stays in the Azure backend
+type = forbidden
+source_modules =
+    evaltrack
+forbidden_modules =
+    azure
+ignore_imports =
+    evaltrack.repositories.azure -> azure
+
+[importlinter:contract:s3]
+name = boto3 stays in the S3 backend
+type = forbidden
+source_modules =
+    evaltrack
+forbidden_modules =
+    boto3
+    botocore
+ignore_imports =
+    evaltrack.repositories.s3 -> boto3
+    evaltrack.repositories.s3 -> botocore
+
+[importlinter:contract:pydantic-evals]
+name = pydantic-evals stays in its translator
+type = forbidden
+source_modules =
+    evaltrack
+forbidden_modules =
+    pydantic_evals
+    pydantic_ai
+ignore_imports =
+    evaltrack.translators.pydantic_evals -> pydantic_evals
+
+# The DeepEval translator reads a result by its shape and imports nothing.
+[importlinter:contract:deepeval]
+name = DeepEval is not imported
+type = forbidden
+source_modules =
+    evaltrack
+forbidden_modules =
+    deepeval
+
+[importlinter:contract:pytest]
+name = pytest stays in the plugin
+type = forbidden
+source_modules =
+    evaltrack
+forbidden_modules =
+    pytest
+    _pytest
+ignore_imports =
+    evaltrack.pytest_plugin -> pytest
+
+[importlinter:contract:backends]
+name = Storage backends do not know each other
+type = independence
+modules =
+    evaltrack.repositories.azure
+    evaltrack.repositories.s3
+    evaltrack.repositories.file
+
+[importlinter:contract:translators]
+name = Translators do not know each other
+type = independence
+modules =
+    evaltrack.translators.pydantic_evals
+    evaltrack.translators.deepeval

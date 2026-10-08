@@ -61,3 +61,11 @@ repos:
         entry: uv run basedpyright
         language: system
         types: [python]
+      # The package's layers, set out in .importlinter.
+      # It reads the whole package, so it takes no file names.
+      - id: import-linter
+        name: import-linter
+        entry: uv run lint-imports
+        language: system
+        types: [python]
+        pass_filenames: false
