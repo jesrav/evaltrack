@@ -343,7 +343,7 @@ def _build_parser() -> argparse.ArgumentParser:
 # --- opening a repository ---
 
 
-def _open_remote_repository(config: EvaltrackConfig) -> ConfiguredRemote:
+def _require_remote(config: EvaltrackConfig) -> ConfiguredRemote:
     """The configured remote, required."""
     remote = resolve_remote(config)
     if remote is None:
@@ -363,10 +363,11 @@ class _OpenedRepository:
     url: str
 
 
-def _open_resolved_repository(
+def _open_target_repository(
     args: argparse.Namespace, *, config: EvaltrackConfig | None = None
 ) -> _OpenedRepository:
-    """Open the repository the flags name, or the remote, echoed to stderr.
+    """Open the repository the command acts on: the one the flags name, or the
+    remote, echoed to stderr.
     `config` is read here only when it is needed and not given, so a named
     repository costs no read at all."""
     source: str | None = None
@@ -386,9 +387,9 @@ def _open_resolved_repository(
         if args.local:
             url = resolve_local(config)
         elif args.remote:
-            url = _open_remote_repository(config).url
+            url = _require_remote(config).url
         else:
-            default = _open_remote_repository(config)
+            default = _require_remote(config)
             url = default.url
             source = default.source
     repository = open_repository(url)
@@ -477,7 +478,7 @@ def _cmd_push(args: argparse.Namespace) -> int:
         return 2
 
     config = load_config()
-    target = _open_resolved_repository(args, config=config)
+    target = _open_target_repository(args, config=config)
     if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, config):
         return 2
     if args.ref is not None:
@@ -509,7 +510,7 @@ def _cmd_promote(args: argparse.Namespace) -> int:
         )
         return 2
     config = load_config()
-    target = _open_resolved_repository(args, config=config)
+    target = _open_target_repository(args, config=config)
     if _refuse_baseline_in_local(target, config):
         return 2
     result = promote(
@@ -528,7 +529,7 @@ def _cmd_promote(args: argparse.Namespace) -> int:
 
 
 def _cmd_runs(args: argparse.Namespace) -> int:
-    target = _open_resolved_repository(args)
+    target = _open_target_repository(args)
     listed = 0
     for listed, summary in enumerate(target.repository.list_runs(), start=1):
         print(_format_run(summary))
@@ -540,7 +541,7 @@ def _cmd_runs(args: argparse.Namespace) -> int:
 
 
 def _cmd_refs(args: argparse.Namespace) -> int:
-    target = _open_resolved_repository(args)
+    target = _open_target_repository(args)
     lines = _format_ref_lines(target.repository)
     for line in lines:
         print(line)
@@ -550,7 +551,7 @@ def _cmd_refs(args: argparse.Namespace) -> int:
 
 
 def _cmd_export(args: argparse.Namespace) -> int:
-    target = _open_resolved_repository(args)
+    target = _open_target_repository(args)
     run = target.repository.load_run(args.run_id)
     if run is None:
         # A missing run is a defined outcome, so exit 1, not the usage error 2.
@@ -620,7 +621,7 @@ def _open_remote(
 
 def _cmd_report(args: argparse.Namespace) -> int:
     config = load_config()
-    target = _open_resolved_repository(args, config=config)
+    target = _open_target_repository(args, config=config)
     try:
         subject = _load_run(target, run_id=args.run_id, ref=args.ref)
     except _RunNotFound as exc:
