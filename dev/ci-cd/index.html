@@ -626,6 +626,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="PR pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-report-as-a-job-artifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        A report as a job artifact
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1002,6 +1019,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="PR pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-report-as-a-job-artifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        A report as a job artifact
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1147,6 +1181,16 @@ evaltrack<span class="w"> </span>push<span class="w"> </span>--run-file<span cla
 </ul>
 <p><code>--pr</code> and <code>--title</code> record the PR number and title on the ref, so the dashboard shows which PR a
 ref represents. With <code>pr_url_template</code> set, it links the number to the PR.</p>
+<h3 id="a-report-as-a-job-artifact">A report as a job artifact<a class="headerlink" href="#a-report-as-a-job-artifact" title="Permanent link">&para;</a></h3>
+<p>If you save the run as one HTML file, a reviewer without the dashboard can see it. After the push,
+write the report and upload the file as the job's artifact:</p>
+<div class="highlight"><pre><span></span><code>evaltrack<span class="w"> </span>report<span class="w"> </span>--ref<span class="w"> </span><span class="s2">"pr/</span><span class="nv">$PR_NUMBER</span><span class="s2">"</span><span class="w"> </span>--output<span class="w"> </span>evaltrack-report.html
+</code></pre></div>
+<p>The page opens from disk, with no server and no network. It shows the run, its history over the
+mainline, and the changes from <code>baseline</code> to the run. It holds every input and output the run
+recorded, so keep the artifact as private as the run. On the first pull request of a project there
+is no <code>baseline</code> yet, and the report is then of the run alone. See
+<a href=".././cli/#evaltrack-report">CLI › report</a>.</p>
 <h2 id="promote-pipeline">Promote pipeline<a class="headerlink" href="#promote-pipeline" title="Permanent link">&para;</a></h2>
 <p>When the PR merges, point <code>baseline</code> at its run:</p>
 <div class="highlight"><pre><span></span><code>evaltrack<span class="w"> </span>promote<span class="w"> </span><span class="s2">"pr/</span><span class="nv">$PR_NUMBER</span><span class="s2">"</span><span class="w"> </span>--commit<span class="w"> </span><span class="s2">"</span><span class="nv">$MERGE_COMMIT_SHA</span><span class="s2">"</span><span class="w"> </span>--cleanup

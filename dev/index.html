@@ -1002,8 +1002,9 @@ eval runner you already use. Mark a test with <code>@pytest.mark.evaltrack</code
   only the evals that fail and tracks each case's pass-rate over time. See
   <a href="./flakiness/">Flakiness &amp; reliability</a>.</li>
 <li><strong>Keep every run.</strong> Runs land in a repository you own, local files or Azure Blob Storage or Amazon
-  S3, with a dashboard you run locally to inspect them and compare them across PRs and releases. See
-  <a href="./repositories/">Repositories and storage</a> and <a href="./ci-cd/">CI/CD</a>.</li>
+  S3, with a dashboard you run locally to inspect them and compare them across PRs and releases. You
+  can save any run as a standalone HTML file that opens anywhere, to share or attach to a CI job.
+  See <a href="./repositories/">Repositories and storage</a> and <a href="./ci-cd/">CI/CD</a>.</li>
 </ul>
 <p><img alt="Animated demo: a failing eval run in the dashboard, with per-case verdicts, scores against their bars, reliability history, and a comparison against the baseline" src="./images/dashboard-demo.gif" /></p>
 <p><a href="https://ai.pydantic.dev/evals/">pydantic-evals</a> and <a href="https://deepeval.com/">DeepEval</a> are supported

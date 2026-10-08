@@ -1304,8 +1304,8 @@ at.</strong> The local repository has no mainline.</p>
 that one, with its commit and time, and that history is the mainline: what reliability rates and
 score histories are measured over. You decide what "promoted" means (merged, deployed, released).
 See <a href=".././ci-cd/#adapting-the-flow-to-your-delivery-process">Adapting the flow</a>.</p>
-<p>The dashboard measures every run, local runs too, over the remote's <code>baseline</code>. Without a remote
-there is no history.</p>
+<p>The dashboard and <code>evaltrack report</code> measure every run, local runs too, over the remote's
+<code>baseline</code>. Without a remote there is no history.</p>
 <h2 id="promote">Promote<a class="headerlink" href="#promote" title="Permanent link">&para;</a></h2>
 <p><code>evaltrack promote pr/123 --commit &lt;sha&gt;</code> writes to the remote. It moves <code>baseline</code> onto the run
 that <code>pr/123</code> already points at. Nothing is copied and nothing is re-evaluated. The recorded run,

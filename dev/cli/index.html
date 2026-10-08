@@ -762,6 +762,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#evaltrack-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        evaltrack report
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#evaltrack-ui" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1027,6 +1038,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#evaltrack-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        evaltrack report
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#evaltrack-ui" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1101,8 +1123,20 @@ against them.</p>
 <p>Prints a recorded run as JSON. Use it to inspect a run or archive one outside the repository. The
 same data is available in Python. See <a href=".././repositories/#reading-runs-from-python">Reading runs from Python</a>.</p>
 <p><strong>Exit codes:</strong> <code>0</code> when the run was exported. <code>1</code> when the named repository does not hold the run,
-and the error names that repository. <code>2</code> when no repository is named. No other command exits
+and the error names that repository. <code>2</code> when no repository is named. Only <code>report</code> shares
 <a href="#exit-codes"><code>1</code></a>, so a script can act on the missing run alone.</p>
+<h2 id="evaltrack-report">evaltrack report<a class="headerlink" href="#evaltrack-report" title="Permanent link">&para;</a></h2>
+<p>Writes a recorded run as one HTML file that opens from disk, with no server and no network.</p>
+<div class="highlight"><pre><span></span><code>evaltrack<span class="w"> </span>report<span class="w"> </span>--ref<span class="w"> </span>pr/482<span class="w"> </span>--output<span class="w"> </span>evaltrack-report.html
+</code></pre></div>
+<p>The page also shows the run's history over the remote's <a href=".././repositories/#baseline-and-mainline"><code>baseline</code></a>, and <strong>Compare to
+mainline</strong> against the run that <code>baseline</code> points at. Both come from the remote, whichever
+repository holds the run. Without a remote, the page shows the run alone and says why.</p>
+<p>The page holds the inputs and outputs that the run recorded. Share it with the same care as the run.
+A value over 16 KB is left out, so a report of a large run stays small. Pass <code>--full</code> to embed every
+value whole.</p>
+<p><strong>Exit codes:</strong> <code>0</code> when the report was written. <code>1</code> when the repository does not hold the run or
+the ref. Nothing is written then. <code>2</code> when no repository is named.</p>
 <h2 id="evaltrack-ui">evaltrack ui<a class="headerlink" href="#evaltrack-ui" title="Permanent link">&para;</a></h2>
 <p>The remote is not contacted at startup, so the dashboard comes up at once even when the remote is
 out of reach, for example without network or with an expired login. Its runs and refs then fail as
@@ -1139,8 +1173,9 @@ carries an <strong>Exit codes</strong> note.</p>
 </tr>
 </tbody>
 </table>
-<p>Only <a href="#evaltrack-export"><code>export</code></a> exits <code>1</code> today, for a run the repository does not hold. Please
-<a href="https://github.com/jesrav/evaltrack/issues">report a <code>70</code></a> with the traceback.</p>
+<p>Only <a href="#evaltrack-export"><code>export</code></a> and <a href="#evaltrack-report"><code>report</code></a> exit <code>1</code> today, for a run or
+ref the repository does not hold. Please <a href="https://github.com/jesrav/evaltrack/issues">report a <code>70</code></a>
+with the traceback.</p>
 <hr />
 <p><strong>Related:</strong> <a href=".././ci-cd/">CI/CD</a> · <a href=".././repositories/">Repositories and storage</a></p>
 
