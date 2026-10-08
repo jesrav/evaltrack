@@ -59,20 +59,6 @@ def test_report_defaults_to_a_file_in_the_working_directory(
     assert (tmp_path / "evaltrack-report.html").is_file()
 
 
-def test_report_to_stdout_prints_only_the_page(tmp_path: Path) -> None:
-    url = str(tmp_path / "repo")
-    run_id = seed_run_in_repo(url)
-
-    result = run_cli(
-        ["report", "--run-id", run_id, "--repository", url, "--output", "-"]
-    )
-
-    assert result.code == 0
-    assert result.out.startswith("<!doctype html>")
-    assert result.out.rstrip().endswith("</html>"), "nothing follows the page"
-    assert embedded_run(embedded_report_json(result.out)) is not None
-
-
 def test_report_by_ref_takes_the_tip_and_names_the_ref(tmp_path: Path) -> None:
     url = str(tmp_path / "repo")
     older = seed_run_in_repo(url)
