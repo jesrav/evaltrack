@@ -14,7 +14,7 @@ pip install "evaltrack[ui,pydantic-evals]" "pydantic-ai-slim[openai]"
 
 !!! note
 
-    Linux and macOS are supported, on Python 3.11 to 3.14.
+    Linux and macOS are supported, on Python 3.11 to 3.15.
     If your machine runs Windows, run evaltrack under WSL2.
 
 ### 2. Write a tracked eval
