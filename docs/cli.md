@@ -61,6 +61,9 @@ Writes a recorded run as one HTML file that opens from disk, with no server and 
 evaltrack report --ref pr/482 --output evaltrack-report.html
 ```
 
+To report a run that is not in a repository, name its run file with `--run-file`. For example, CI
+can report the file that `pytest --evaltrack-run-file` wrote. The page then does not list any refs.
+
 The page also shows the run's history over the remote's [`baseline`][baseline], and **Compare to
 mainline** against the run that `baseline` points at. Both come from the remote, whichever
 repository holds the run. Without a remote, the page shows the run alone and says why.
@@ -70,7 +73,8 @@ A value over 16 KB is left out, so a report of a large run stays small. Pass `--
 value whole.
 
 **Exit codes:** `0` when the report was written. `1` when the repository does not hold the run or
-the ref. Nothing is written then. `2` when no repository is named.
+the ref. Nothing is written then. `2` when no repository is named, or when the run file is missing
+or does not parse.
 
 ## evaltrack ui
 

@@ -95,7 +95,8 @@ pytest -m "evaltrack"
 Each pytest session produces a **run**, a snapshot of all recorded eval results, saved to
 `.evaltrack/` by default (add `.evaltrack/` to your project's `.gitignore`).
 
-CI can run the same command. See [CI/CD].
+CI can run the same command and link a report of the run on each pull request. You do not need a
+remote for this. See [CI/CD].
 
 ### 4. See the results
 

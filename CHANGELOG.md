@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 ### Added
 
 - Support for Python 3.15.
+- `evaltrack report --run-file`, which reports the run in a run file. CI can then report a run with
+  no repository, and link the report on a pull request without a remote.
 
 ## [0.4.0] - 2026-10-08
 

@@ -84,7 +84,8 @@ through a first eval, from the marker to the dashboard.
   runner.
 - [Repositories and storage](./repositories.md): the run/ref/baseline model, where runs are stored,
   cleaning up, and reading runs from Python.
-- [CI/CD](./ci-cd.md): recording a run per PR, promoting on merge, and what CI has to get right.
+- [CI/CD](./ci-cd.md): a report on each pull request with or without a remote, promoting on merge,
+  and GitHub Actions workflows.
 - [Examples](./examples.md): runnable evals that you can copy.
 
 Reference: [CLI](./cli.md), [Configuration](./configuration.md) and the

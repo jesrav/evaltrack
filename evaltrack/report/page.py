@@ -100,15 +100,16 @@ def _read_mainline(remote: RunRepository | NoRemote, run: RunRecord) -> _Mainlin
 
 
 def collect_report_data(
-    repository: RunRepository,
+    repository: RunRepository | None,
     run: RunRecord,
     *,
     remote: RunRepository | NoRemote,
     via_ref: str | None = None,
     pr_url_template: PrUrlTemplate | None = None,
 ) -> ReportData:
-    """The data of a report for `run`, which `repository` holds. It is the run and what
-    the mainline on `remote` says about it. That is the history, where the run landed
+    """The data of a report for `run`, which `repository` holds. With no `repository`,
+    the report lists no refs. The report is the run and what the mainline on `remote`
+    says about it. That is the history, where the run landed
     on the mainline, and the `baseline` run to compare against. `via_ref` is the ref
     that named the run.
 
@@ -121,7 +122,7 @@ def collect_report_data(
         run=run,
         via_ref=via_ref,
         baseline=mainline.baseline,
-        refs=refs_pointing_at(repository, run.id),
+        refs=[] if repository is None else refs_pointing_at(repository, run.id),
         history=mainline.history,
         mainline=mainline.entry,
         mainline_error=mainline.error,

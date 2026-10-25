@@ -17,6 +17,7 @@ from .helpers import (
     configure_local,
     run_cli,
     seed_run_in_repo,
+    write_run_file,
 )
 
 pytestmark = pytest.mark.usefixtures("report_template")
@@ -187,6 +188,90 @@ def test_report_without_a_remote_has_no_history_and_no_comparison(
     assert data["history"] == {"reliability": {}, "score_history": {}}
     assert data["baseline"] is None
     assert data["mainline_error"] is not None
+
+
+def test_report_of_a_run_file_reads_no_repository(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    run_file = write_run_file(tmp_path)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        ["report", "--run-file", str(run_file.path), "--output", str(output)]
+    )
+
+    assert result.code == 0
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
+    assert embedded_run(data)["id"] == run_file.run_id
+    assert (data["refs"], data["via_ref"], data["baseline"]) == ([], None, None)
+    assert not (tmp_path / ".evaltrack").exists(), (
+        "no repository is created for the run"
+    )
+
+
+def test_report_of_a_run_file_compares_against_the_remote_baseline(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The mainline comes from the remote, so a run that was never pushed still gets
+    the comparison."""
+    remote = str(tmp_path / "remote")
+    monkeypatch.setenv("EVALTRACK_REMOTE", remote)
+    baseline = seed_run_in_repo(remote)
+    open_repository(remote).move_ref("baseline", baseline)
+    run_file = write_run_file(tmp_path)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        ["report", "--run-file", str(run_file.path), "--output", str(output)]
+    )
+
+    assert result.code == 0
+    data = embedded_report_json(output.read_text(encoding="utf-8"))
+    embedded_baseline = data["baseline"]
+    assert isinstance(embedded_baseline, dict)
+    assert (embedded_run(data)["id"], embedded_baseline["id"]) == (
+        run_file.run_id,
+        baseline,
+    )
+
+
+def test_report_of_a_run_file_takes_no_repository_flag(tmp_path: Path) -> None:
+    run_file = write_run_file(tmp_path)
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--run-file",
+            str(run_file.path),
+            "--local",
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 2, "naming a repository for a run file is a usage error"
+    assert "--run-file" in result.err and "--local" in result.err
+    assert not output.exists()
+
+
+def test_report_of_a_missing_run_file_exits_2(tmp_path: Path) -> None:
+    output = tmp_path / "report.html"
+
+    result = run_cli(
+        [
+            "report",
+            "--run-file",
+            str(tmp_path / "nope.json"),
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result.code == 2, "a missing file is something to fix, not a missing run"
+    assert "run file not found" in result.err
+    assert not output.exists()
 
 
 def test_report_carries_the_configured_pr_link_template(

@@ -291,6 +291,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Report the run this ref points at, for example pr/123 or baseline.",
     )
+    subject.add_argument(
+        "--run-file",
+        type=Path,
+        default=None,
+        help="Report the run in this run JSON file (typically produced by "
+        "`pytest --evaltrack-run-file`). No repository is read for the run.",
+    )
     _add_repository_flags(
         report,
         required=False,
@@ -441,6 +448,24 @@ def _describe_run_errors(exc: ValidationError) -> str:
     )
 
 
+def _read_run_file(path: Path) -> RunRecord:
+    """The run in the run file at `path`.
+
+    Raises:
+        ValueError: when the file is missing or does not parse as a run.
+    """
+    if not path.exists():
+        raise ValueError(f"run file not found: {path}")
+    if not path.is_file():
+        raise ValueError(f"not a file: {path}")
+    try:
+        return parse_run_json(path.read_bytes())
+    except ValidationError as exc:
+        raise ValueError(
+            f"{path} does not parse as a run file:{_describe_run_errors(exc)}"
+        ) from None
+
+
 def _cmd_push(args: argparse.Namespace) -> int:
     ref_metadata_given = (
         args.commit is not None or args.pr is not None or args.title is not None
@@ -458,25 +483,9 @@ def _cmd_push(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    run_path: Path = args.run_file
-    if not run_path.exists():
-        print(f"error: run file not found: {run_path}", file=sys.stderr)
-        return 2
-    if not run_path.is_file():
-        print(f"error: not a file: {run_path}", file=sys.stderr)
-        return 2
-    # Parse before touching the repository, so an unreadable file fails before
+    # Read before touching the repository, so an unreadable file fails before
     # anything is saved.
-    try:
-        run = parse_run_json(run_path.read_bytes())
-    except ValidationError as exc:
-        print(
-            f"error: {run_path} does not parse as a run file:"
-            f"{_describe_run_errors(exc)}",
-            file=sys.stderr,
-        )
-        return 2
-
+    run = _read_run_file(args.run_file)
     config = load_config()
     target = _open_target_repository(args, config=config)
     if args.ref == BASELINE_REF and _refuse_baseline_in_local(target, config):
@@ -594,7 +603,7 @@ def _load_run(
 
 
 def _open_remote(
-    target: _OpenedRepository, config: EvaltrackConfig
+    config: EvaltrackConfig, *, run_source: _OpenedRepository | None
 ) -> RunRepository | NoRemote:
     """The configured remote, which holds the mainline, whichever repository holds
     the run. A report can be written without a mainline, so a remote that does not
@@ -603,8 +612,8 @@ def _open_remote(
     remote = resolve_remote(config)
     if remote is None:
         return NoRemote.NOT_CONFIGURED
-    if _same_location(remote.url, target.url):
-        return target.repository
+    if run_source is not None and _same_location(remote.url, run_source.url):
+        return run_source.repository
     try:
         repository = open_repository(remote.url)
     except (ValueError, ImportError) as exc:
@@ -620,18 +629,28 @@ def _open_remote(
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
-    config = load_config()
-    target = _open_target_repository(args, config=config)
-    try:
-        subject = _load_run(target, run_id=args.run_id, ref=args.ref)
-    except _RunNotFound as exc:
-        # A missing run is a defined outcome, so the exit code is 1.
-        print(f"report: {exc}", file=sys.stderr)
-        return 1
+    if args.run_file is not None:
+        if args.repository_url is not None or args.local or args.remote:
+            raise ValueError(
+                "--run-file reads the run from the file, so it takes no "
+                "--repository, --local or --remote."
+            )
+        subject = _read_run_file(args.run_file)
+        config = load_config()
+        target = None
+    else:
+        config = load_config()
+        target = _open_target_repository(args, config=config)
+        try:
+            subject = _load_run(target, run_id=args.run_id, ref=args.ref)
+        except _RunNotFound as exc:
+            # A missing run is a defined outcome, so the exit code is 1.
+            print(f"report: {exc}", file=sys.stderr)
+            return 1
     data = collect_report_data(
-        target.repository,
+        None if target is None else target.repository,
         subject,
-        remote=_open_remote(target, config),
+        remote=_open_remote(config, run_source=target),
         via_ref=args.ref,
         pr_url_template=config.pr_url_template,
     )
