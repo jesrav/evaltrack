@@ -6,10 +6,6 @@ This is directional and priorities and scope will change.
 
 - Google Cloud Storage, alongside the existing Azure Blob and S3 remotes.
 
-## Sharing results
-
-- A Markdown summary of a run against the baseline, for posting on a pull request.
-
 ## CI integration
 
 - A GitHub Action that wraps the push and promote flow.
