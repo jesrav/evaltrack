@@ -70,7 +70,7 @@ Add the `ui` extra for the dashboard, and the `azure` or `s3` extra for a
 [shared remote](./repositories.md#backends). Then install the runner you write your evals in,
 pydantic-evals or DeepEval. See [Eval runners](./eval-runners.md).
 
-Linux and macOS are supported, on Python 3.11 to 3.14. [Getting started](./getting-started.md) walks
+Linux and macOS are supported, on Python 3.11 to 3.15. [Getting started](./getting-started.md) walks
 through a first eval, from the marker to the dashboard.
 
 ## Where to go next

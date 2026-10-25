@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog], and this project adheres to [Semantic
 
 ## [Unreleased]
 
+### Added
+
+- Support for Python 3.15.
+
 ## [0.4.0] - 2026-10-08
 
 ### Added

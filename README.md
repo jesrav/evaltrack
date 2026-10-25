@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://pypi.org/project/evaltrack/"><img src="https://img.shields.io/pypi/v/evaltrack.svg" alt="PyPI version"></a>
   <a href="https://evaltrack.jesravnbol.dk"><img src="https://img.shields.io/badge/docs-evaltrack.jesravnbol.dk-3f6fe4" alt="Documentation"></a>
-  <a href="https://pypi.org/project/evaltrack/"><img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python versions"></a>
+  <a href="https://pypi.org/project/evaltrack/"><img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.15-blue" alt="Python versions"></a>
   <a href="https://github.com/jesrav/evaltrack/actions/workflows/ci.yml"><img src="https://github.com/jesrav/evaltrack/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/jesrav/evaltrack/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/basedpyright-checked-42b983" alt="basedpyright: strict">
