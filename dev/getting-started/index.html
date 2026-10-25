@@ -1103,7 +1103,8 @@ and the test's name identifies that eval everywhere. If you want two evals, writ
 </code></pre></div>
 <p>Each pytest session produces a <strong>run</strong>, a snapshot of all recorded eval results, saved to
 <code>.evaltrack/</code> by default (add <code>.evaltrack/</code> to your project's <code>.gitignore</code>).</p>
-<p>CI can run the same command. See <a href=".././ci-cd/">CI/CD</a>.</p>
+<p>CI can run the same command and link a report of the run on each pull request. You do not need a
+remote for this. See <a href=".././ci-cd/">CI/CD</a>.</p>
 <h3 id="4-see-the-results">4. See the results<a class="headerlink" href="#4-see-the-results" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>evaltrack<span class="w"> </span>ui
 </code></pre></div>

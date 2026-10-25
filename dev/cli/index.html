@@ -1129,6 +1129,8 @@ and the error names that repository. <code>2</code> when no repository is named.
 <p>Writes a recorded run as one HTML file that opens from disk, with no server and no network.</p>
 <div class="highlight"><pre><span></span><code>evaltrack<span class="w"> </span>report<span class="w"> </span>--ref<span class="w"> </span>pr/482<span class="w"> </span>--output<span class="w"> </span>evaltrack-report.html
 </code></pre></div>
+<p>To report a run that is not in a repository, name its run file with <code>--run-file</code>. For example, CI
+can report the file that <code>pytest --evaltrack-run-file</code> wrote. The page then does not list any refs.</p>
 <p>The page also shows the run's history over the remote's <a href=".././repositories/#baseline-and-mainline"><code>baseline</code></a>, and <strong>Compare to
 mainline</strong> against the run that <code>baseline</code> points at. Both come from the remote, whichever
 repository holds the run. Without a remote, the page shows the run alone and says why.</p>
@@ -1136,7 +1138,8 @@ repository holds the run. Without a remote, the page shows the run alone and say
 A value over 16 KB is left out, so a report of a large run stays small. Pass <code>--full</code> to embed every
 value whole.</p>
 <p><strong>Exit codes:</strong> <code>0</code> when the report was written. <code>1</code> when the repository does not hold the run or
-the ref. Nothing is written then. <code>2</code> when no repository is named.</p>
+the ref. Nothing is written then. <code>2</code> when no repository is named, or when the run file is missing
+or does not parse.</p>
 <h2 id="evaltrack-ui">evaltrack ui<a class="headerlink" href="#evaltrack-ui" title="Permanent link">&para;</a></h2>
 <p>The remote is not contacted at startup, so the dashboard comes up at once even when the remote is
 out of reach, for example without network or with an expired login. Its runs and refs then fail as
