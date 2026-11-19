@@ -3,8 +3,8 @@
 site_name: evaltrack
 site_url: https://evaltrack.jesravnbol.dk/
 site_description: >-
-  A pytest plugin that records, gates and tracks LLM eval runs from
-  pydantic-evals, DeepEval or a runner you write a translator for.
+  A pytest plugin that gates and tracks your evals, and handles LLM flakiness
+  without rerunning CI.
 site_author: Jes Ravnbøl
 
 repo_url: https://github.com/jesrav/evaltrack
@@ -21,6 +21,8 @@ validation:
 
 theme:
   name: material
+  # Adds the share card's meta tags to every page.
+  custom_dir: overrides
   # Zensical's own look. The mkdocs-material fallback ignores this and renders
   # the classic look instead.
   variant: modern

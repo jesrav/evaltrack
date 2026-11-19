@@ -119,6 +119,7 @@ exclude = [
     "frontend/tsconfig.tsbuildinfo",
     # Anchored, since evaltrack/ui/static/assets is the shipped dashboard bundle.
     "/assets",
+    "/overrides",
 ]
 
 [tool.hatch.build.targets.wheel]
