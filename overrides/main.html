@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{#- One share card for every page, docs/images/social-card.png. Link previews
+    need an absolute image URL, so it is built from site_url. -#}
+{% block extrahead %}
+  {%- if page.meta and page.meta.title -%}
+    {%- set title = page.meta.title ~ " - " ~ config.site_name -%}
+  {%- elif page.title and not page.is_homepage -%}
+    {%- set title = (page.title | striptags) ~ " - " ~ config.site_name -%}
+  {%- else -%}
+    {%- set title = config.site_name -%}
+  {%- endif -%}
+  {%- set description = (page.meta and page.meta.description) or config.site_description -%}
+  {#- mike hands over site_url without its trailing slash. #}
+  {%- set image = (config.site_url | trim("/")) ~ "/images/social-card.png" %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  <meta property="og:image" content="{{ image }}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ title }}">
+  <meta name="twitter:description" content="{{ description }}">
+  <meta name="twitter:image" content="{{ image }}">
+{% endblock %}
